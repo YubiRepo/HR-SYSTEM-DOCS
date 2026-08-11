@@ -43,8 +43,6 @@ function humanize(s: string): string {
 function buildSidebar() {
   const files = findAllMd()
   const sectionDirs = ['business', 'architectures', 'modules']
-  const groups: Record<string, { text: string; link: string }[]> = {}
-  for (const d of sectionDirs) groups[d] = []
 
   const labels: Record<string, string> = {
     business: 'Bisnis',
@@ -52,23 +50,47 @@ function buildSidebar() {
     modules: 'Modul',
   }
 
-  for (const rel of files) {
-    const top = rel.split('/')[0]
-    if (!groups[top]) continue
-    const link = '/' + rel.replace(/\.md$/, '')
-    const title = getTitle(join(ROOT, rel), humanize(rel.split('/').pop()!.replace(/\.md$/, '')))
-    groups[top].push({ text: title, link })
-  }
-
-  for (const k of Object.keys(groups)) {
-    groups[k].sort((a, b) => a.text.localeCompare(b.text))
-  }
-
   const sidebar: Record<string, any[]> = {}
-  for (const [k, items] of Object.entries(groups)) {
-    if (items.length === 0) continue
-    sidebar[`/${k}/`] = [{ text: labels[k], items }]
+
+  for (const section of sectionDirs) {
+    const sectionFiles = files.filter(f => f.startsWith(section + '/'))
+    if (sectionFiles.length === 0) continue
+
+    // Group by subfolder
+    const subGroups: Record<string, { text: string; link: string }[]> = { '__root__': [] }
+
+    for (const rel of sectionFiles) {
+      const parts = rel.split('/')
+      const subFolder = parts.length > 2 ? parts[1] : '__root__'
+      const link = '/' + rel.replace(/\.md$/, '')
+      const title = getTitle(join(ROOT, rel), humanize(parts[parts.length - 1].replace(/\.md$/, '')))
+
+      if (!subGroups[subFolder]) subGroups[subFolder] = []
+      subGroups[subFolder].push({ text: title, link })
+    }
+
+    // Build sidebar items with nesting
+    const items: any[] = []
+
+    // Root-level files first
+    const rootFiles = subGroups['__root__'] || []
+    rootFiles.sort((a, b) => a.text.localeCompare(b.text))
+    items.push(...rootFiles)
+
+    // Subfolders as collapsible groups
+    for (const [sub, subItems] of Object.entries(subGroups)) {
+      if (sub === '__root__') continue
+      subItems.sort((a, b) => a.text.localeCompare(b.text))
+      items.push({
+        text: humanize(sub),
+        collapsed: false,
+        items: subItems,
+      })
+    }
+
+    sidebar[`/${section}/`] = [{ text: labels[section], items }]
   }
+
   return sidebar
 }
 
