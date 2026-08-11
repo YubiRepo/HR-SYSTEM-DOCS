@@ -3,3 +3,6 @@ node_modules
 .vitepress/cache
 .commandcode
 .DS_Store
+business/index.md
+architectures/index.md
+modules/index.md

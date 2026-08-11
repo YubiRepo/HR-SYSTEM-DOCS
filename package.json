@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "docs:dev": "vitepress dev .",
-    "docs:build": "vitepress build .",
+    "docs:dev": "node scripts/generate-index.mjs && vitepress dev .",
+    "docs:build": "node scripts/generate-index.mjs && vitepress build .",
     "docs:preview": "vitepress preview ."
   },
   "repository": {

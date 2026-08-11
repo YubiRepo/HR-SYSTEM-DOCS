@@ -26,6 +26,8 @@ jobs:
 
       - run: npm ci
 
+      - run: node scripts/generate-index.mjs
+
       - run: npm run docs:build
 
       - uses: actions/upload-pages-artifact@v3
