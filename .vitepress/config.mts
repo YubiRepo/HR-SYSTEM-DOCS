@@ -6,7 +6,7 @@ const ROOT = join(import.meta.dirname, '..')
 
 function findAllMd(): string[] {
   const sources: { dir: string; recursive: boolean }[] = [
-    { dir: ROOT, recursive: false },
+    { dir: join(ROOT, 'business'), recursive: true },
     { dir: join(ROOT, 'architectures'), recursive: true },
     { dir: join(ROOT, 'modules'), recursive: true },
   ]
@@ -42,24 +42,22 @@ function humanize(s: string): string {
 
 function buildSidebar() {
   const files = findAllMd()
-  const groups: Record<string, { text: string; link: string }[]> = {
-    root: [],
-    architectures: [],
-    modules: [],
-  }
+  const sectionDirs = ['business', 'architectures', 'modules']
+  const groups: Record<string, { text: string; link: string }[]> = {}
+  for (const d of sectionDirs) groups[d] = []
 
   const labels: Record<string, string> = {
-    root: 'Dokumen',
+    business: 'Bisnis',
     architectures: 'Arsitektur',
     modules: 'Modul',
   }
 
   for (const rel of files) {
     const top = rel.split('/')[0]
-    const section = (top === 'architectures' || top === 'modules') ? top : 'root'
+    if (!groups[top]) continue
     const link = '/' + rel.replace(/\.md$/, '')
     const title = getTitle(join(ROOT, rel), humanize(rel.split('/').pop()!.replace(/\.md$/, '')))
-    groups[section].push({ text: title, link })
+    groups[top].push({ text: title, link })
   }
 
   for (const k of Object.keys(groups)) {
@@ -69,7 +67,7 @@ function buildSidebar() {
   const sidebar: Record<string, any[]> = {}
   for (const [k, items] of Object.entries(groups)) {
     if (items.length === 0) continue
-    sidebar[`/${k === 'root' ? '' : k + '/'}`] = [{ text: labels[k], items }]
+    sidebar[`/${k}/`] = [{ text: labels[k], items }]
   }
   return sidebar
 }
@@ -96,6 +94,7 @@ export default defineConfig({
     logo: { light: '/logo-light.svg', dark: '/logo-dark.svg' },
     nav: [
       { text: 'Beranda', link: '/' },
+      ...(sidebar['/business/'] ? [{ text: 'Bisnis', link: '/business/' }] : []),
       ...(sidebar['/architectures/'] ? [{ text: 'Arsitektur', link: '/architectures/' }] : []),
       ...(sidebar['/modules/'] ? [{ text: 'Modul', link: '/modules/' }] : []),
     ],
