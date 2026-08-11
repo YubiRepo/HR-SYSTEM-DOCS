@@ -1,2 +1,0 @@
-- Berkomunikasi dalam Bahasa Indonesia (informal). Confidence: 0.7
-- Memilih VitePress sebagai framework dokumentasi (custom theme, bukan default). Confidence: 0.6
