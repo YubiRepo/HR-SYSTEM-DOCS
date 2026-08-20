@@ -31,6 +31,8 @@ Semua endpoint mengikuti envelope response standar HRMS (`success` + `data`/`err
 
 Field `identifier` menerima **email, nomor telepon, atau username**. Server mendeteksi tipenya otomatis (lihat catatan resolusi di bawah).
 
+> **Catatan tenancy:** `tenant_id` di-resolve otomatis (mis. dari subdomain/discovery), bukan diketik user. Model tenancy sudah final — 2 level (Tenant → Cabang), shared DB. Lihat [`architecture/HRMS_Tenancy_Model.md`](../../architecture/HRMS_Tenancy_Model.md). Identifier unik **per tenant**.
+
 **Request**
 ```json
 {

@@ -6,8 +6,8 @@ Keputusan arsitektur level sistem: bagaimana **organisasi, unit, dan isolasi dat
 |---|---|
 | **Dokumen** | Tenancy Model — HRMS |
 | **Jenis** | Architecture Decision (level sistem) |
-| **Status** | 🟡 Proposed — belum diputuskan |
-| **Tanggal** | 9 Agustus 2026 |
+| **Status** | ✅ Accepted — diputuskan 11 Agustus 2026 |
+| **Tanggal** | 9 Agustus 2026 (diputuskan 11 Agustus 2026) |
 | **Berdampak ke** | Seluruh modul, isolasi data, billing |
 
 ---
@@ -169,20 +169,37 @@ Kedalaman hirarki (A) dan isolasi data (B) **saling tegak lurus** — bisa dikom
 
 ---
 
-## 6. Rekomendasi Awal (untuk didiskusikan)
+## 6. Keputusan (Final)
 
-Titik awal, bukan keputusan final. Untuk HRMS yang menyasar semua segmen:
+Diputuskan **11 Agustus 2026** untuk HRMS lintas segmen:
 
-- **Mulai dari A2 + B1** — dukung 2 level (tenant → cabang) dengan shared DB. Ini menutup mayoritas kebutuhan (UMKM cukup pakai 1 cabang, menengah pakai banyak cabang) tanpa biaya berlebih.
-- **Siapkan jalur ke B3** untuk klien enterprise yang menuntut isolasi data penuh (opsi premium).
-- **A3 (grup)** ditambahkan hanya bila ada permintaan nyata dari grup usaha.
+| Keputusan | Pilihan | Alasan |
+|---|---|---|
+| **Hirarki** | **A2 — 2 level (Tenant → Cabang)** | Cukup untuk semua segmen tanpa over-engineering |
+| **Isolasi Data** | **B1 — Shared DB (`tenant_id`)** | Termurah & mudah di-scale |
+| **Billing** | **Per tenant (perusahaan)** | Batas komersial jelas: 1 perusahaan = 1 tenant = 1 tagihan |
 
-> Rekomendasi perlu diverifikasi setelah tahu: proporsi pelanggan enterprise vs UMKM, dan apakah ada kebutuhan kedaulatan/isolasi data yang ketat.
+### Rincian penerapan
+- **Tenant = perusahaan pelanggan.** Batas billing, langganan, dan isolasi data ditarik di sini.
+- **Cabang = unit di dalam tenant.** Dipakai untuk payroll, approval cuti, dan laporan yang berbeda per lokasi.
+- **UMKM** cukup memakai **satu cabang default** — praktis seperti 1 level, tanpa kerumitan.
+- **Menengah/besar** memakai banyak cabang di bawah satu tenant.
+- Semua data lintas cabang berada di **database yang sama**, dipisah dengan `tenant_id` sebagai batas utama dan `branch_id` sebagai sub-pembeda.
+
+### Konsekuensi ke data model
+- Setiap entitas ber-tenant membawa **`tenant_id`** (batas isolasi utama) dan, bila relevan, **`branch_id`** (sub-unit).
+- Query wajib selalu discope minimal ke `tenant_id`. Penyaringan per cabang lewat `branch_id`.
+- Keunikan (mis. identifier user, NIK karyawan) diterapkan **per tenant**.
+
+### Jalur ekspansi (bila dibutuhkan nanti)
+- **B3 (isolated DB)** — untuk klien enterprise yang menuntut isolasi data penuh; ditawarkan sebagai opsi premium tanpa mengubah model dasar.
+- **A3 (grup usaha)** — hanya ditambahkan bila ada permintaan nyata dari grup dengan banyak perusahaan.
+
+Kedua ekspansi bersifat opsional dan tidak memblokir implementasi model A2 + B1 saat ini.
 
 ---
 
-## 7. Pertanyaan Terbuka
+## 7. Catatan
 
-- Seberapa besar porsi pelanggan yang butuh >1 level cabang?
-- Adakah klien yang mensyaratkan data terisolasi penuh (regulasi/kebijakan)?
-- Apakah billing dihitung per tenant, per cabang, atau per karyawan? (memengaruhi di level mana batas tenancy ditarik)
+- Struktur **cabang** (tenancy) berbeda dari **struktur organisasi** (divisi/departemen/jabatan) yang diatur di modul Core HR. Cabang adalah batas tenancy; org unit adalah org chart di dalamnya.
+- Provisioning tenant & cabang dikelola oleh modul **Platform/Backoffice**.

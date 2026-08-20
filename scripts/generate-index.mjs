@@ -10,6 +10,20 @@ const labels = {
   modules: 'Modul',
 }
 
+function getGroup(dir, parts) {
+  if (dir === 'modules' && parts[0] === 'platform' && parts.length > 2) {
+    return `platform/${parts[1]}`
+  }
+  return parts.length > 1 ? parts[0] : '__root__'
+}
+
+function getGroupLabel(group) {
+  return group
+    .split('/')
+    .map(part => part.replace(/[-_]/g, ' '))
+    .join(' · ')
+}
+
 for (const dir of DIRS) {
   const fullDir = join(ROOT, dir)
   if (!existsSync(fullDir)) continue
@@ -29,7 +43,7 @@ for (const dir of DIRS) {
   const groups = {}
   for (const f of files) {
     const parts = f.split('/')
-    const group = parts.length > 1 ? parts[0] : '__root__'
+    const group = getGroup(dir, parts)
     if (!groups[group]) groups[group] = []
     groups[group].push(f)
   }
@@ -47,7 +61,7 @@ for (const dir of DIRS) {
   // Subfolder groups
   for (const [sub, subs] of Object.entries(groups)) {
     if (sub === '__root__') continue
-    content += `\n### ${sub.replace(/[-_]/g, ' ')}\n\n`
+    content += `\n### ${getGroupLabel(sub)}\n\n`
     for (const f of subs.sort()) {
       const name = f.split('/').pop().replace(/[-_]/g, ' ')
       content += `- [${name}](/${dir}/${f})\n`

@@ -100,39 +100,113 @@ Klien beli lisensi & install di server sendiri, bayar maintenance tahunan.
 
 ---
 
-## 5. Rekomendasi untuk Yubiteck
+## 5. Model Bisnis Terpilih (Keputusan)
 
-Karena Yubiteck menyasar **semua segmen**, model tunggal tidak cukup. Rekomendasi: **kombinasi tiga lapis** yang mengikuti perjalanan pelanggan dari kecil ke besar.
+Diputuskan: **Freemium + Tiered Subscription (PEPM)** dengan **feature + capacity gating**, ditopang **services** untuk enterprise. Positioning: menang lewat **kelengkapan fitur (value)**, bukan harga termurah.
 
-| Lapis | Model | Peran |
+| Komponen | Keputusan | Peran |
 |---|---|---|
-| **1. Basis** | SaaS Subscription (PEPM) | Tulang punggung pendapatan berulang, scalable lintas segmen |
-| **2. Fleksibilitas** | Modular add-on | Entry murah untuk UMKM, upsell natural ke menengah |
-| **3. Enterprise** | Services (kustomisasi, integrasi, implementasi) | Menangkap kebutuhan enterprise & memperbesar nilai kontrak |
+| **Basis harga** | Per employee/month (PEPM) | Pendapatan tumbuh mengikuti ukuran pelanggan |
+| **Batas billing** | Per tenant (perusahaan) | 1 perusahaan = 1 tagihan (selaras Tenancy Model) |
+| **Pembeda tier** | Kombinasi fitur + kapasitas | Upgrade karena butuh fitur *dan* karena tumbuh |
+| **Akuisisi** | Free selamanya (kecil) + trial Pro | Pintu masuk UMKM |
+| **Enterprise** | Custom plan + services | Nilai kontrak terbesar |
 
-**Opsional pelengkap:**
-- **Freemium/free trial** sebagai pintu akuisisi UMKM menuju paket berbayar.
-- **Opsi on-premise/private cloud** khusus klien dengan syarat kedaulatan data.
-
-**Logika strategisnya:**
-1. UMKM masuk lewat trial/freemium atau tier rendah dengan Core HR.
-2. Saat tumbuh, mereka menambah modul (Payroll, Attendance, dst) — pendapatan naik tanpa ganti sistem.
-3. Enterprise membayar langganan penuh + services kustomisasi — nilai kontrak terbesar.
-
-Dengan begini, satu produk melayani seluruh spektrum pasar, dan pendapatan Yubiteck tumbuh seiring pertumbuhan pelanggannya.
+### Logika strategis
+1. UMKM masuk lewat **Free** (Core HR, batas karyawan kecil) — data nyangkut, HRMS bersifat sticky.
+2. Tumbuh melewati batas / butuh Payroll → **upgrade ke Pro** (Payroll sengaja ditaruh di Pro sebagai pendorong upgrade).
+3. Kebutuhan kustomisasi/integrasi → **Enterprise** + services.
 
 ---
 
-## 6. Pertimbangan Pendukung
+## 6. Plan Configurable (Plan · Benefit · Feature · Limit)
+
+Agar bisnis fleksibel, tier **tidak di-hardcode**. Plan adalah **data** yang dirakit dari komponen, dikelola lewat Backoffice — plan baru/promo bisa dibuat tanpa mengubah kode.
+
+### Empat istilah kunci
+
+| Istilah | Bahasa | Arti | Contoh |
+|---|---|---|---|
+| **Plan** | Komersial | Paket yang dijual | Free, Starter, Pro, Enterprise |
+| **Benefit** | Marketing | Nilai yang dirasakan pelanggan | "Hitung gaji otomatis PPh21 & BPJS" |
+| **Feature** | Sistem | Kemampuan teknis (on/off) | `payroll`, `sso`, `recruitment` |
+| **Limit** | Sistem | Batas kapasitas (angka) | max karyawan, max cabang |
+
+**Hubungannya:** Plan menawarkan **Benefit** → Benefit diwujudkan oleh satu/lebih **Feature** → Feature & tenant dibatasi **Limit**.
+
+```
+PLAN (Free · Starter · Pro · Enterprise · + Custom)
+  │
+  ├── BENEFIT ──▶ FEATURE            (on/off: payroll, sso, recruitment)
+  │                 └── limit per-fitur (opsional): max slip/bulan, max lowongan
+  │
+  └── GLOBAL LIMIT                   (kapasitas tenant: max karyawan, max cabang, storage)
+        │ dilanggan oleh
+        ▼
+TENANT → Plan (+ override per-tenant bila perlu)
+```
+
+### Dua macam Limit
+
+| Macam | Milik | Contoh | Peran |
+|---|---|---|---|
+| **Global limit** | Tenant (lintas fitur) | max karyawan, max cabang, storage | **Pendorong upgrade utama** (capacity gating) |
+| **Limit per-fitur** | Fitur tertentu | max slip gaji/bulan, max lowongan aktif | Kuota spesifik; hanya berlaku bila fitur aktif |
+
+> Gating utama mengandalkan **global limit** — terutama *max karyawan* & *max cabang* (selaras Tenancy 2-level & billing per tenant). Limit per-fitur bersifat pelengkap, dipakai seperlunya.
+
+**Keuntungan model ini:**
+- Plan baru/promo dibuat dari Backoffice tanpa deploy.
+- **Custom plan per tenant** untuk nego enterprise (mis. "Pro + SSO tanpa Recruitment").
+- **Pengecekan seragam** di semua modul: cek "punya Feature X?" & "lewat Limit Y?" — bukan cek nama Plan.
+- **Override per tenant** untuk goodwill/promo (mis. naikkan limit sementara).
+
+---
+
+## 7. Contoh Isi Plan
+
+Contoh ilustratif (Feature & Limit dapat dikonfigurasi ulang; angka hanya contoh, harga menyusul analisis pasar). Baris **Benefit** = bahasa pelanggan; baris **Feature/Limit** = bahasa sistem.
+
+| | **Free** | **Starter** | **Pro** ⭐ | **Enterprise** |
+|---|---|---|---|---|
+| **Sasaran** | Coba-coba / mikro | UMKM | Menengah–besar | Korporat |
+| **Harga** | Gratis selamanya | PEPM rendah | PEPM standar | Custom (nego) |
+| *Feature:* Core HR | ✅ | ✅ | ✅ | ✅ |
+| *Feature:* Attendance & Leave | — | ✅ | ✅ | ✅ |
+| *Feature:* Payroll (PPh21, BPJS) | — | — | ✅ | ✅ |
+| *Feature:* Performance | — | — | ✅ | ✅ |
+| *Feature:* Recruitment/ATS | — | — | ✅ | ✅ |
+| *Feature:* SSO (OIDC/SAML) | — | — | — | ✅ |
+| *Feature:* Custom report & integrasi | — | — | terbatas | ✅ penuh |
+| *Feature:* Kustomisasi & services | — | — | — | ✅ |
+| *Global limit:* Max karyawan | 15 | 50 | 500 | unlimited |
+| *Global limit:* Max cabang | 1 | 3 | multi | unlimited |
+| **Support** | Community | Email | Priority | Dedicated + SLA |
+| **Trial Pro** | ✅ 14–30 hari | ✅ | — | — |
+| **Custom report & integrasi** | — | — | terbatas | ✅ penuh |
+| **Kustomisasi & services** | — | — | — | ✅ |
+| **Trial Pro** | ✅ 14–30 hari | ✅ | — | — |
+
+**Cara membaca:**
+- **Payroll di Pro** = pendorong upgrade utama (Feature "wajib" yang bikin orang mau bayar lebih).
+- **Free** cukup untuk mikro-bisnis, tapi Global limit 15 karyawan & 1 cabang mendorong pertumbuhan ke berbayar.
+- **Enterprise** membuka SSO, integrasi penuh, dan services — pintu kontrak besar.
+- Semua baris Feature & Limit di atas dirakit dari komponen Plan — bisa digeser kapan saja tanpa deploy.
+
+---
+
+## 8. Pertimbangan Pendukung
 
 | Aspek | Catatan |
 |---|---|
-| **Billing** | Perlu sistem billing yang mendukung PEPM + add-on + proration |
+| **Billing** | Sistem billing mendukung PEPM + plan configurable + proration + override per tenant |
+| **Pengecekan akses** | Cek Feature & Limit seragam lintas modul (bukan cek nama Plan) — spec teknis di modul Backoffice |
+| **Trial** | Trial Pro otomatis turun ke Free (bukan blokir total) saat habis, agar data tetap aman |
 | **Kontrak** | Bulanan vs tahunan (diskon tahunan untuk retensi) |
-| **Margin** | SaaS margin tinggi; services margin lebih rendah tapi mengunci klien |
-| **Retensi** | Fokus pada churn rendah — HRMS bersifat sticky (data & proses terikat) |
-| **Kepatuhan** | Payroll ID (PPh 21, BPJS) jadi nilai jual & pembeda di pasar lokal |
+| **Margin** | SaaS margin tinggi; services margin lebih rendah tapi mengunci klien enterprise |
+| **Retensi** | HRMS sticky (data & proses terikat) — free tier memperkuat funnel |
+| **Kepatuhan** | Payroll ID (PPh 21, BPJS) jadi nilai jual & pembeda; sengaja ditaruh di Pro |
 
 ---
 
-*Dokumen ini adalah kerangka model bisnis. Angka pricing spesifik dapat disusun terpisah setelah analisis biaya, kompetitor, dan willingness-to-pay per segmen.*
+*Strategi & struktur plan di dokumen ini menjadi acuan bisnis. Implementasi teknis (Feature, Limit, Plan, subscription, proration) dispesifikasikan di modul Platform/Backoffice. Angka harga final menyusul analisis biaya, kompetitor, dan willingness-to-pay per segmen.*

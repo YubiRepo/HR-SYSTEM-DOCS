@@ -38,6 +38,9 @@ Modul autentikasi untuk HR Management System. Menyediakan identitas pengguna, pe
 | [`06-security.md`](./06-security.md) | Kebijakan keamanan, hardening, ancaman & mitigasi |
 | [`07-errors.md`](./07-errors.md) | Katalog error code & penanganan |
 | [`08-config.md`](./08-config.md) | Parameter konfigurasi & environment variables |
+| [`09-clients.md`](./09-clients.md) | Panduan client web & mobile (penyimpanan token, grant flow) |
+
+> **Model tenancy** adalah keputusan level sistem (bukan milik modul auth), didokumentasikan di [`../../architecture/HRMS_Tenancy_Model.md`](../../architecture/HRMS_Tenancy_Model.md). Sudah final: 2 level (Tenant → Cabang), shared DB, identifier unik per tenant.
 
 > **Otorisasi (RBAC)** kini dipisah menjadi modul tersendiri: [`../rbac/`](../rbac/README.md). Auth menangani autentikasi & menerbitkan klaim `roles`/`scope`; RBAC mendefinisikan arti peran/permission dan mengevaluasi akses.
 

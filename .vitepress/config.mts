@@ -40,6 +40,18 @@ function humanize(s: string): string {
   return s.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
+function getSidebarGroup(section: string, parts: string[]): string {
+  if (section === 'modules' && parts[1] === 'platform' && parts.length > 3) {
+    return `platform/${parts[2]}`
+  }
+  return parts.length > 2 ? parts[1] : '__root__'
+}
+
+function getSidebarGroupLabel(group: string): string {
+  const parts = group.split('/')
+  return parts.map(humanize).join(' · ')
+}
+
 function buildSidebar() {
   const files = findAllMd()
   const sectionDirs = ['business', 'architectures', 'modules']
@@ -61,7 +73,7 @@ function buildSidebar() {
 
     for (const rel of sectionFiles) {
       const parts = rel.split('/')
-      const subFolder = parts.length > 2 ? parts[1] : '__root__'
+      const subFolder = getSidebarGroup(section, parts)
       const link = '/' + rel.replace(/\.md$/, '')
       const title = getTitle(join(ROOT, rel), humanize(parts[parts.length - 1].replace(/\.md$/, '')))
 
@@ -82,7 +94,7 @@ function buildSidebar() {
       if (sub === '__root__') continue
       subItems.sort((a, b) => a.text.localeCompare(b.text))
       items.push({
-        text: humanize(sub),
+        text: getSidebarGroupLabel(sub),
         collapsed: false,
         items: subItems,
       })

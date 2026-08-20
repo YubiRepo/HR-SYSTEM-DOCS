@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: Mulai Telusuri
-      link: /BRD_HR_System
+      link: /business/
     - theme: alt
       text: Lihat Arsitektur
       link: /architectures/
@@ -17,22 +17,25 @@ features:
   - icon: 📋
     title: Business Requirements Document
     details: Dokumen BRD lengkap — latar belakang, tujuan, ruang lingkup, stakeholder, kebutuhan per modul, dan kriteria keberhasilan.
-    link: /BRD_HR_System
+    link: /business/BRD_HR_System
+  - icon: 💼
+    title: HRMS Business Model
+    details: Model bisnis HRMS — value proposition, revenue streams, customer segments, dan key resources.
+    link: /business/HRMS_Business_Model
   - icon: 🏗️
     title: Arsitektur Sistem
     details: API Response Architecture, arsitektur modul besar, standar integrasi, dan kebutuhan non-fungsional.
     link: /architectures/
   - icon: 📦
     title: Modul Operasional
-    details: Panduan modul Core HR, Payroll, Attendance & Leave, Recruitment/ATS, dan Performance Management.
+    details: Panduan modul Auth, Core HR, Payroll, Attendance, Recruitment, dan Performance Management.
     link: /modules/
-  - icon: 🔐
-    title: Keamanan & Kepatuhan
-    details: RBAC, enkripsi data, UU PDP, audit trail, dan SLA uptime ≥ 99,5%.
-  - icon: 🔗
-    title: Integrasi Sistem
-    details: API terbuka untuk finance, bank, email, SSO, dan mesin absensi.
   - icon: 🚀
     title: Rencana Implementasi
-    details: 7 fase dari discovery hingga go-live dan hypercare support.
+    details: 7 fase dari discovery hingga go-live dan hypercare support — ada di BRD.
+    link: /business/BRD_HR_System
+  - icon: 🔗
+    title: Integrasi Sistem
+    details: API terbuka untuk finance, bank, email, SSO, dan mesin absensi — ada di BRD.
+    link: /business/BRD_HR_System
 ---
