@@ -110,7 +110,7 @@ Respons memakai envelope koleksi + `pagination`.
 
 ---
 
-## 3. PATCH /employees/{id}
+## 3. `PATCH /employees/{id}`
 
 **Request** — hanya field yang diubah.
 ```json
@@ -120,7 +120,7 @@ Respons memakai envelope koleksi + `pagination`.
 
 ---
 
-## 4. DELETE /employees/{id}
+## 4. `DELETE /employees/{id}`
 
 Soft-delete: menandai karyawan sebagai diarsipkan (tidak menghapus fisik, demi kepatuhan & riwayat).
 

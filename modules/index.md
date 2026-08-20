@@ -14,6 +14,15 @@
 - [09 clients](/modules/auth/09-clients)
 - [README](/modules/auth/README)
 
+### core hr
+
+- [01 overview](/modules/core-hr/01-overview)
+- [02 org structure](/modules/core-hr/02-org-structure)
+- [03 employee lifecycle](/modules/core-hr/03-employee-lifecycle)
+- [04 api contract](/modules/core-hr/04-api-contract)
+- [05 data model](/modules/core-hr/05-data-model)
+- [README](/modules/core-hr/README)
+
 ### rbac
 
 - [01 model](/modules/rbac/01-model)
