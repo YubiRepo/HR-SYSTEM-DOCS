@@ -38,6 +38,7 @@ Modul penggajian untuk HR Management System. Menghitung gaji karyawan dari kompo
 | [`05-api-contract.md`](./05-api-contract.md) | Endpoint run, komponen, slip |
 | [`06-data-model.md`](./06-data-model.md) | Skema entitas payroll |
 | [`07-integration.md`](./07-integration.md) | Integrasi dengan modul lain |
+| [`08-formula-engine.md`](./08-formula-engine.md) | Mesin formula: variabel, fungsi, kondisi, dependency |
 
 ---
 

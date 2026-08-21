@@ -77,7 +77,7 @@ Komponen `formula` memungkinkan nilai dihitung dari komponen lain, mis.:
 - `tunjangan = 5% × gaji_pokok`
 - `uang_lembur = tarif_lembur × jam_lembur` (jam dari Attendance)
 
-Formula dievaluasi saat perhitungan run. Urutan evaluasi memperhatikan ketergantungan (mis. tunjangan berbasis pokok dihitung setelah pokok diketahui).
+Formula dievaluasi saat perhitungan run. Untuk formula dinamis penuh (kondisi if/else, tiered, fungsi min/max, rujukan antar-komponen & dependency), lihat dokumen khusus [`08-formula-engine.md`](./08-formula-engine.md).
 
 ---
 

@@ -32,6 +32,7 @@
 - [05 api contract](/modules/payroll/05-api-contract)
 - [06 data model](/modules/payroll/06-data-model)
 - [07 integration](/modules/payroll/07-integration)
+- [08 formula engine](/modules/payroll/08-formula-engine)
 - [README](/modules/payroll/README)
 
 ### rbac
