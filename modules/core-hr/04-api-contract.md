@@ -45,6 +45,19 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | PATCH | `/positions/{id}` | Ubah posisi | `org:write` |
 | DELETE | `/positions/{id}` | Hapus/nonaktifkan posisi | `org:write` |
 
+### Katalog (tenant-level, dipakai lintas cabang)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/catalog/job-grades` | Daftar job grade | `org:read` |
+| POST | `/catalog/job-grades` | Buat job grade | `catalog:write` |
+| GET | `/catalog/position-templates` | Daftar position template | `org:read` |
+| POST | `/catalog/position-templates` | Buat template | `catalog:write` |
+| GET | `/catalog/division-types` | Daftar jenis divisi | `org:read` |
+| POST | `/catalog/division-types` | Buat jenis divisi | `catalog:write` |
+| POST | `/catalog/promote` | Promosikan item cabang → katalog | `catalog:write` |
+
+> **Konteks cabang:** endpoint org & karyawan discope otomatis ke cabang aktif dari konteks aktor. Branch admin (cakupan `branch`) hanya melihat/mengubah cabangnya; tenant admin (cakupan `tenant`) dapat memilih cabang via `?branch_id=` atau melihat semua. Endpoint `catalog:*` hanya untuk cakupan `tenant`.
+
 ### Bulk & Export
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
@@ -110,7 +123,7 @@ Respons memakai envelope koleksi + `pagination`.
 
 ---
 
-## 3. `PATCH /employees/{id}`
+## 3. PATCH /employees/`{id}`
 
 **Request** — hanya field yang diubah.
 ```json
@@ -120,7 +133,7 @@ Respons memakai envelope koleksi + `pagination`.
 
 ---
 
-## 4. `DELETE /employees/{id}`
+## 4. DELETE /employees/`{id}`
 
 Soft-delete: menandai karyawan sebagai diarsipkan (tidak menghapus fisik, demi kepatuhan & riwayat).
 

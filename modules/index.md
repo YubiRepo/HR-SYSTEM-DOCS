@@ -23,6 +23,17 @@
 - [05 data model](/modules/core-hr/05-data-model)
 - [README](/modules/core-hr/README)
 
+### payroll
+
+- [01 overview](/modules/payroll/01-overview)
+- [02 salary components](/modules/payroll/02-salary-components)
+- [03 calculation](/modules/payroll/03-calculation)
+- [04 payroll run](/modules/payroll/04-payroll-run)
+- [05 api contract](/modules/payroll/05-api-contract)
+- [06 data model](/modules/payroll/06-data-model)
+- [07 integration](/modules/payroll/07-integration)
+- [README](/modules/payroll/README)
+
 ### rbac
 
 - [01 model](/modules/rbac/01-model)

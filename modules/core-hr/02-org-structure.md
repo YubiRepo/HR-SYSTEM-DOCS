@@ -1,5 +1,31 @@
 # 02 · Org Structure
 
+## 0. Model Katalog vs Instance (Multi-Cabang)
+
+Karena satu tenant punya banyak cabang dengan struktur berbeda, org structure memakai model **hybrid**:
+
+| Lapisan | Milik | Isi | Dikelola |
+|---|---|---|---|
+| **Katalog** | Tenant | Template dipakai lintas cabang: job grade, position template, jenis divisi | Tenant admin |
+| **Instance** | Cabang | Struktur aktual: divisi & posisi nyata di cabang itu, dengan kapasitas sendiri | Branch admin |
+
+```
+Katalog tenant: "Finance" (jenis divisi), "Software Engineer" (position template), grade Staff/Manager/VP
+        │ dirakit jadi
+        ├── Cabang Jakarta:  Divisi Finance (12 posisi) · Divisi IT (20)
+        └── Cabang Surabaya: Divisi Finance (5 posisi)  · Divisi Gudang (15)
+```
+
+**Aturan:**
+- Branch admin **bebas merakit** struktur cabangnya dari katalog.
+- Boleh **menambah di luar katalog** (mis. divisi khusus yang belum ada) — fleksibel.
+- Item di luar katalog dapat **dipromosikan** ke katalog tenant (opsional) agar bisa dipakai ulang cabang lain & menjaga konsistensi.
+- Kapasitas/headcount ditetapkan **per instance (cabang)**, bukan di katalog.
+
+> Semua entitas org membawa `branch_id` (instance) atau bertanda katalog (tenant-level). Detail di `05-data-model.md`.
+
+---
+
 ## 1. Komponen Struktur
 
 Struktur organisasi disusun dari tiga elemen yang saling terkait:

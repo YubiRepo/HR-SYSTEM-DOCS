@@ -39,9 +39,12 @@ Selain izin fungsional, akses sering dibatasi pada cakupan data:
 |---|---|
 | `self` | Hanya data milik pengguna sendiri |
 | `team` | Data anggota tim yang dipimpin |
-| `tenant` | Seluruh data dalam tenant |
+| `branch` | Seluruh data dalam satu cabang (untuk branch admin) |
+| `tenant` | Seluruh data dalam tenant (semua cabang + katalog) |
 
-Contoh: `employee` punya `payslip:read` tetapi terbatas `self`; `payroll_officer` punya `payslip:read` dengan cakupan `tenant`.
+Contoh: `employee` punya `payslip:read` tetapi terbatas `self`; `payroll_officer` punya `payslip:read` dengan cakupan `tenant`. Seorang **branch admin** punya izin luas tetapi dibatasi `branch` — hanya cabang yang ia kelola; **tenant admin** memakai cakupan `tenant` (lintas semua cabang).
+
+**Penegakan branch scope:** untuk aktor bercakupan `branch`, query difilter `WHERE branch_id IN (cabang yang dikelola)`. Cakupan `tenant` tidak difilter per cabang (lihat semua). Katalog tenant (job grade, template, jenis divisi) hanya dapat diubah oleh cakupan `tenant`.
 
 Data-scope dievaluasi **setelah** izin fungsional lolos, dengan menyaring query data (mis. `WHERE owner_id = :sub` untuk `self`).
 

@@ -54,3 +54,25 @@ Struktur organisasi berada **di dalam** sebuah tenant (dan bila tenancy berlapis
 - Perubahan penting (posisi, unit, status) dicatat sebagai riwayat.
 - Core HR tidak menghitung gaji/kehadiran — hanya menyediakan data dasar bagi modul terkait.
 - Konversi kandidat → karyawan berasal dari modul Recruitment, tetapi record karyawan final hidup di sini.
+
+---
+
+## 6. Multi-Cabang: Data & UI
+
+Tenant punya banyak cabang dengan struktur berbeda. Core HR memakai model **hybrid** (katalog tenant + instance per cabang) — detail di `02-org-structure.md`.
+
+**Kepemilikan data:**
+- Katalog (job grade, position template, jenis divisi) → milik **tenant**, dikelola tenant admin.
+- Struktur aktual (divisi, posisi, kapasitas) & karyawan → milik **cabang**, dikelola branch admin.
+
+**Peran & akses** (via RBAC, cakupan data):
+- **branch_admin** → cakupan `branch`; rakit struktur & kelola karyawan cabangnya (boleh tambah di luar katalog).
+- **tenant_admin** → cakupan `tenant`; kelola katalog + akses semua cabang.
+
+**Pola UI — Branch Context Switcher:**
+```
+[🏢 Cabang: Jakarta ▾]     ← indikator cabang aktif di header
+```
+- Branch admin: switcher terkunci di cabangnya; tanpa menu katalog.
+- Tenant admin: switcher bisa ganti cabang + opsi "Semua Cabang"; punya menu "Katalog/Master Data".
+- UI sama untuk semua; yang berbeda hanya cakupan & ketersediaan menu katalog (ditentukan RBAC).

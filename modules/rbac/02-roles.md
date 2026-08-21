@@ -7,8 +7,9 @@
 | **employee** | Data & aksi milik sendiri: `profile:read/write`, `leave:request`, `payslip:read:self` |
 | **manager** | Izin employee + `team:read`, `leave:approve`, `performance:review` |
 | **hr_admin** | `employees:*`, `leave:*`, `recruitment:*`, `performance:*` |
+| **branch_admin** | Seperti hr_admin tetapi **cakupan `branch`** — kelola karyawan, struktur, & posisi hanya di cabangnya (rakit dari katalog, boleh tambah di luar katalog) |
 | **payroll_officer** | `payroll:*`, `payslip:read`, `tax:read` |
-| **tenant_admin** | Manajemen pengguna & konfigurasi tenant: `users:*`, `roles:*`, `settings:*` |
+| **tenant_admin** | Manajemen pengguna & konfigurasi tenant: `users:*`, `roles:*`, `settings:*`, **katalog org (`catalog:*`)**, cakupan `tenant` (semua cabang) |
 | **service** | Izin spesifik integrasi via scope (mis. `payroll:read`) |
 
 Peran bawaan ditandai `is_system = true` dan tidak dapat dihapus, hanya dilihat/dirujuk.

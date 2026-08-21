@@ -65,7 +65,7 @@ Endpoint manajemen peran, permission, dan penetapan ke user. Mengikuti envelope 
 
 ---
 
-## 2. `PATCH /rbac/roles/{id}`
+## 2. PATCH /rbac/roles/`{id}`
 
 Mengganti atribut peran. Untuk mengganti seluruh daftar permission sekaligus, kirim `permissions`.
 
@@ -78,7 +78,7 @@ Mengganti atribut peran. Untuk mengganti seluruh daftar permission sekaligus, ki
 
 ---
 
-## 3. `DELETE /rbac/roles/{id}`
+## 3. DELETE /rbac/roles/`{id}`
 
 **Response `204 No Content`.**
 **Error:**
@@ -104,7 +104,7 @@ Alternatif granular selain PATCH (menambah/mencabut satu permission tanpa mengir
 
 ---
 
-## 5. `GET /rbac/roles/{id}/users`
+## 5. GET /rbac/roles/{id}/users
 
 User yang memegang peran ini (untuk analisis dampak sebelum ubah/hapus). Mendukung pagination.
 
@@ -141,7 +141,7 @@ Katalog permission yang tersedia (global). Mendukung `?search=` dan `filter[reso
 
 ---
 
-## 7. `GET /rbac/users/{user_id}/roles`
+## 7. GET /rbac/users/{user_id}/roles
 
 **Response `200 OK`**
 ```json
@@ -156,7 +156,7 @@ Katalog permission yang tersedia (global). Mendukung `?search=` dan `filter[reso
 
 ---
 
-## 8. `POST /rbac/users/{user_id}/roles`
+## 8. POST /rbac/users/{user_id}/roles
 
 Menetapkan satu atau banyak peran (multi-role — bersifat menambah).
 
@@ -169,7 +169,7 @@ Menetapkan satu atau banyak peran (multi-role — bersifat menambah).
 
 ---
 
-## 9. `PUT /rbac/users/{user_id}/roles`
+## 9. PUT /rbac/users/{user_id}/roles
 
 Mengganti **seluruh** set peran user (menimpa). Berguna untuk sinkronisasi.
 
@@ -181,7 +181,7 @@ Mengganti **seluruh** set peran user (menimpa). Berguna untuk sinkronisasi.
 
 ---
 
-## 10. `DELETE /rbac/users/{user_id}/roles/{role_id}`
+## 10. DELETE /rbac/users/{user_id}/roles/{role_id}
 
 Mencabut satu peran dari user.
 **Response `204 No Content`.**
@@ -191,7 +191,7 @@ Mencabut satu peran dari user.
 
 ---
 
-## 11. `GET /rbac/users/{user_id}/permissions`
+## 11. GET /rbac/users/{user_id}/permissions
 
 Izin efektif = union permission dari seluruh peran user.
 

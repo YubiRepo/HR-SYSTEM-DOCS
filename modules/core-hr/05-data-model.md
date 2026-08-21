@@ -45,28 +45,60 @@ Model data konseptual (stack-agnostic). Entitas `users` & `tenants` dimiliki mod
 
 **Constraint:** `UNIQUE(tenant_id, national_id)`.
 
-### 2.2 `org_units`
+### 2.2 `org_units` (instance per cabang)
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | `org_...` |
 | `tenant_id` | string (FK) | |
+| `branch_id` | string (FK) | Cabang pemilik unit (instance) |
 | `parent_id` | string (FK, nullable) | Unit induk (null = puncak) |
+| `division_type_id` | string (FK, nullable) | Rujukan ke katalog jenis divisi (null bila di luar katalog) |
 | `name` | string | Nama unit |
 | `type` | enum | `division`, `department`, `team` (fleksibel) |
 | `head_employee_id` | string (FK, nullable) | Pimpinan unit |
 | `is_active` | boolean | |
 
-### 2.3 `positions`
+### 2.3 `positions` (instance per cabang)
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | `pos_...` |
 | `tenant_id` | string (FK) | |
+| `branch_id` | string (FK) | Cabang pemilik posisi (instance) |
+| `template_id` | string (FK, nullable) | Rujukan ke katalog position template (null bila di luar katalog) |
+| `grade_id` | string (FK, nullable) | Rujukan ke katalog job grade |
 | `title` | string | Nama jabatan |
-| `level` | string | Grade/level (mis. `staff`, `manager`) |
 | `org_unit_id` | string (FK, nullable) | Unit terkait |
+| `headcount` | int | Kapasitas posisi di cabang ini |
 | `is_active` | boolean | |
 
-### 2.4 `assignments`
+### 2.4 Katalog (tenant-level, dipakai lintas cabang)
+
+**`job_grades`**
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | `grade_...` |
+| `tenant_id` | string (FK) | |
+| `name` | string | mis. `Staff`, `Manager`, `VP` |
+| `rank` | int | Urutan level |
+
+**`position_templates`**
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | `ptpl_...` |
+| `tenant_id` | string (FK) | |
+| `title` | string | mis. `Software Engineer` |
+| `default_grade_id` | string (FK, nullable) | Grade default |
+
+**`division_types`**
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | `dtype_...` |
+| `tenant_id` | string (FK) | |
+| `name` | string | mis. `Finance`, `IT`, `Operasional` |
+
+> Katalog milik tenant (tanpa `branch_id`). Instance (`org_units`, `positions`) merujuk ke katalog via `division_type_id` / `template_id` / `grade_id`. Item cabang di luar katalog boleh dibuat (rujukan null) dan dapat dipromosikan menjadi entri katalog.
+
+### 2.5 `assignments`
 Penempatan karyawan pada unit + posisi (aktif & historis).
 | Field | Tipe | Keterangan |
 |---|---|---|
@@ -80,7 +112,7 @@ Penempatan karyawan pada unit + posisi (aktif & historis).
 
 > Assignment aktif = yang `end_date` null. Perubahan menutup yang lama & membuat baru.
 
-### 2.5 `employment_history`
+### 2.6 `employment_history`
 Riwayat kontrak/ikatan kerja.
 | Field | Tipe | Keterangan |
 |---|---|---|
@@ -90,7 +122,7 @@ Riwayat kontrak/ikatan kerja.
 | `contract_start` / `contract_end` | date | |
 | `note` | string | |
 
-### 2.6 `status_history`
+### 2.7 `status_history`
 Jejak perubahan status lifecycle.
 | Field | Tipe | Keterangan |
 |---|---|---|
@@ -101,7 +133,7 @@ Jejak perubahan status lifecycle.
 | `reason` | string | |
 | `changed_by` | string | Aktor |
 
-### 2.7 `employee_documents`
+### 2.8 `employee_documents`
 Dokumen milik karyawan (kontrak, KTP, sertifikat).
 | Field | Tipe | Keterangan |
 |---|---|---|
