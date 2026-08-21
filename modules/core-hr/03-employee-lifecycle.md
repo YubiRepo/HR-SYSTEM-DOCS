@@ -79,6 +79,8 @@ POST /employees (create_account = true, default)
 
 > Pembuatan akun & undangan adalah tanggung jawab modul **Auth**; Core HR memicunya dan menyimpan tautan `user_id`. Kredensial (password, MFA) tidak pernah disimpan di Core HR.
 
+> **Enrollment absensi:** bila cabang karyawan memakai metode biometrik/kartu (fingerprint/face/NFC), pendaftaran sidik jari/wajah/kartu dijadwalkan sebagai bagian onboarding (bisa juga menyusul). Ini ditangani modul Attendance — lihat `attendance/10-identity-enrollment.md`.
+
 ---
 
 ## 4. Mutasi & Promosi

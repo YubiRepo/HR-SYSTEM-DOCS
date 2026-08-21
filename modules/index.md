@@ -1,6 +1,20 @@
 # Modul
 
 
+### attendance
+
+- [01 overview](/modules/attendance/01-overview)
+- [02 shift schedule](/modules/attendance/02-shift-schedule)
+- [03 attendance recording](/modules/attendance/03-attendance-recording)
+- [04 overtime lateness](/modules/attendance/04-overtime-lateness)
+- [05 api contract](/modules/attendance/05-api-contract)
+- [06 data model](/modules/attendance/06-data-model)
+- [07 integration](/modules/attendance/07-integration)
+- [08 device integration](/modules/attendance/08-device-integration)
+- [09 method config](/modules/attendance/09-method-config)
+- [10 identity enrollment](/modules/attendance/10-identity-enrollment)
+- [README](/modules/attendance/README)
+
 ### auth
 
 - [01 overview](/modules/auth/01-overview)
@@ -33,6 +47,7 @@
 - [06 data model](/modules/payroll/06-data-model)
 - [07 integration](/modules/payroll/07-integration)
 - [08 formula engine](/modules/payroll/08-formula-engine)
+- [09 grade templates](/modules/payroll/09-grade-templates)
 - [README](/modules/payroll/README)
 
 ### rbac

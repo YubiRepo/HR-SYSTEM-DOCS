@@ -39,6 +39,7 @@ Modul penggajian untuk HR Management System. Menghitung gaji karyawan dari kompo
 | [`06-data-model.md`](./06-data-model.md) | Skema entitas payroll |
 | [`07-integration.md`](./07-integration.md) | Integrasi dengan modul lain |
 | [`08-formula-engine.md`](./08-formula-engine.md) | Mesin formula: variabel, fungsi, kondisi, dependency |
+| [`09-grade-templates.md`](./09-grade-templates.md) | Paket gaji per grade: default, override karyawan & cabang |
 
 ---
 
