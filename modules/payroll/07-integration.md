@@ -16,6 +16,26 @@ Payroll bergantung pada beberapa modul & menyediakan data ke beberapa modul lain
 
 > Bila modul Attendance tidak aktif (plan lebih rendah), komponen lembur/absen dapat diinput manual atau diabaikan.
 
+### 1.1 Dampak Attendance ke Gaji (konkret)
+
+Attendance adalah **sumber variabel** utama: kehadiran menaikkan & menurunkan gaji.
+
+| Rekap Attendance | Efek | Komponen Payroll |
+|---|---|---|
+| `overtime_hours` | **naik** | uang lembur (formula) |
+| `present_days` | naik/turun | tunjangan harian (transport/makan, tipe daily) |
+| `absent_days` | **turun** | potongan alpha |
+| `late_minutes` | turun | potongan telat (bila aturan aktif) |
+| `leave_days` | tergantung | cuti berbayar = tak memotong; tak berbayar = memotong |
+
+**Contoh** — Budi gaji pokok Rp8.000.000, rekap Januari: lembur 6 jam, masuk 20 hari, alpha 1 hari.
+```
++ Uang lembur = (8.000.000/173) × 6 × 1.5  ≈ 416.000
++ Transport   = 25.000 × 20                 = 500.000
+− Alpha       = (8.000.000/22) × 1          ≈ 363.000
+```
+Tanpa data attendance, angka-angka ini tak bisa dihitung. Payroll menarik rekap via `GET /attendance/summary` saat calculate run; karena itu **koreksi absensi harus selesai sebelum run di-close** (lihat attendance `03` §5.3).
+
 ---
 
 ## 2. Konsumen (yang memakai output Payroll)
