@@ -51,6 +51,7 @@ Entitas milik modul Attendance. `employees` & `branches` dirujuk dari Core HR.
 | `branch_id` | string (FK) | |
 | `date` | date | |
 | `clock_in` / `clock_out` | timestamp (nullable) | |
+| `auto_clock_out` | boolean | true bila clock-out diisi otomatis (lupa absen) |
 | `source` | enum | `mobile`, `web`, `machine`, `kiosk`, `manual` |
 | `in_lat` / `in_lng` | number (nullable) | Lokasi clock-in |
 | `photo_ref` | string (nullable) | Bukti |

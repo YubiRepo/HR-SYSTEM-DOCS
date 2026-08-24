@@ -57,14 +57,65 @@ Setelah clock & dibandingkan jadwal, tiap hari punya status:
 
 ---
 
-## 5. Koreksi Absensi
+## 5. Lupa Absen & Koreksi
 
-Kesalahan wajar terjadi (lupa clock-out, HP error). Koreksi:
-- Karyawan **ajukan koreksi** (mis. "lupa absen pulang, saya pulang 17:00").
-- Manajer/HR **setujui** (pakai reporting line Core HR).
-- Semua koreksi **tercatat** (nilai lama → baru, aktor, alasan) untuk audit.
+Lupa absen adalah kejadian **sehari-hari** — bila tak ditangani, karyawan bisa salah ditandai alpha atau salah hitung jam. Ditangani berlapis (pencegahan → penanganan → pengaman).
 
-Koreksi setelah periode Payroll ditutup mengikuti aturan koreksi Payroll (lewat run berikutnya).
+### 5.1 Skenario Umum
+| Skenario | Kondisi | Risiko |
+|---|---|---|
+| Lupa clock-out | ada clock-in, tak ada clock-out | jam kerja tak terhitung |
+| Lupa clock-in | tak ada clock-in, ada clock-out | jam kerja tak terhitung |
+| Lupa keduanya | tak ada record sama sekali | ditandai alpha padahal masuk |
+| Telat clock-out | clock-out jauh setelah shift | lembur palsu |
+
+### 5.2 Mekanisme Berlapis
+
+**1. Reminder (pencegahan)**
+Notifikasi bila belum clock-in/out mendekati/melewati jam shift (mis. 17:30 belum clock-out). Mengurangi kejadian lupa. Via Notification (saat modul ada).
+
+**2. Pengajuan Koreksi (penanganan utama)**
+```
+Karyawan ajukan: "lupa clock-out kemarin, saya pulang 17:00"
+   → Manajer ATAU HR review → approve/reject
+   → record dibetulkan; perubahan tercatat (audit)
+```
+- Approver: **manajer (via reporting line Core HR) atau HR** — mana yang tersedia.
+- Semua koreksi tercatat: nilai lama → baru, aktor, alasan, waktu.
+
+**3. Auto Clock-out (opsional, per tenant)**
+Bila lupa clock-out, sistem mengisi otomatis dengan **jam akhir shift**, ditandai `auto`.
+```
+lupa clock-out, shift berakhir 17:00 → clock_out = 17:00 (flag: auto)
+```
+- Mencegah record menggantung.
+- **Ditandai `auto`** agar HR tahu ini bukan waktu aktual — bisa dikoreksi bila ternyata lembur.
+- Dapat dimatikan tenant yang ingin murni manual.
+
+**4. Batas Telat Clock-out (anti lembur palsu)**
+```
+clock-out > X jam setelah shift TANPA lembur disetujui
+   → dianggap lupa; dipotong ke jam shift (bukan lembur)
+```
+Mencegah jam kerja/lembur membengkak karena telat menekan tombol.
+
+### 5.3 Batas Waktu Koreksi (kaitan Payroll)
+
+Koreksi absensi memengaruhi gaji, jadi terikat siklus Payroll:
+```
+- Koreksi diterima sampai tanggal cut-off periode (mis. tgl 25).
+- Setelah payroll run periode itu CLOSED → koreksi masuk run berikutnya
+  (sebagai penyesuaian), tidak mengubah run yang sudah dikunci.
+```
+Sejalan prinsip "closed = terkunci" di Payroll. Endpoint koreksi menolak perubahan pada periode terkunci (`CORRECTION_NOT_ALLOWED`).
+
+### 5.4 Alur Koreksi
+```
+karyawan (ajukan) → manajer/HR (review) → approve
+   → record diperbarui + audit
+   → bila periode belum closed: masuk perhitungan periode ini
+   → bila sudah closed: penyesuaian di run berikutnya
+```
 
 ---
 
