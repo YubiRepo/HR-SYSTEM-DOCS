@@ -1,12 +1,25 @@
 # 04 · API Contract
 
-Endpoint billing, prefix `/api/v1/platform`. Admin platform (super_admin, billing) + MFA. Envelope standar HRMS. Refund/adjustment butuh re-auth.
+Dua kelompok endpoint:
+- **Platform** (`/api/v1/platform/*`) — admin **Yubiteck** (super_admin, billing) + MFA: kelola plan, subscription semua tenant, refund.
+- **Tenant-facing** (`/api/v1/billing/*`) — **tenant admin** kelola langganan sendiri (self-service).
+
+Envelope standar HRMS. Refund/adjustment butuh re-auth.
+
+## Model Hybrid: Self-service vs Managed
+
+| Mode | Siapa kelola subscription | Cocok untuk |
+|---|---|---|
+| **Self-service** (default) | Tenant admin sendiri (upgrade/downgrade, bayar) | UMKM & tenant standar |
+| **Managed** | Admin Yubiteck (nego harga, kontrak) | Enterprise / deal custom |
+
+Flag per tenant (`billing_mode`: `self_service` / `managed`) menentukan apakah endpoint tenant-facing aktif. Pada mode `managed`, tenant hanya bisa **melihat** (bukan mengubah) langganan; perubahan lewat Yubiteck.
 
 ---
 
 ## Ringkasan Endpoint
 
-### Plans & Catalog
+### Plans & Catalog (admin Yubiteck)
 | Method | Endpoint | Deskripsi | Peran |
 |---|---|---|---|
 | GET | `/platform/plans` | Daftar plan | viewer+ |
@@ -18,7 +31,7 @@ Endpoint billing, prefix `/api/v1/platform`. Admin platform (super_admin, billin
 | POST | `/platform/features` | Daftarkan Feature | super_admin |
 | GET | `/platform/limits` | Katalog jenis Limit | viewer+ |
 
-### Subscription
+### Subscription (admin Yubiteck — semua tenant)
 | Method | Endpoint | Deskripsi | Peran |
 |---|---|---|---|
 | GET | `/platform/tenants/{id}/subscription` | Subscription tenant | viewer+ |
@@ -26,7 +39,18 @@ Endpoint billing, prefix `/api/v1/platform`. Admin platform (super_admin, billin
 | POST | `/platform/tenants/{id}/subscription/cancel` | Batalkan | billing+ |
 | POST | `/platform/tenants/{id}/overrides` | Terapkan override Feature/Limit | super_admin |
 
-### Invoice & Payment
+### Tenant-facing (tenant admin — langganan sendiri, mode self-service)
+| Method | Endpoint | Deskripsi | Izin (RBAC) |
+|---|---|---|---|
+| GET | `/billing/subscription` | Lihat langganan sendiri | `billing:read` |
+| GET | `/billing/plans` | Lihat plan tersedia (untuk upgrade) | `billing:read` |
+| POST | `/billing/subscription/change` | Upgrade/downgrade sendiri | `billing:manage` (tenant) |
+| GET | `/billing/invoices` | Daftar invoice sendiri | `billing:read` |
+| GET | `/billing/invoices/{id}` | Detail/unduh invoice | `billing:read` |
+| GET | `/billing/usage` | Pemakaian vs limit (seat, cabang, dll) | `billing:read` |
+| POST | `/billing/payment-method` | Kelola metode bayar | `billing:manage` (tenant) |
+
+### Invoice & Payment (admin Yubiteck)
 | Method | Endpoint | Deskripsi | Peran |
 |---|---|---|---|
 | GET | `/platform/tenants/{id}/invoices` | Daftar invoice | billing+ |

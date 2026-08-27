@@ -46,6 +46,8 @@ Contoh: `employee` punya `payslip:read` tetapi terbatas `self`; `payroll_officer
 
 **Penegakan branch scope:** untuk aktor bercakupan `branch`, query difilter `WHERE branch_id IN (cabang yang dikelola)`. Cakupan `tenant` tidak difilter per cabang (lihat semua). Katalog tenant (job grade, template, jenis divisi) hanya dapat diubah oleh cakupan `tenant`.
 
+**Cabang mana yang "dikelola" ditentukan oleh assignment:** bila penetapan peran punya `branch_scope` (lihat `02-roles.md` §3.1), daftar itulah yang dipakai untuk filter. Contoh: Budi `payroll_officer @ [Jakarta]` → walau peran payroll_officer bercakupan luas, datanya disaring `WHERE branch_id = Jakarta`. Bila `branch_scope` kosong, dipakai cakupan default peran.
+
 Data-scope dievaluasi **setelah** izin fungsional lolos, dengan menyaring query data (mis. `WHERE owner_id = :sub` untuk `self`).
 
 ---

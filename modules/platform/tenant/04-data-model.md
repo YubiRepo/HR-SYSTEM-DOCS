@@ -25,6 +25,7 @@ Entitas milik modul Tenant. `users` (admin) dirujuk dari Auth; subscription/invo
 | `name` | string | Nama perusahaan |
 | `status` | enum | `trial`, `active`, `past_due`, `suspended`, `expired`, `terminated` |
 | `default_branch_id` | string (FK) | Cabang bawaan |
+| `billing_mode` | enum | `self_service` (default) / `managed` — apakah tenant kelola langganan sendiri atau via Yubiteck |
 | `data_retention_days` | int | Retensi saat terminasi |
 | `created_at` / `updated_at` | timestamp | |
 
@@ -35,12 +36,25 @@ Entitas milik modul Tenant. `users` (admin) dirujuk dari Auth; subscription/invo
 |---|---|---|
 | `id` | string (PK) | `branch_...` |
 | `tenant_id` | string (FK) | |
-| `name` | string | |
-| `is_default` | boolean | |
-| `is_active` | boolean | |
-| `created_at` | timestamp | |
+| `code` | string | Kode cabang (mis. `JKT-01`); unik per tenant |
+| `name` | string | Nama cabang |
+| `address` | string | Alamat lengkap |
+| `city` | string | Kota |
+| `province` | string | Provinsi |
+| `postal_code` | string | Kode pos |
+| `country` | string | Default `ID` |
+| `timezone` | string | mis. `Asia/Jakarta` (WIB/WITA/WIT) |
+| `lat` / `lng` | number (nullable) | Koordinat — dipakai geofence Attendance |
+| `phone` | string (nullable) | Telepon cabang |
+| `pic_employee_id` | string (FK, nullable) | Penanggung jawab (branch manager) |
+| `is_default` | boolean | Cabang bawaan |
+| `status` | enum | `active`, `inactive`, `closed` |
+| `opened_at` / `closed_at` | date (nullable) | Lifecycle cabang |
+| `created_at` / `updated_at` | timestamp | |
 
-**Constraint:** setiap tenant punya tepat satu `is_default = true`.
+**Constraint:** setiap tenant punya tepat satu `is_default = true`; `UNIQUE(tenant_id, code)`.
+
+> Field `timezone` penting untuk multi-cabang lintas zona (WIB/WITA/WIT) — perhitungan absensi & jadwal mengikuti zona cabang. `lat`/`lng` menjadi pusat geofence di modul Attendance.
 
 ### 2.3 `tenant_status_history`
 Jejak perubahan status (audit lifecycle).
@@ -60,7 +74,7 @@ Jejak perubahan status (audit lifecycle).
 | Tabel | Indeks | Alasan |
 |---|---|---|
 | `tenants` | `slug` unik, `status` | Resolusi & filter |
-| `branches` | `tenant_id` | Daftar cabang |
+| `branches` | `(tenant_id, code)` unik, `status` | Daftar & filter cabang |
 | `tenant_status_history` | `tenant_id` | Audit lifecycle |
 
 ---

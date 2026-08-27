@@ -50,9 +50,10 @@ Model data RBAC. Entitas `users` & `tenants` dimiliki modul Auth; di sini hanya 
 |---|---|---|
 | `user_id` | string (FK) | Referensi ke `users` (modul Auth) |
 | `role_id` | string (FK) | |
+| `branch_scope` | json (nullable) | Daftar `branch_id` tempat peran berlaku; null = sesuai cakupan default peran |
 | `assigned_at` | timestamp | |
 | `assigned_by` | string | Aktor yang menetapkan |
-> PK gabungan `(user_id, role_id)`.
+> PK gabungan `(user_id, role_id)`. `branch_scope` membatasi peran ke cabang tertentu (lihat `02-roles.md` §3.1).
 
 ---
 

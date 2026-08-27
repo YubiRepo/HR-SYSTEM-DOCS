@@ -39,16 +39,56 @@ Slug dipakai untuk resolusi tenant saat login (subdomain), sesuai Tenancy Model.
 ## 3. Branch (Cabang)
 
 - Setiap tenant punya **minimal satu cabang** (default dibuat saat provisioning).
-- Cabang adalah unit di dalam tenant untuk memisahkan payroll, approval, laporan per lokasi.
+- Cabang adalah unit di dalam tenant untuk memisahkan payroll, approval, absensi, laporan per lokasi.
 - Cabang **bukan** batas billing — billing tetap per tenant.
+
+### 3.1 Siapa yang Mengelola
+
+| Aktor | Kewenangan cabang |
+|---|---|
+| **Tenant admin** (orang perusahaan, mis. PT A) | Buat, ubah, nonaktifkan, tutup cabang perusahaannya |
+| **Branch admin** | Hanya melihat/kelola operasional cabangnya (tidak membuat cabang baru) |
+| **Platform admin** (Yubiteck) | Tidak mengelola isi cabang; hanya menyediakan fitur & membatasi jumlah via limit plan |
+
+> **Penting:** manajemen cabang adalah urusan **tenant** (self-service), bukan Yubiteck. Yubiteck hanya membatasi jumlah cabang lewat limit `max_branches` (Entitlement). Definisi entitas ada di modul ini; hak akses dijaga RBAC.
+
+### 3.2 Atribut Cabang
 
 | Atribut | Fungsi |
 |---|---|
-| `id` | `branch_...` |
-| `tenant_id` | Induk tenant |
-| `name` | Nama cabang (mis. "Jakarta") |
+| `id` / `tenant_id` | Identitas & induk |
+| `code` | Kode cabang (mis. `JKT-01`), unik per tenant |
+| `name` | Nama cabang |
+| `address`, `city`, `province`, `postal_code`, `country` | Lokasi |
+| `timezone` | Zona waktu (WIB/WITA/WIT) — dipakai absensi & jadwal |
+| `lat` / `lng` | Koordinat — pusat geofence Attendance |
+| `phone`, `pic_employee_id` | Kontak & penanggung jawab |
 | `is_default` | Cabang bawaan |
-| `is_active` | Status |
+| `status` | `active` / `inactive` / `closed` |
+
+### 3.3 Lifecycle Cabang
+
+```
+(buat) → ACTIVE → (INACTIVE sementara) → CLOSED
+```
+| Status | Arti |
+|---|---|
+| `active` | Beroperasi normal |
+| `inactive` | Ditutup sementara (mis. renovasi) — data tetap, tak menerima operasional baru |
+| `closed` | Ditutup permanen |
+
+**Batasan penting saat menutup/menonaktifkan:**
+- Cabang **default tidak bisa** ditutup/dihapus (tenant harus punya ≥1 cabang aktif).
+- Cabang yang **masih berisi karyawan aktif** tidak bisa langsung ditutup — karyawan harus dipindah dulu (mutasi antar cabang di Core HR) atau di-offboard.
+- Menutup cabang tidak menghapus data historis (payroll, absensi lampau tetap untuk audit).
+
+**Membuat cabang baru:**
+```
+tenant admin buat cabang
+   → cek limit max_branches (Entitlement)
+        ├─ masih ada kuota → cabang dibuat (status active)
+        └─ kuota habis → ditolak, tawarkan upgrade plan
+```
 
 > Struktur organisasi (divisi/departemen) berada **di dalam** cabang — itu ranah Core HR, bukan sini.
 
