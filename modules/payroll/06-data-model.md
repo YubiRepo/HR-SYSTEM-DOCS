@@ -1,3 +1,4 @@
+<!-- 📁 modules/payroll/06-data-model.md -->
 # 06 · Data Model
 
 Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer minor unit + currency.
@@ -113,6 +114,42 @@ Rincian tiap komponen pada slip (untuk transparansi & audit).
 | `wage_cap` | int (nullable) | Plafon upah (null = tanpa plafon) |
 | `risk_class` | string (nullable) | Untuk JKK (tarif per risiko) |
 | `effective_from` | date | Versi berlaku |
+
+### 2.9 `employee_loans`
+Hutang karyawan (kasbon/pinjaman/cicilan/denda) — lihat `10-loan-deduction.md`.
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | `loan_...` |
+| `tenant_id` / `branch_id` | string (FK) | |
+| `employee_id` | string (FK) | |
+| `type` | enum | `cash_advance`/`loan`/`installment`/`penalty` |
+| `principal` | int | Pokok |
+| `installment_amount` | int | Cicilan per periode |
+| `installment_type` | enum | `fixed`/`percentage` |
+| `outstanding` | int | Sisa berjalan (auto-stop saat 0) |
+| `start_period` | string | mis. `2026-02` |
+| `status` | enum | `active`/`paid_off`/`cancelled` |
+| `approved_by` | string | Audit |
+
+### 2.10 `loan_deductions`
+Jejak potong pinjaman per periode.
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `loan_id` | string (FK) | |
+| `payroll_run_id` | string (FK) | |
+| `period` | string | |
+| `amount` | int | Dipotong periode ini |
+| `outstanding_after` | int | Sisa setelah potong |
+
+### 2.11 `payroll_config` (config per tenant)
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `tenant_id` | string (FK) | |
+| `max_deduction_percent` | number (nullable) | **Cap potongan** (mis. 30% gaji bersih) — configurable |
+| `deduction_cap_base` | enum | `net`/`basic` — basis perhitungan cap |
+| `on_cap_exceed` | enum | `reduce_installment` / `force` — perilaku bila cicilan lewat cap |
 
 ---
 
