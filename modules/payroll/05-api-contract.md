@@ -49,11 +49,19 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 {
   "period": "2026-01",
   "type": "regular",
-  "branch_id": null,
-  "pay_date": "2026-01-25"
+  "pay_date": "2026-01-25",
+  "target": {
+    "branch_id": null,
+    "department_id": null,
+    "grade_id": null,
+    "salary_type": "monthly",
+    "employment_type": null,
+    "pay_cycle": "monthly",
+    "employee_ids": []
+  }
 }
 ```
-`type`: `regular` | `thr` | `bonus` | `final`. `branch_id` null = seluruh tenant (butuh scope tenant).
+`type`: `regular` | `thr` | `bonus` | `final`. `target` = filter peserta fleksibel (semua opsional; kosong = semua karyawan aktif dalam scope). Kombinasi filter menentukan siapa yang masuk run.
 **Response `201 Created`** → run status `draft`.
 
 ---
@@ -84,7 +92,7 @@ Menghasilkan instruksi/berkas transfer & memicu pengiriman slip (Notification).
 
 ---
 
-## 5. GET /payroll/runs/`{id}`
+## 5. GET /payroll/runs/{id}
 ```json
 {
   "success": true,
@@ -103,7 +111,7 @@ Menghasilkan instruksi/berkas transfer & memicu pengiriman slip (Notification).
 
 ---
 
-## 6. GET /payroll/payslips/`{id}`
+## 6. GET /payroll/payslips/{id}
 ```json
 {
   "success": true,

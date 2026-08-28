@@ -31,6 +31,8 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `taxable` | boolean | Masuk basis PPh 21 |
 | `bpjs_base` | boolean | Masuk dasar iuran BPJS |
 | `fixed_recurring` | boolean | Tetap tiap periode |
+| `one_time` | boolean | Komponen sekali-pakai (single-period / until-revoked) |
+| `one_time_mode` | enum (nullable) | `single_period` / `until_revoked` |
 | `is_system` | boolean | Komponen dihitung sistem (BPJS/PPh21) |
 
 ### 2.2 `employee_components` (assignment)
@@ -40,6 +42,8 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `employee_id` | string (FK) | |
 | `component_id` | string (FK) | |
 | `amount` | int (nullable) | Nilai untuk komponen `fixed` |
+| `effective_period` | string (nullable) | Untuk one-time single-period, mis. `2026-03` |
+| `revoked_at` | timestamp (nullable) | Untuk one-time until-revoked (null = masih aktif) |
 | `effective_from` / `effective_to` | date | Masa berlaku |
 
 ### 2.3 `employee_tax_profile`
@@ -58,6 +62,7 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `id` | string (PK) | `run_...` |
 | `tenant_id` | string (FK) | |
 | `branch_id` | string (FK, nullable) | null = seluruh tenant |
+| `target_filter` | json (nullable) | Filter peserta: grade/dept/salary_type/employment_type/pay_cycle/employee_ids |
 | `period` | string | `YYYY-MM` |
 | `type` | enum | `regular`, `thr`, `bonus`, `final` |
 | `status` | enum | `draft`, `calculated`, `in_review`, `approved`, `paid`, `closed` |

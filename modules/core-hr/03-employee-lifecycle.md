@@ -81,6 +81,8 @@ POST /employees (create_account = true, default)
 
 > **Enrollment absensi:** bila cabang karyawan memakai metode biometrik/kartu (fingerprint/face/NFC), pendaftaran sidik jari/wajah/kartu dijadwalkan sebagai bagian onboarding (bisa juga menyusul). Ini ditangani modul Attendance — lihat `attendance/10-identity-enrollment.md`.
 
+> **Penetapan jadwal kerja:** saat register, karyawan langsung ditetapkan jadwalnya — secara default mengikuti **pattern shift departemennya**, atau HR memilih pattern tertentu (override). Jadwal langsung ter-generate agar karyawan tahu kapan masuk sejak hari pertama. Ditangani Attendance (schedule_patterns).
+
 ---
 
 ## 4. Mutasi & Promosi

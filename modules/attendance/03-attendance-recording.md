@@ -83,14 +83,29 @@ Karyawan ajukan: "lupa clock-out kemarin, saya pulang 17:00"
 - Approver: **manajer (via reporting line Core HR) atau HR** — mana yang tersedia.
 - Semua koreksi tercatat: nilai lama → baru, aktor, alasan, waktu.
 
-**3. Auto Clock-out (opsional, per tenant)**
+**3. Auto Clock-out (opsional, per tenant) + Cap Waktu**
 Bila lupa clock-out, sistem mengisi otomatis dengan **jam akhir shift**, ditandai `auto`.
 ```
 lupa clock-out, shift berakhir 17:00 → clock_out = 17:00 (flag: auto)
 ```
-- Mencegah record menggantung.
+- Mencегah record menggantung.
 - **Ditandai `auto`** agar HR tahu ini bukan waktu aktual — bisa dikoreksi bila ternyata lembur.
 - Dapat dimatikan tenant yang ingin murni manual.
+
+**Cap waktu (configurable):** ada batas berapa lama sesi terbuka boleh berjalan sebelum dianggap lupa & ditutup paksa.
+```
+cap default: 23 jam (configurable per tenant, mis. 12/18/23 jam)
+   clock-in 08:00, belum clock-out sampai lewat cap
+   → sistem auto clock-out (flag: auto) & tandai untuk koreksi
+```
+- Cap **bebas ditentukan tenant** (mis. pabrik 3 shift mungkin < 23 jam agar tak nabrak shift berikutnya).
+- Mencegah sesi "menggantung" berhari-hari yang merusak rekap.
+
+**Reminder (pencegahan cap):** sebelum cap tercapai, sistem mengirim **notif pengingat** agar karyawan clock-out.
+```
+mendekati akhir shift / mendekati cap → push notif "Jangan lupa absen pulang"
+```
+Via Notification (saat modul ada). Mengurangi kejadian auto clock-out.
 
 **4. Batas Telat Clock-out (anti lembur palsu)**
 ```

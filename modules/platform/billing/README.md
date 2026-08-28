@@ -1,3 +1,4 @@
+<!-- 📁 modules/platform/billing/README.md -->
 # Billing Module
 
 Bagian dari **Platform/Backoffice**. Mengelola sisi komersial: Plan (Feature/Limit), subscription, invoice, pembayaran, trial, dan proration.
@@ -52,5 +53,5 @@ Entitlement (hitung efektif) ──▶ semua modul
 ---
 
 ## Referensi
-- Strategi & tier: [`business/HRMS_Business_Model.md`](../../../business/HRMS_Business_Model.md)
+- Strategi & tier: [`HRMS_Business_Model.md`](../../../HRMS_Business_Model.md)
 - Entitlement: [`../../entitlement`](../../entitlement/README.md) · Tenant: [`../tenant`](../tenant/README.md)

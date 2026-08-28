@@ -146,6 +146,9 @@ export default defineConfig({
   markdown: {
     theme: { light: 'github-light', dark: 'github-dark' },
     lineNumbers: true,
+    // Heading API path seperti `## GET /employees/{id}` jangan diperlakukan
+    // sebagai attribute block oleh markdown-it-attrs (bikin id kosong & bentrok).
+    attrs: { disable: true },
   },
 
   vite: {

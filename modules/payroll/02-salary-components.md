@@ -17,6 +17,7 @@ Setiap baris di slip gaji adalah satu **komponen**. Tiap komponen punya sifat ya
 | **taxable** | ya / tidak | Ikut dihitung dalam PPh 21 atau tidak |
 | **bpjs_base** | ya / tidak | Masuk dasar perhitungan iuran BPJS atau tidak |
 | **fixed_recurring** | ya / tidak | Sama tiap periode, atau variabel per periode |
+| **one_time** | ya / tidak | Komponen sekali-pakai (lihat §2a) |
 
 ---
 
@@ -35,6 +36,37 @@ Tunjangan Transport (Rp500.000)
 Saat perhitungan, sistem cukup memindai semua komponen & membaca flag-nya — tanpa hardcode. Ini yang membuat payroll benar untuk struktur gaji apa pun.
 
 > **Aturan umum (dapat dikonfigurasi):** dasar BPJS lazimnya = gaji pokok + tunjangan **tetap**; tunjangan variabel, bonus, THR, dan lembur biasanya **tidak** masuk dasar BPJS. Sebagian besar penghasilan bersifat `taxable`, tetapi ada benefit tertentu yang tidak. Penetapan akhir mengikuti kebijakan & regulasi.
+
+---
+
+## 2a. Komponen Sekali-pakai (One-time)
+
+Selain komponen tetap/berulang, ada komponen yang **tidak permanen** — muncul untuk periode tertentu saja. Ditandai `one_time` dengan **dua mode**:
+
+| Mode | Perilaku | Contoh |
+|---|---|---|
+| **Single-period** | Muncul di **satu periode** tertentu, lalu hilang otomatis | THR (sekali setahun), bonus proyek bulan ini, potongan denda sekali |
+| **Until-revoked** | Berjalan berulang **sampai dicabut** (tidak permanen di grade/katalog) | Cicilan pinjaman (potong tiap bulan sampai lunas), tunjangan proyek 6 bulan |
+
+```
+Komponen "Bonus Proyek A"
+  ├── one_time: true, mode: single_period
+  ├── period: 2026-03           → hanya muncul di payroll Maret
+  └── setelah itu tidak lagi diperhitungkan
+
+Komponen "Cicilan Pinjaman"
+  ├── one_time: true, mode: until_revoked
+  ├── amount: 500.000/periode
+  └── berjalan tiap periode sampai status dicabut (mis. lunas)
+```
+
+**Beda dari komponen biasa:**
+- Komponen katalog/grade = **permanen** (bagian struktur gaji).
+- One-time = **tempelan sementara** ke karyawan untuk periode tertentu, tidak mengubah struktur grade.
+
+**Assignment:** one-time ditempel ke karyawan dengan periode berlaku (`effective_period` untuk single, atau `active` + `revoked_at` untuk until-revoked). Saat run periode itu, komponen ikut dihitung; di luar itu, diabaikan.
+
+> Berguna untuk THR, bonus insidental, denda, cicilan, koreksi periode lalu — tanpa "mengotori" struktur gaji tetap.
 
 ---
 
