@@ -37,6 +37,17 @@
 - [05 data model](/modules/core-hr/05-data-model)
 - [README](/modules/core-hr/README)
 
+### leave
+
+- [01 overview](/modules/leave/01-overview)
+- [02 leave types](/modules/leave/02-leave-types)
+- [03 balance accrual](/modules/leave/03-balance-accrual)
+- [04 request approval](/modules/leave/04-request-approval)
+- [05 api contract](/modules/leave/05-api-contract)
+- [06 data model](/modules/leave/06-data-model)
+- [07 integration](/modules/leave/07-integration)
+- [README](/modules/leave/README)
+
 ### payroll
 
 - [01 overview](/modules/payroll/01-overview)
@@ -50,6 +61,16 @@
 - [09 grade templates](/modules/payroll/09-grade-templates)
 - [README](/modules/payroll/README)
 
+### performance
+
+- [01 overview](/modules/performance/01-overview)
+- [02 frameworks goals](/modules/performance/02-frameworks-goals)
+- [03 review cycle](/modules/performance/03-review-cycle)
+- [04 api contract](/modules/performance/04-api-contract)
+- [05 data model](/modules/performance/05-data-model)
+- [06 integration](/modules/performance/06-integration)
+- [README](/modules/performance/README)
+
 ### rbac
 
 - [01 model](/modules/rbac/01-model)
@@ -58,7 +79,19 @@
 - [04 api contract](/modules/rbac/04-api-contract)
 - [05 data model](/modules/rbac/05-data-model)
 - [06 integration](/modules/rbac/06-integration)
+- [07 tenant admin capabilities](/modules/rbac/07-tenant-admin-capabilities)
 - [README](/modules/rbac/README)
+
+### recruitment
+
+- [01 overview](/modules/recruitment/01-overview)
+- [02 job posting](/modules/recruitment/02-job-posting)
+- [03 candidate pipeline](/modules/recruitment/03-candidate-pipeline)
+- [04 offer conversion](/modules/recruitment/04-offer-conversion)
+- [05 api contract](/modules/recruitment/05-api-contract)
+- [06 data model](/modules/recruitment/06-data-model)
+- [07 integration](/modules/recruitment/07-integration)
+- [README](/modules/recruitment/README)
 
 ### platform · admin console
 
