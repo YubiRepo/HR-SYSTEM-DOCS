@@ -1,3 +1,4 @@
+<!-- 📁 modules/payroll/03-calculation.md -->
 # 03 · Calculation
 
 Inti perhitungan payroll. **Urutan langkah tidak boleh dibalik** karena tiap langkah bergantung pada hasil sebelumnya.
@@ -12,10 +13,13 @@ Inti perhitungan payroll. **Urutan langkah tidak boleh dibalik** karena tiap lan
 3. Iuran BPJS   = hitung dari dasar BPJS (lihat §3)
 4. Penghasilan bruto pajak = Σ komponen taxable
 5. PPh 21       = hitung (setelah BPJS, karena iuran karyawan mengurangi pajak)
-6. Gaji bersih  = gaji kotor − iuran BPJS (karyawan) − PPh 21 − potongan lain
+6. Potongan hutang = cicilan pinjaman aktif (dengan batas cap, lihat 10-loan-deduction.md)
+7. Gaji bersih  = gaji kotor − iuran BPJS (karyawan) − PPh 21 − potongan lain − cicilan hutang
 ```
 
 > **Kenapa BPJS sebelum PPh 21?** Iuran BPJS yang ditanggung karyawan (JHT, JP) menjadi pengurang penghasilan dalam perhitungan PPh 21. Jika pajak dihitung lebih dulu, hasilnya salah.
+
+> **Potongan hutang & cap:** cicilan pinjaman dipotong dari gaji bersih, dibatasi `max_deduction_percent` (configurable) agar gaji tak habis. Bila melewati cap, cicilan periode itu dikurangi (tenor memanjang). Detail: `10-loan-deduction.md`.
 
 ---
 

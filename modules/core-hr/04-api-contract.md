@@ -58,6 +58,29 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 
 > **Konteks cabang:** endpoint org & karyawan discope otomatis ke cabang aktif dari konteks aktor. Branch admin (cakupan `branch`) hanya melihat/mengubah cabangnya; tenant admin (cakupan `tenant`) dapat memilih cabang via `?branch_id=` atau melihat semua. Endpoint `catalog:*` hanya untuk cakupan `tenant`.
 
+### Wilayah Indonesia (referensi alamat)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/regions/provinces` | Daftar provinsi | auth |
+| GET | `/regions/cities?province=31` | Kota/kabupaten dalam provinsi | auth |
+| GET | `/regions/districts?city=31.71` | Kecamatan dalam kota | auth |
+| GET | `/regions/villages?district=31.71.01` | Kelurahan/desa dalam kecamatan | auth |
+| POST | `/regions/sync` | Sinkron data wilayah dari sumber resmi | `settings:write` (platform) |
+
+> Alamat berjenjang untuk dropdown provinsi → kota → kecamatan → kelurahan. Data bawaan (seed) + bisa di-sync.
+
+### Custom Fields Karyawan (per tenant)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/employee-fields` | Daftar definisi field custom | `employees:read` |
+| POST | `/employee-fields` | Buat field custom | `settings:write` |
+| PATCH | `/employee-fields/{id}` | Ubah field custom | `settings:write` |
+| DELETE | `/employee-fields/{id}` | Hapus/nonaktifkan field | `settings:write` |
+
+> Nilai custom field diisi bersama data karyawan (di `POST/PATCH /employees`, dalam objek `custom_fields`).
+
+> **Master data (list katalog):** semua master/katalog punya endpoint list (`GET`) yang dapat difilter & di-paginate — job grades, position templates, division types (di atas), plus field definitions & regions. Ini memudahkan UI menampilkan master di tiap modul.
+
 ### Bulk & Export
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
@@ -82,7 +105,12 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
   "position_id": "pos_01H8...",
   "manager_id": "emp_01H8...",
   "create_account": true,
-  "link_user_id": null
+  "link_user_id": null,
+  "schedule_assignment": {
+    "mode": "department_default",
+    "shift_pattern_id": null
+  },
+  "custom_fields": { "koperasi_no": "K-00123", "ukuran_seragam": "L" }
 }
 ```
 
@@ -90,6 +118,15 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 - `create_account: true` (default) → buat akun user di Auth, tautkan, kirim undangan aktivasi.
 - `create_account: false` → hanya buat record karyawan tanpa akun (mis. pekerja harian).
 - `link_user_id: "usr_..."` → tautkan ke akun yang sudah ada (mis. konversi kandidat), tidak membuat akun baru.
+
+**Penetapan jadwal saat register (#schedule):**
+- `schedule_assignment.mode: "department_default"` (default) → karyawan otomatis mengikuti **pattern shift departemennya** (Attendance), jadwal langsung ter-generate.
+- `mode: "specific"` + `shift_pattern_id` → HR memilih pattern tertentu (override default).
+- `mode: "none"` → belum dijadwalkan (atur nanti).
+
+> Penetapan jadwal ditangani modul **Attendance** (schedule_patterns); Core HR hanya memicu saat register. Lihat `attendance/02-shift-schedule.md`.
+
+**Custom fields:** `custom_fields` diisi sesuai definisi tenant (`employee-fields`); field tak dikenal ditolak.
 
 **Response `201 Created`**
 ```json
@@ -105,6 +142,7 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
     "manager_id": "emp_01H8...",
     "user_id": "usr_01H8...",
     "account": { "created": true, "status": "pending", "invite_sent": true },
+    "schedule": { "assigned": true, "pattern": "produksi_rotasi_3shift" },
     "created_at": "2026-08-09T08:30:00Z"
   }
 }
@@ -123,7 +161,7 @@ Respons memakai envelope koleksi + `pagination`.
 
 ---
 
-## 3. PATCH /employees/`{id}`
+## 3. PATCH /employees/{id}
 
 **Request** — hanya field yang diubah.
 ```json
@@ -133,7 +171,7 @@ Respons memakai envelope koleksi + `pagination`.
 
 ---
 
-## 4. DELETE /employees/`{id}`
+## 4. DELETE /employees/{id}
 
 Soft-delete: menandai karyawan sebagai diarsipkan (tidak menghapus fisik, demi kepatuhan & riwayat).
 

@@ -71,6 +71,10 @@
 - [06 integration](/modules/performance/06-integration)
 - [README](/modules/performance/README)
 
+### platform
+
+- [README](/modules/platform/README)
+
 ### rbac
 
 - [01 model](/modules/rbac/01-model)

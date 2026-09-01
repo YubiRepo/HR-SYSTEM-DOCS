@@ -8,7 +8,8 @@
 |---|---|
 | `name` | "Pagi", "Malam", "WFH" |
 | `start_time` / `end_time` | 08:00 / 17:00 |
-| `break_minutes` | 60 (istirahat, tak dihitung kerja) |
+| `breaks` | Daftar istirahat (bisa >1) — lihat §1.1 |
+| `clock_in_window` | Jendela absen sah — lihat §1.2 |
 | `cross_midnight` | true untuk shift malam (22:00–06:00) |
 | `work_hours` | Jam kerja efektif (mis. 8) |
 
@@ -19,6 +20,43 @@ Siang  : 13:00–22:00
 Malam  : 22:00–06:00 (cross_midnight)
 WFH    : fleksibel, target jam
 ```
+
+### 1.1 Istirahat Spesifik (Bisa Berkali-kali)
+
+Alih-alih satu angka `break_minutes`, tiap shift punya **daftar istirahat** dengan jam spesifik — mendukung lebih dari satu.
+
+```
+Shift Pagi:
+  ├── Istirahat makan : 12:00–13:00 (60')
+  ├── Coffee break    : 15:00–15:15 (15')  (opsional)
+  └── total break     : 75' (tak dihitung jam kerja)
+```
+
+| Field break | Keterangan |
+|---|---|
+| `name` | "Istirahat makan", "Coffee break" |
+| `start` / `end` | Jam spesifik (mis. 12:00–13:00) |
+| `paid` | Dihitung jam kerja atau tidak (default tidak) |
+| `flexible` | Jam pasti, atau durasi bebas dalam rentang |
+
+- **Jam kerja efektif** = durasi shift − total break tak berbayar.
+- Break berjam spesifik memudahkan validasi (mis. clock-out saat jam istirahat bukan "pulang").
+- Break `flexible` — karyawan ambil kapan saja asal total ≤ jatah (mis. 60' bebas).
+
+### 1.2 Jam Absensi Efektif (Clock-in Window)
+
+Tiap shift bisa punya **jendela waktu** kapan clock-in/out dianggap sah — mencegah absen di jam tak wajar.
+
+```
+Shift Pagi (08:00–17:00):
+  clock_in_window  : 06:00–10:00  (absen masuk hanya sah di rentang ini)
+  clock_out_window : 15:00–23:00
+```
+
+- Clock-in **sebelum** window (mis. 04:00) → ditolak/ditandai (mungkin salah/curang).
+- Clock-in **sesudah** window → dianggap sangat telat / butuh koreksi.
+- Untuk shift `cross_midnight`, window menyesuaikan lintas hari.
+- Configurable per shift; bila kosong, pakai default longgar tenant.
 
 ---
 
@@ -35,6 +73,29 @@ Sari · 2026-01-15 · Shift Malam
 - **Pola berulang** — mis. Senin–Jumat Shift Pagi (paling umum).
 - **Rotasi** — pola bergilir (mis. 3 hari pagi, 3 hari malam) untuk pabrik/rumah sakit.
 - **Manual** — atur per hari untuk kasus khusus.
+
+### 2.0 Pattern per Grup (Dept/Posisi/Custom)
+
+Pola shift (pattern) **tidak** ditempel flat ke semua karyawan cabang, melainkan ke **grup** — karena dalam satu cabang, tiap bagian bisa berbeda pola. Grup bersifat fleksibel:
+
+| Grup | Contoh |
+|---|---|
+| **Departemen / org unit** | Produksi, Gudang, Admin (dari Core HR) |
+| **Posisi** | Operator mesin, Satpam |
+| **Custom** | Kumpulan karyawan tertentu (mis. "Tim Proyek A") |
+| **Individual** | Satu karyawan (override khusus) |
+
+**Contoh nyata (pabrik, satu cabang):**
+```
+Dept Produksi → rotasi 3 shift (Pagi/Siang/Malam) — mesin 24 jam
+Dept Gudang   → 2 shift (Pagi/Siang)
+Dept Admin    → reguler (08:00–17:00, Sen–Jum)
+Dept Security → rotasi 3 shift (jam beda dari produksi)
+```
+
+Satu pattern = { grup, shift/rotasi, working days, rentang }. Satu cabang bisa punya banyak pattern (satu per grup).
+
+> Resolusi bila tumpang tindih: pattern **lebih spesifik menang** (individual > posisi > departemen). Mayoritas karyawan cukup ikut pattern departemennya.
 
 ### 2.1 Siapa & Kapan Men-generate
 
@@ -63,6 +124,42 @@ SESEKALI (HR/manajer):
 - **Override manual** (`source: manual`) tidak ditimpa oleh job — pengecualian aman.
 
 > Baris `source: pattern`/`rotation` boleh di-regenerate job; `source: manual` dikunci dari regenerasi agar tukeran/koreksi tidak hilang.
+
+### 2.1a Generate saat Pattern Beda per Grup
+
+Karena tiap grup (dept/posisi) bisa punya pattern berbeda, job **tidak** generate seragam. Untuk tiap karyawan, job menentukan pattern yang berlaku lalu generate sesuai itu:
+
+```
+job generate (bulanan), untuk tiap karyawan aktif:
+  ├─ tentukan pattern berlaku (individual > posisi > departemen)
+  ├─ generate baris sesuai pattern grup itu
+  └─ lewati tanggal yang sudah source: manual (jangan ditimpa)
+```
+
+Contoh dalam satu pabrik:
+```
+Budi (Produksi) → pattern rotasi 3 shift → Pagi,Pagi,Pagi,Malam,Malam,Malam,Libur…
+Sari (Admin)    → pattern reguler        → Reguler Sen–Jum, Sab–Min libur
+Joko (Security) → pattern rotasi security→ (pola & jam berbeda dari Produksi)
+```
+Satu job, hasil berbeda per karyawan — karena pattern grupnya berbeda.
+
+### 2.1b Rotasi (Rotating Shift)
+
+Rotasi = pola bergilir yang diulang terus. Didefinisikan sebagai urutan + panjang siklus:
+```
+Pola "3-3-1" (siklus 7 hari):
+  hari 1–3 : Pagi
+  hari 4–6 : Malam
+  hari 7   : Libur
+  → ulang dari awal, dengan anchor_date sebagai titik mulai
+```
+
+- **Anchor date** — tanggal acuan mulai siklus, agar rotasi konsisten walau di-generate bertahap tiap bulan.
+- **Per karyawan bisa beda fase** — mis. Regu A mulai Pagi, Regu B mulai Malam (offset), agar shift selalu terisi.
+- **Override manual per hari tetap bisa** — tuker shift/izin → ubah baris tanggal itu (`source: manual`), job tidak menimpanya.
+
+> Karena rotasi dihitung dari anchor + siklus, job bulanan bisa melanjutkan rotasi dengan benar tanpa "reset" tiap bulan.
 
 ### 2.2 Kenapa Disimpan per Baris
 
@@ -149,6 +246,37 @@ aktual (clock)      : 08:20–18:30
 → telat 20 menit, lembur 1,5 jam
 ```
 Tanpa jadwal, sistem memakai **jam kerja default tenant**. Detail perhitungan di `04-overtime-lateness.md`.
+
+### 6.1 Regular Shift sebagai Aturan Dasar
+
+Bila karyawan **tidak** punya penugasan shift khusus pada suatu hari, sistem memakai **regular shift** (default) sebagai aturan dasar:
+```
+resolusi shift hari-X:
+  1. ada schedule khusus (pattern/rotasi/manual)?  → pakai itu
+  2. tidak ada?  → pakai regular shift default (dari attendance_rules)
+  3. hari itu bukan working day?  → libur
+```
+Jadi regular shift = "fallback" ketika tak ada aturan lebih spesifik. Mayoritas karyawan kantoran cukup mengandalkan ini.
+
+### 6.2 Duty Call (Shift Dadakan)
+
+**Duty call** = karyawan dipanggil masuk **di luar jadwal** (mis. dipanggil saat hari libur/off karena ada kebutuhan mendadak).
+
+```
+Budi jadwal Minggu = libur
+   → dipanggil masuk (duty call) → HR buat penugasan dadakan
+   → kehadiran hari itu dicatat sebagai duty call
+   → dihitung lembur/uang khusus (di luar jadwal normal)
+```
+
+| Aspek | Perilaku |
+|---|---|
+| Pemicu | HR/manajer buat penugasan dadakan (`source: manual`, `duty_call: true`) |
+| Perhitungan | Kerja di luar jadwal → lembur/hari khusus (multiplier sesuai aturan) |
+| Persetujuan | Bisa butuh approval (seperti lembur) |
+| Payroll | Masuk sebagai jam lembur / komponen khusus |
+
+> Duty call berbeda dari lembur biasa: lembur = perpanjangan shift terjadwal; duty call = masuk di hari/jam yang semula tak terjadwal. Keduanya menambah kompensasi, ditandai berbeda agar Payroll menerapkan aturan yang tepat.
 
 ---
 

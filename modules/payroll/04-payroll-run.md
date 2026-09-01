@@ -51,7 +51,7 @@ Sistem menolak bila aktor yang menyetujui sama dengan yang membuat (dapat dikonf
 ```
 Payroll Run "Januari 2026" (status: calculated)
   ├── period: 2026-01-01 .. 2026-01-31
-  ├── scope: semua karyawan aktif (opsional filter cabang)
+  ├── target: filter peserta (lihat §5.1)
   ├── items:
   │     ├── Payslip Budi  → komponen, BPJS, PPh21, net
   │     ├── Payslip Sari  → ...
@@ -59,7 +59,28 @@ Payroll Run "Januari 2026" (status: calculated)
   └── totals: total gross, total potongan, total net, total setoran
 ```
 
-Satu run = kumpulan **payslip** semua karyawan untuk periode itu + ringkasan total.
+Satu run = kumpulan **payslip** karyawan terpilih untuk periode itu + ringkasan total.
+
+### 5.1 Target Peserta (Filter Fleksibel)
+
+Run tidak harus mencakup semua karyawan — pesertanya ditentukan **filter fleksibel**, karena beda kelompok bisa punya siklus/tipe gaji berbeda:
+
+| Filter | Contoh guna |
+|---|---|
+| `branch_id` | Payroll per cabang |
+| `department_id` | Hanya divisi tertentu |
+| `grade_id` | Hanya grade tertentu |
+| `salary_type` | Hanya `daily` (buruh harian) atau `monthly` (staff) |
+| `employment_type` | Tetap / kontrak / magang |
+| `pay_cycle` | Hanya yang siklus mingguan (untuk run mingguan) |
+| `employee_ids` | Pilih manual (kasus khusus) |
+
+**Contoh:**
+```
+Run "Mingguan Buruh Harian" → filter: salary_type=daily, pay_cycle=weekly
+Run "Bulanan Staff"          → filter: salary_type=monthly, pay_cycle=monthly
+```
+Filter bisa dikombinasi. Ini memungkinkan satu tenant menjalankan beberapa run berbeda untuk kelompok karyawan berbeda — sesuai `pay_cycle` yang diwarisi dari grade (lihat `09-grade-templates.md`).
 
 ---
 

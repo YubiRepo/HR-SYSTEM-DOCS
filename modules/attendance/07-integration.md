@@ -35,6 +35,8 @@ Pemetaan ke komponen Payroll:
 
 > Attendance hanya mengirim **angka & jam**; perhitungan uang dilakukan Payroll (memakai formula & tarif).
 
+**Pemisahan data sensitif:** Attendance **tidak pernah menyimpan atau menampilkan gaji**. Ia hanya mengelola waktu/kehadiran. Nilai gaji (hasil dari jam lembur, dll) hanya terlihat di Payroll, dan hanya untuk peran berizin (`payslip:read`/`payroll:read`) sesuai scope RBAC. Jadi manajer yang meng-approve lembur di Attendance melihat *jam*, bukan *rupiah* — kecuali ia juga punya izin Payroll. Ini menjaga informasi gaji tetap terbatas ke pihak tertentu.
+
 ---
 
 ## 3. Dengan Leave

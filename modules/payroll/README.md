@@ -1,3 +1,4 @@
+<!-- 📁 modules/payroll/README.md -->
 # Payroll Module
 
 Modul penggajian untuk HR Management System. Menghitung gaji karyawan dari komponen yang dapat dikonfigurasi, memotong iuran BPJS & PPh 21 sesuai regulasi Indonesia, lalu menghasilkan slip gaji dan instruksi pembayaran.
@@ -40,6 +41,7 @@ Modul penggajian untuk HR Management System. Menghitung gaji karyawan dari kompo
 | [`07-integration.md`](./07-integration.md) | Integrasi dengan modul lain |
 | [`08-formula-engine.md`](./08-formula-engine.md) | Mesin formula: variabel, fungsi, kondisi, dependency |
 | [`09-grade-templates.md`](./09-grade-templates.md) | Paket gaji per grade: default, override karyawan & cabang |
+| [`10-loan-deduction.md`](./10-loan-deduction.md) | Hutang karyawan: kasbon, pinjaman, cicilan, cap potongan |
 
 ---
 
@@ -63,4 +65,4 @@ Tarif & batas yang dipakai modul (PPh 21 TER, PTKP, persentase & plafon BPJS) me
 - Data karyawan: [`../core-hr`](../core-hr/README.md)
 - Gerbang fitur & limit: [`../entitlement`](../entitlement/README.md)
 - Peran & izin: [`../rbac`](../rbac/README.md)
-- Strategi tier (Payroll di Pro): [`../../business/HRMS_Business_Model.md`](../../business/HRMS_Business_Model.md)
+- Strategi tier (Payroll di Pro): [`../../HRMS_Business_Model.md`](../../HRMS_Business_Model.md)

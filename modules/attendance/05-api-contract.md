@@ -54,10 +54,16 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 ---
 
 ## 2. POST /attendance/schedules
-Menugaskan shift — mendukung pola & rotasi.
+Menugaskan shift massal — mendukung pemilihan target fleksibel (manual & by grup).
 ```json
 {
-  "employee_ids": ["emp_01H8..."],
+  "target": {
+    "mode": "group",
+    "group_type": "department",
+    "group_ref": "org_produksi",
+    "include_employee_ids": [],
+    "exclude_employee_ids": ["emp_cuti_panjang"]
+  },
   "pattern": "weekly",
   "days": ["mon","tue","wed","thu","fri"],
   "shift_id": "shift_pagi",
@@ -65,7 +71,16 @@ Menugaskan shift — mendukung pola & rotasi.
   "date_to": "2026-01-31"
 }
 ```
-**Response `201 Created`** — jadwal dibuat untuk rentang tanggal.
+
+**Pemilihan target (`target.mode`):**
+| Mode | Cara |
+|---|---|
+| `manual` | Centang eksplisit via `include_employee_ids` |
+| `group` | By grup (`department`/`position`/`branch`) via `group_type` + `group_ref` |
+
+Keduanya bisa dikombinasi: pilih grup, lalu **kecualikan** sebagian via `exclude_employee_ids` (mis. yang sedang cuti panjang), atau **tambah** individu via `include_employee_ids`.
+
+**Response `201 Created`** — jadwal dibuat untuk target × rentang tanggal. Baris `source: manual` yang sudah ada tidak ditimpa.
 
 > **Scope:** `GET/POST /attendance/schedules` untuk HR/manajer (izin `read`/`write`, lihat/atur jadwal orang lain, difilter cabang). Karyawan memakai `/attendance/me/schedule` (izin `self`, hanya jadwal sendiri).
 
@@ -113,6 +128,19 @@ Ringkasan hari ini untuk layar utama karyawan (mobile): jadwal hari ini + apakah
 Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
 
 `GET /attendance/summary?period=2026-01&employee_id=emp_01H8...`
+
+**Filter (termasuk Working Time Filter):**
+| Param | Fungsi |
+|---|---|
+| `period` / `date_from` / `date_to` | Rentang waktu |
+| `employee_id` / `branch_id` / `department_id` | Cakupan subjek |
+| `shift_id` | Filter shift tertentu |
+| `work_time[status]` | Filter status kerja: `present`/`late`/`overtime`/`absent`/`on_leave` |
+| `work_time[min_hours]` / `work_time[max_hours]` | Filter jam kerja (mis. < 4 jam / > 10 jam) |
+| `work_time[has_overtime]` | Hanya yang ada lembur |
+| `work_time[has_late]` | Hanya yang telat |
+
+> **Working Time Filter** (`work_time[...]`) memudahkan HR menyaring berdasar perilaku waktu kerja — mis. "siapa yang lembur bulan ini", "siapa yang jam kerjanya kurang", "siapa yang sering telat" — untuk laporan & tindak lanjut.
 ```json
 {
   "success": true,

@@ -1,3 +1,4 @@
+<!-- 📁 modules/entitlement/README.md -->
 # Entitlement Module
 
 Modul **foundational** yang menjadi sumber kebenaran atas "apa yang boleh diakses sebuah tenant" — Feature (on/off) & Limit (kapasitas). Dikonsumsi oleh **semua modul** HRMS untuk gerbang fitur & kuota.
@@ -50,6 +51,6 @@ Entitlement membaca plan & subscription dari Billing, lalu menghitung hasil efek
 
 ## Referensi
 
-- Strategi plan: [`business/HRMS_Business_Model.md`](../../business/HRMS_Business_Model.md)
+- Strategi plan: [`HRMS_Business_Model.md`](../../HRMS_Business_Model.md)
 - Billing (plan & subscription): [`modules/platform/billing`](../platform/billing/README.md)
 - RBAC (perbedaan): [`modules/rbac`](../rbac/README.md)
