@@ -1,3 +1,4 @@
+<!-- 📁 modules/attendance/06-data-model.md -->
 # 06 · Data Model
 
 Entitas milik modul Attendance. `employees` & `branches` dirujuk dari Core HR.
@@ -76,6 +77,12 @@ Pola penugasan shift per **grup** (dept/posisi/custom/individual) — sumber gen
 | `date` | date | |
 | `clock_in` / `clock_out` | timestamp (nullable) | |
 | `auto_clock_out` | boolean | true bila clock-out diisi otomatis (lupa absen) |
+| `clock_lat` / `clock_lng` | number (nullable) | Koordinat saat absen (geofence) |
+| `location_accuracy_m` | int (nullable) | Akurasi GPS dilaporkan |
+| `within_geofence` | boolean | Hasil cek radius |
+| `distance_m` | int (nullable) | Jarak ke titik cabang |
+| `is_mock_location` | boolean | Flag lokasi palsu (fake GPS) |
+| `location_flag` | enum (nullable) | `ok`/`outside`/`mock`/`suspicious` (review HR) |
 | `source` | enum | `mobile`, `web`, `machine`, `kiosk`, `manual` |
 | `in_lat` / `in_lng` | number (nullable) | Lokasi clock-in |
 | `photo_ref` | string (nullable) | Bukti |

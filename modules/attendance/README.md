@@ -1,3 +1,4 @@
+<!-- 📁 modules/attendance/README.md -->
 # Attendance Module
 
 Modul kehadiran untuk HR Management System. Mencatat kapan karyawan masuk & pulang, mengelola shift/jadwal kerja, menghitung lembur & keterlambatan, lalu menyediakan rekap yang dipakai Payroll.
@@ -40,6 +41,7 @@ Modul kehadiran untuk HR Management System. Mencatat kapan karyawan masuk & pula
 | [`08-device-integration.md`](./08-device-integration.md) | Metode absen: mobile, mesin, NFC, face; push/pull |
 | [`09-method-config.md`](./09-method-config.md) | Konfigurasi metode absen per tenant/cabang |
 | [`10-identity-enrollment.md`](./10-identity-enrollment.md) | Daftar sidik jari/wajah/kartu & tautkan ke karyawan |
+| [`11-geofence.md`](./11-geofence.md) | Validasi lokasi: radius (Haversine), server-side, anti-fake-GPS |
 
 ---
 
