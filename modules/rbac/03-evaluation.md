@@ -7,7 +7,7 @@ Ketika sebuah endpoint dilindungi (mis. `requires: employees:write`), resource s
 1. Ambil `roles` & `scope` dari klaim token.
 2. Kumpulkan seluruh permission dari `roles` (mapping role→permission).
 3. Hitung izin efektif = permission ∩ scope token.
-4. Cek apakah `employees:write` termasuk (atau tercakup wildcard `employees:*` / `*:*`).
+4. Cek apakah `employees:write` termasuk izin efektif (pencocokan **key eksak** — tidak ada wildcard).
 5. **Cek data-scope** bila perlu (lihat bagian 3).
 6. Lolos → lanjut; gagal → `403 PERMISSION_DENIED`.
 
@@ -19,15 +19,16 @@ token.scope ──────────────────────�
 
 ---
 
-## 2. Pencocokan Wildcard
+## 2. Pencocokan (Strict Key, OR)
 
 | Required | Dimiliki | Hasil |
 |---|---|---|
 | `employees:read` | `employees:read` | ✅ |
-| `employees:read` | `employees:*` | ✅ |
-| `employees:read` | `*:*` | ✅ |
 | `employees:write` | `employees:read` | ❌ |
-| `payroll:run` | `employees:*` | ❌ |
+| `payroll:run` | `employees:read` | ❌ |
+| `platform_billing:read` | `platform_billing:write` | ❌ |
+
+Gate dengan beberapa key memakai **OR**: `require(platform_tenants:read, platform_support:read)` lolos bila aktor punya salah satu key. Akses penuh platform diberikan via **role** `platform_super_admin` (role gate), bukan key wildcard.
 
 ---
 

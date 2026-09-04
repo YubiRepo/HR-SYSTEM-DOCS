@@ -1,6 +1,6 @@
 # 04 · API Contract
 
-Endpoint manajemen peran, permission, dan penetapan ke user. Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/api/v1/rbac`. Operasi administratif memerlukan izin `roles:*` / `roles:manage`. Semua perubahan dicatat di audit.
+Endpoint manajemen peran, permission, dan penetapan ke user. Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/api/v1/rbac`. Operasi administratif memerlukan izin `roles:read` / `roles:write` / `roles:assign` (strict keys, OR). Semua perubahan dicatat di audit.
 
 ---
 
@@ -201,7 +201,7 @@ Izin efektif = union permission dari seluruh peran user.
   "success": true,
   "data": {
     "roles": ["hr_admin", "recruiter"],
-    "effective_permissions": ["employees:*", "leave:*", "recruitment:read", "recruitment:write"]
+    "effective_permissions": ["employees:read", "employees:write", "recruitment:read", "recruitment:write"]
   }
 }
 ```

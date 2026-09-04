@@ -112,6 +112,17 @@ Opsi jangka waktu + diskon per plan (configurable).
 | `method` | string | `va`, `card`, `transfer` |
 | `status` | enum | `pending`, `succeeded`, `failed`, `refunded` |
 | `paid_at` | timestamp | |
+| `proof_key` | string (nullable) | Object key **bucket private** dari bukti pembayaran manual (hasil upload presign→confirm→promote, `payment-proofs/...`) |
+| `notes` | text (nullable) | Catatan tenant saat submit bukti (mis. nomor referensi transfer) |
+| `reviewed_by` | string (nullable) | User ID staff yang approve/reject pembayaran manual |
+| `reviewed_at` | timestamp (nullable) | Waktu review |
+| `review_notes` | text (nullable) | Catatan/alasan reviewer saat approve/reject |
+
+> **Dua sumber baris:** webhook gateway langsung `succeeded`/`failed`
+> (tanpa review, tanpa dokumen); pembayaran manual mulai `pending` dengan
+> `proof_key` lalu `succeeded`/`failed` setelah review staff (kolom
+> `reviewed_*` diisi). `proof_url` pada API dihasilkan on-demand sebagai
+> presigned GET dari `proof_key`, bukan disimpan.
 
 ---
 

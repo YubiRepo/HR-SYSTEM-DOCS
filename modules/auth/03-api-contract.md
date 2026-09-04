@@ -21,6 +21,9 @@ Semua endpoint mengikuti envelope response standar HRMS (`success` + `data`/`err
 | POST | `/auth/email/verify` | Verifikasi email | Publik |
 | POST | `/auth/mfa/enroll` | Daftarkan MFA | Bearer |
 | POST | `/auth/mfa/verify` | Verifikasi kode MFA | Publik* |
+| POST | `/auth/me/avatar/presign` | Presigned PUT avatar (public bucket) | Bearer + `profile:write` |
+| POST | `/auth/me/avatar/confirm` | Confirm + promote avatar, simpan key | Bearer + `profile:write` |
+| DELETE | `/auth/me/avatar` | Hapus avatar | Bearer + `profile:write` |
 | GET | `/.well-known/jwks.json` | Public keys (JWKS) | Publik |
 
 \* dalam konteks challenge login yang sudah dimulai.

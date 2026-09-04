@@ -24,13 +24,11 @@ Permission memakai pola `resource:action`:
 | `employees:write` | Membuat/mengubah data karyawan |
 | `payroll:run` | Menjalankan proses payroll |
 | `leave:approve` | Menyetujui cuti |
-| `*:*` | Semua izin (super admin) |
+| `platform_billing:write` | Kelola invoice/refund (platform staff) |
 
 Action umum: `read`, `write`, `delete`, `approve`, `run`, `manage`.
 
-**Wildcard:**
-- `employees:*` — semua action pada resource `employees`.
-- `*:*` — seluruh izin (hanya untuk super admin tenant).
+> **STRICT KEY ONLY** — sistem ini **tidak mendukung wildcard** (`resource:*` / `*:*`). Setiap permission adalah key `resource:action` yang eksplisit; "semua aksi pada resource" berarti mencantumkan tiap key. Gate route memakai semantik **OR** (`require(a, b)` = punya a **atau** b). Memberi akses penuh ke super admin dilakukan lewat **role** (`platform_super_admin`), bukan key wildcard.
 
 ---
 

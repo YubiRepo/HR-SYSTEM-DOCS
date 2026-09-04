@@ -21,7 +21,8 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | GET | `/employees/{id}/history` | Riwayat kepegawaian | `employees:read` |
 | GET | `/employees/{id}/subordinates` | Daftar bawahan langsung | `employees:read` |
 | GET | `/employees/{id}/documents` | Daftar dokumen | `employees:read` |
-| POST | `/employees/{id}/documents` | Unggah dokumen | `employees:write` |
+| POST | `/employees/{id}/documents/presign` | Minta presigned upload URL (MinIO) | `employees:write` |
+| POST | `/employees/{id}/documents` | Konfirmasi dokumen ter-upload | `employees:write` |
 | GET | `/documents/{doc_id}` | Detail/unduh dokumen | `employees:read` |
 | DELETE | `/documents/{doc_id}` | Hapus dokumen | `employees:write` |
 
@@ -45,18 +46,7 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | PATCH | `/positions/{id}` | Ubah posisi | `org:write` |
 | DELETE | `/positions/{id}` | Hapus/nonaktifkan posisi | `org:write` |
 
-### Katalog (tenant-level, dipakai lintas cabang)
-| Method | Endpoint | Deskripsi | Izin |
-|---|---|---|---|
-| GET | `/catalog/job-grades` | Daftar job grade | `org:read` |
-| POST | `/catalog/job-grades` | Buat job grade | `catalog:write` |
-| GET | `/catalog/position-templates` | Daftar position template | `org:read` |
-| POST | `/catalog/position-templates` | Buat template | `catalog:write` |
-| GET | `/catalog/division-types` | Daftar jenis divisi | `org:read` |
-| POST | `/catalog/division-types` | Buat jenis divisi | `catalog:write` |
-| POST | `/catalog/promote` | Promosikan item cabang → katalog | `catalog:write` |
-
-> **Konteks cabang:** endpoint org & karyawan discope otomatis ke cabang aktif dari konteks aktor. Branch admin (cakupan `branch`) hanya melihat/mengubah cabangnya; tenant admin (cakupan `tenant`) dapat memilih cabang via `?branch_id=` atau melihat semua. Endpoint `catalog:*` hanya untuk cakupan `tenant`.
+> **Konteks cabang:** `/org-units*`, `/positions*`, dan `/org-chart` semuanya tenant-wide — org structure milik tenant secara langsung, tidak ada `?branch_id=` untuk endpoint-endpoint ini (lihat `02-org-structure.md` §0). Hanya endpoint **karyawan** yang discope ke cabang aktif dari konteks aktor: branch admin (cakupan `branch`) hanya melihat/mengubah karyawan cabangnya; tenant admin (cakupan `tenant`) dapat memilih cabang via `?branch_id=` atau melihat semua.
 
 ### Wilayah Indonesia (referensi alamat)
 | Method | Endpoint | Deskripsi | Izin |
@@ -65,9 +55,8 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | GET | `/regions/cities?province=31` | Kota/kabupaten dalam provinsi | auth |
 | GET | `/regions/districts?city=31.71` | Kecamatan dalam kota | auth |
 | GET | `/regions/villages?district=31.71.01` | Kelurahan/desa dalam kecamatan | auth |
-| POST | `/regions/sync` | Sinkron data wilayah dari sumber resmi | `settings:write` (platform) |
 
-> Alamat berjenjang untuk dropdown provinsi → kota → kecamatan → kelurahan. Data bawaan (seed) + bisa di-sync.
+> Pass-through tipis ke API publik [wilayah.id](https://wilayah.id/api/), dipanggil live — tidak ada data wilayah tersimpan lokal, sehingga tidak ada endpoint sync.
 
 ### Custom Fields Karyawan (per tenant)
 | Method | Endpoint | Deskripsi | Izin |
@@ -79,7 +68,7 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 
 > Nilai custom field diisi bersama data karyawan (di `POST/PATCH /employees`, dalam objek `custom_fields`).
 
-> **Master data (list katalog):** semua master/katalog punya endpoint list (`GET`) yang dapat difilter & di-paginate — job grades, position templates, division types (di atas), plus field definitions & regions. Ini memudahkan UI menampilkan master di tiap modul.
+> **Master data:** field definitions & regions (di atas) masing-masing punya endpoint list (`GET`) yang dapat difilter & di-paginate, memudahkan UI menampilkan master di tiap modul.
 
 ### Bulk & Export
 | Method | Endpoint | Deskripsi | Izin |
@@ -267,25 +256,38 @@ Daftar bawahan langsung (berdasarkan `manager_id`). Tambahkan `?recursive=true` 
 
 ## 10. Dokumen Karyawan
 
+File tersimpan di MinIO (bucket privat) — alur upload dua langkah: minta presigned URL, upload langsung ke storage dari klien, lalu konfirmasi ke backend.
+
 **Daftar — `GET /employees/{id}/documents`**
 ```json
 {
   "success": true,
   "data": [
-    { "id": "doc_01H8...", "type": "contract", "file_name": "kontrak-2026.pdf", "uploaded_at": "2026-09-01T..." }
+    { "id": "doc_01H8...", "type": "contract", "file_name": "kontrak-2026.pdf", "file_url": "https://.../presigned...", "uploaded_at": "2026-09-01T..." }
   ]
 }
 ```
+`file_url` adalah presigned download URL berumur pendek, dihasilkan ulang setiap request (tidak pernah ada URL publik permanen).
 
-**Unggah — `POST /employees/{id}/documents`** (multipart atau referensi storage)
+**Langkah 1 — `POST /employees/{id}/documents/presign`**
 ```json
-{ "type": "contract", "file_name": "kontrak-2026.pdf", "file_ref": "storage://..." }
+{ "content_type": "application/pdf" }
 ```
-**Response `201 Created`.** Tipe: `contract`, `id_card`, `certificate`, `tax`, `other`.
+**Response `200 OK`**
+```json
+{ "success": true, "data": { "presign_url": "https://minio.../pending/...", "key": "pending/employee-documents/emp_.../uuid.pdf", "expires_in": 900 } }
+```
+Klien lalu `PUT` file langsung ke `presign_url`.
 
-**Hapus — `DELETE /documents/{doc_id}`** → `204 No Content`.
+**Langkah 2 — `POST /employees/{id}/documents`** (konfirmasi)
+```json
+{ "type": "contract", "file_name": "kontrak-2026.pdf", "key": "pending/employee-documents/emp_.../uuid.pdf" }
+```
+**Response `201 Created`.** Backend mengonfirmasi upload benar terjadi, mempromosikan objek dari staging ke key final, lalu menyimpan record. Tipe: `contract`, `id_card`, `certificate`, `tax`, `other`.
 
-> Dokumen berisi data pribadi/sensitif — akses dibatasi RBAC & disimpan terenkripsi (UU PDP).
+**Hapus — `DELETE /documents/{doc_id}`** → `204 No Content`. Menghapus record sekaligus objek MinIO-nya.
+
+> Dokumen berisi data pribadi/sensitif — akses dibatasi RBAC & disimpan di bucket privat (UU PDP).
 
 ---
 

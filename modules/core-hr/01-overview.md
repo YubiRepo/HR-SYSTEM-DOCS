@@ -59,20 +59,20 @@ Struktur organisasi berada **di dalam** sebuah tenant (dan bila tenancy berlapis
 
 ## 6. Multi-Cabang: Data & UI
 
-Tenant punya banyak cabang dengan struktur berbeda. Core HR memakai model **hybrid** (katalog tenant + instance per cabang) — detail di `02-org-structure.md`.
+Org structure (org unit & position) **milik tenant secara langsung** — satu pohon organisasi untuk seluruh tenant, tidak ada instance/duplikasi per cabang. Cabang adalah konsep terpisah: tempat operasional/penempatan karyawan. Detail di `02-org-structure.md` §0.
 
 **Kepemilikan data:**
-- Katalog (job grade, position template, jenis divisi) → milik **tenant**, dikelola tenant admin.
-- Struktur aktual (divisi, posisi, kapasitas) & karyawan → milik **cabang**, dikelola branch admin.
+- Struktur organisasi (org unit, posisi) → milik **tenant**, dikelola tenant admin, dipakai bersama oleh seluruh cabang.
+- Karyawan → punya `branch_id` sendiri (penempatan operasional), independen dari unit/posisinya di org chart tenant.
 
 **Peran & akses** (via RBAC, cakupan data):
-- **branch_admin** → cakupan `branch`; rakit struktur & kelola karyawan cabangnya (boleh tambah di luar katalog).
-- **tenant_admin** → cakupan `tenant`; kelola katalog + akses semua cabang.
+- **branch_admin** → cakupan `branch`; kelola karyawan cabangnya (org unit/posisi tetap tenant-wide, tidak eksklusif ke satu cabang).
+- **tenant_admin** → cakupan `tenant`; kelola struktur organisasi + akses semua cabang.
 
 **Pola UI — Branch Context Switcher:**
 ```
 [🏢 Cabang: Jakarta ▾]     ← indikator cabang aktif di header
 ```
-- Branch admin: switcher terkunci di cabangnya; tanpa menu katalog.
-- Tenant admin: switcher bisa ganti cabang + opsi "Semua Cabang"; punya menu "Katalog/Master Data".
-- UI sama untuk semua; yang berbeda hanya cakupan & ketersediaan menu katalog (ditentukan RBAC).
+Switcher ini hanya mempengaruhi cakupan **karyawan** yang ditampilkan (lihat `04-api-contract.md`'s catatan konteks cabang) — org unit/posisi/org-chart selalu tenant-wide terlepas dari cabang yang dipilih.
+- Branch admin: switcher terkunci di cabangnya.
+- Tenant admin: switcher bisa ganti cabang + opsi "Semua Cabang".

@@ -1,28 +1,26 @@
 # 02 · Org Structure
 
-## 0. Model Katalog vs Instance (Multi-Cabang)
+## 0. Satu Struktur Organisasi per Tenant
 
-Karena satu tenant punya banyak cabang dengan struktur berbeda, org structure memakai model **hybrid**:
+Org structure (org unit & position) **milik tenant secara langsung, bukan milik cabang**. Cabang adalah konsep terpisah dan independen — tempat operasional/penempatan karyawan — tidak menentukan struktur organisasinya.
 
 | Lapisan | Milik | Isi | Dikelola |
 |---|---|---|---|
-| **Katalog** | Tenant | Template dipakai lintas cabang: job grade, position template, jenis divisi | Tenant admin |
-| **Instance** | Cabang | Struktur aktual: divisi & posisi nyata di cabang itu, dengan kapasitas sendiri | Branch admin |
+| **Org Structure** | Tenant | Org unit & position nyata — satu pohon organisasi untuk seluruh tenant | Tenant admin |
 
 ```
-Katalog tenant: "Finance" (jenis divisi), "Software Engineer" (position template), grade Staff/Manager/VP
-        │ dirakit jadi
-        ├── Cabang Jakarta:  Divisi Finance (12 posisi) · Divisi IT (20)
-        └── Cabang Surabaya: Divisi Finance (5 posisi)  · Divisi Gudang (15)
+Tenant (PT Acme)
+   └── Divisi Finance (satu-satunya, dipakai seluruh cabang)
+         ├── Departemen Akuntansi
+         └── Departemen Pajak
+
+Karyawan Budi → cabang: Jakarta · unit: Departemen Akuntansi (unit yang sama dilihat/dipakai dari cabang manapun)
+Karyawan Sari → cabang: Surabaya · unit: Departemen Akuntansi
 ```
 
 **Aturan:**
-- Branch admin **bebas merakit** struktur cabangnya dari katalog.
-- Boleh **menambah di luar katalog** (mis. divisi khusus yang belum ada) — fleksibel.
-- Item di luar katalog dapat **dipromosikan** ke katalog tenant (opsional) agar bisa dipakai ulang cabang lain & menjaga konsistensi.
-- Kapasitas/headcount ditetapkan **per instance (cabang)**, bukan di katalog.
-
-> Semua entitas org membawa `branch_id` (instance) atau bertanda katalog (tenant-level). Detail di `05-data-model.md`.
+- Hanya **satu** org chart per tenant — tidak ada duplikasi struktur per cabang.
+- Employee tetap punya `branch_id` sendiri (penempatan operasional), independen dari `org_unit_id`/`position_id`-nya.
 
 ---
 
@@ -52,7 +50,7 @@ Divisi Keuangan
 
 - Setiap unit punya `parent_id` (null = unit puncak).
 - Kedalaman tidak dibatasi kaku — mengikuti kebutuhan organisasi.
-- Unit berada dalam lingkup satu tenant (dan cabang bila tenancy berlapis).
+- Unit berada dalam lingkup satu tenant — bukan per cabang (lihat §0).
 
 ---
 
@@ -95,15 +93,17 @@ Assignment mengikat karyawan ke unit + posisi pada periode tertentu:
 
 ---
 
-## 6. Struktur & Tenancy Berlapis
+## 6. Struktur Organisasi vs Cabang
 
-Jika tenancy memakai hirarki (mis. Tenant → Cabang), struktur organisasi berada **di dalam** cabang tersebut. Artinya:
+Tenancy (isolasi data antar tenant, lihat [Tenancy Model](../../architecture/HRMS_Tenancy_Model.md)) dan struktur organisasi adalah dua hal terpisah:
 
 ```
-Tenant (PT Acme)
- └── Cabang Jakarta            ← batas tenancy
-       └── Divisi Keuangan     ← struktur organisasi mulai di sini
-             └── Departemen ...
+Tenant (PT Acme)                    ← batas tenancy & batas struktur organisasi
+ └── Divisi Keuangan                ← struktur organisasi (satu untuk seluruh tenant)
+       └── Departemen ...
+
+Cabang Jakarta, Cabang Surabaya     ← konsep terpisah: penempatan operasional karyawan,
+                                       tidak membentuk cabang dari org chart
 ```
 
-Batas tenancy menentukan isolasi data; struktur organisasi mengatur org chart di dalamnya. Keputusan kedalaman tenancy ada di [Tenancy Model](../../architecture/HRMS_Tenancy_Model.md).
+Karyawan punya `branch_id` (cabang tempat dia bekerja) yang sepenuhnya independen dari `org_unit_id`/`position_id`-nya (tempatnya di org chart tenant). Dua karyawan di cabang berbeda bisa berada di unit organisasi yang sama.

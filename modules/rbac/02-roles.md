@@ -2,17 +2,16 @@
 
 ## 1. Peran Bawaan (Default Roles)
 
-| Peran | Cakupan Izin (ringkas) |
-|---|---|
-| **employee** | Data & aksi milik sendiri: `profile:read/write`, `leave:request`, `payslip:read:self` |
-| **manager** | Izin employee + `team:read`, `leave:approve`, `performance:review` |
-| **hr_admin** | `employees:*`, `leave:*`, `recruitment:*`, `performance:*` |
-| **branch_admin** | Seperti hr_admin tetapi **cakupan `branch`** — kelola karyawan, struktur, & posisi hanya di cabangnya (rakit dari katalog, boleh tambah di luar katalog); `branch:read` cabangnya (tidak membuat/menutup cabang) |
-| **payroll_officer** | `payroll:*`, `payslip:read`, `tax:read` |
-| **tenant_admin** | Manajemen pengguna & konfigurasi tenant: `users:*`, `roles:*`, `settings:*`, **katalog org (`catalog:*`)**, **manajemen cabang (`branch:*`)**, **langganan self-service (`billing:manage`, mode self-service)**, cakupan `tenant` (semua cabang) |
-| **service** | Izin spesifik integrasi via scope (mis. `payroll:read`) |
+Hanya **dua peran sistem** yang di-seed — satu tingkat platform, satu tingkat tenant. Peran operasional lainnya (employee, manager, hr_admin, branch_admin, payroll_officer, service, dll) **dibentuk sebagai peran kustom per tenant** sesuai kebutuhan, bukan direplikasi sebagai peran sistem.
+
+| Peran | Jenis | Cakupan Izin (ringkas) |
+|---|---|---|
+| **platform_super_admin** | Platform (global, `tenant_id` NULL) | Tertinggi tingkat platform (strict keys): `platform_tenants:read/write`, `platform_billing:read/write`, `platform_entitlement:read/write`, `platform_support:read/write`, `roles:read/write/assign`, `users:write`, `platform_audit:read` |
+| **tenant_admin** | Tenant (di-replikasi per tenant) | Tertinggi tingkat tenant (strict keys): `users:read/write`, `roles:read/write/assign`, `settings:write`, `branch:read/write`, `billing:read` + `billing:write` (kirim bukti bayar), `entitlement:read/manage` |
 
 Peran bawaan ditandai `is_system = true` dan tidak dapat dihapus, hanya dilihat/dirujuk.
+
+> Kedua template ini **tersimpan di tabel `role_templates`** dan bisa **diedit dari platform** (Access → Roles → Template Peran Sistem), lalu disinkronkan ke seluruh tenant. Lihat §6.
 
 ---
 
@@ -73,7 +72,7 @@ Budi:
 ## 4. Praktik Baik
 
 1. Mulai dari peran bawaan; buat peran kustom hanya bila perlu.
-2. Hindari memberi `*:*` kecuali super admin tenant.
+2. Tetapkan izin **paling kecil yang cukup** (least privilege) — peran custom hanya berisi key yang dibutuhkan.
 3. Tinjau peran berkala (access review) untuk mencegah privilege creep.
 4. Terapkan least privilege pada service account lewat scope sempit.
 
@@ -96,3 +95,34 @@ Setiap perubahan pada peran, permission, dan penetapan **wajib dicatat** untuk k
 Tiap entri memuat: aktor (`changed_by`), target (user/role), perubahan (before/after bila relevan), `tenant_id`, IP/waktu. Log ini terintegrasi dengan audit platform (lihat modul Auth `06-security.md`).
 
 > Karena RBAC menentukan hak akses, jejak auditnya termasuk yang paling sensitif — pastikan tidak dapat diubah (append-only) dan hanya dapat dibaca oleh peran berwenang.
+
+---
+
+## 6. Template & Sinkronisasi Peran Sistem (Template → Produksi)
+
+Definisi kedua peran sistem (tenant_admin, platform_super_admin) **tersimpan di tabel `role_templates`**, di-seed dari kode di awal (`make seed-all`), lalu **dapat diedit dari platform** dan **disinkronkan ke seluruh tenant**:
+
+| Jalur | Kapan | Cara |
+|---|---|---|
+| **Edit template** | Platform super admin, kapan saja | Access → Roles → **Template Peran Sistem** → Edit → `PATCH /api/v1/rbac/role-templates/{id}` |
+| **Sync ke tenant** | Setelah edit template | Tombol **"Sync Peran Sistem"** → `POST /api/v1/platform/system-roles/sync` |
+
+**Perilaku:**
+1. `role_templates` di-seed dari kode **hanya untuk nama yang belum ada** — edit platform tidak pernah ditimpa oleh code default.
+2. `SeedSystemRoles` (per tenant) & `SeedPlatformRoles` (global) **membaca dari `role_templates`**, fallback ke code default hanya jika tabel kosong (DB baru sebelum seeder).
+3. Sync → seed ulang tiap tenant → `ReplacePermissions` membuat permission system-role persis sesuai template terkini + invalidasi cache principal.
+4. Tidak menghapus definisi role, tidak mengubah assignment user, aman dijalankan berulang.
+
+> **Catatan migrasi:** hanya dua peran sistem yang direplikasi. Tenant lama yang masih punya peran sistem lain (employee, manager, hr_admin, dll) **tidak otomatis dihapus** oleh sync (non-destruktif); peran tsb tetap berfungsi sampai dihapus manual / peran kustom baru dibuat. Permission **catalog** bersifat in-memory di kode (`PermissionCatalog`), jadi permission baru langsung valid setelah deploy — yang perlu sinkronisasi hanyalah pemberian permission tsb ke role system tenant lama.
+
+---
+
+## 7. Strict Key Only (Tanpa Wildcard)
+
+Sistem ini **tidak mengenal wildcard** (`resource:*` / `*:*`). Setiap permission adalah key `resource:action` yang eksplisit, dan pemberiannya lewat picker memilih key konkret satu per satu:
+
+- **Penulisan/validasi:** key apa pun yang bukan `resource:action` konkret ditolak (`INVALID_PERMISSION`); validasi peran mewajibkan key ada di katalog.
+- **Evaluasi akses:** `principal.Authorize` memakai **pencocokan key eksak**. Gate route dengan beberapa key memakai **OR** (`require(a, b)` = punya a atau b).
+- **Akses super admin** diberikan lewat **role** `platform_super_admin` (role gate), bukan key wildcard — memegang semua key platform yang eksplisit.
+
+> Aturan pakai: karena tidak ada wildcard, peran yang butuh "semua aksi resource" mencantumkan seluruh key `resource:action` yang relevan (mis. `users:read` + `users:write`). Permission baru yang ditambahkan ke sistem **tidak otomatis** dimiliki peran lama — perlu di-sync/sesuaikan, ini konsekuensi disengaja dari desain strict-key.

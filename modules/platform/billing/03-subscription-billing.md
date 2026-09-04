@@ -116,3 +116,24 @@ Status tenant `suspended` dipicu dari sini (via modul Tenant) saat grace habis.
 - Semua transaksi tercatat untuk audit & rekonsiliasi.
 
 > Dokumen menetapkan mekanisme; tarif & pajak (mis. PPN) mengikuti kebijakan final.
+
+---
+
+## 9. Pembayaran Manual (Kirim Bukti)
+
+Sebelum payment gateway & object storage (S3) tersedia, tenant membayar via
+transfer dan **mengirim bukti berupa URL dokumen**:
+
+1. Invoice terbit (scheduler atau `generate-now`) dengan status `open`.
+2. Tenant submit bukti → `POST /billing/invoices/{id}/payments/manual`
+   (amount, `proof_url`, catatan) → payment `pending`, method `transfer`.
+3. Staff platform memverifikasi di halaman Payments:
+   - **Approve** → payment `succeeded`, invoice `paid`, subscription
+     `past_due`→`active`, tenant ter-suspend ikut diaktifkan kembali.
+   - **Reject** → payment `failed`, invoice tetap `open` (tenant bisa
+     submit ulang).
+4. Setiap langkah (submit/approve/reject) tercatat di audit log.
+
+Ketika S3/integrasi gateway tersedia nanti, `proof_url` diganti upload file
+dan status `pending` bisa jadi otomatis via webhook — alur ini tetap valid
+sebagai jalur manual/offline.

@@ -49,6 +49,7 @@ Model data konseptual (stack-agnostic). Tipe bersifat generik; sesuaikan dengan 
 | `status` | enum | `pending`, `active`, `locked`, `disabled` |
 | `failed_attempts` | int | Penghitung untuk lockout |
 | `last_login_at` | timestamp | |
+| `avatar_key` | string (nullable) | Referensi avatar: `s3:<object-key>` (MinIO bucket public) atau `ext:<url>` (URL eksternal) — lihat `architectures/object-storage.md` |
 | `created_at` / `updated_at` | timestamp | |
 
 **Constraint:** setiap identifier unik per tenant (partial unique, hanya bila nilai tidak null): `UNIQUE(tenant_id, email)`, `UNIQUE(tenant_id, phone)`, `UNIQUE(tenant_id, username)`.
