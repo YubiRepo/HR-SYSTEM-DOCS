@@ -16,6 +16,8 @@ Model data konseptual (stack-agnostic). Entitas `users` & `tenants` dimiliki mod
      │  │ N                            positions
      │  └──< employment_history >
      │  └──< status_history >
+     │  └──< mutation_requests >
+     │  └──< contracts >──< contract_documents >
      │
      └── user_id ─▶ users (Auth)
      └── manager_id ─▶ employees (self ref)
@@ -119,14 +121,15 @@ Penempatan karyawan pada unit + posisi (aktif & historis).
 > Assignment aktif = yang `end_date` null. Perubahan menutup yang lama & membuat baru.
 
 ### 2.4 `employment_history`
-Riwayat kontrak/ikatan kerja.
+Jejak audit peristiwa kepegawaian yang **bukan** perubahan assignment (unit/posisi — sudah tercakup `assignments`) dan **bukan** transisi status lifecycle (sudah tercakup `status_history`) — mis. pergantian atasan (`manager_change`), atau peristiwa employment lain yang perlu dicatat ke depannya. Dipakai pertama kali oleh `PATCH /employees/{id}`: setiap perubahan `manager_id` menambah satu baris `event_type = "manager_change"`.
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | |
 | `employee_id` | string (FK) | |
-| `employment_type` | enum | |
-| `contract_start` / `contract_end` | date | |
-| `note` | string | |
+| `event_type` | string | Label bebas, mis. `manager_change` |
+| `description` | string | |
+| `effective_date` | date | |
+| `changed_by` | string | Aktor |
 
 ### 2.5 `status_history`
 Jejak perubahan status lifecycle.
@@ -138,6 +141,52 @@ Jejak perubahan status lifecycle.
 | `effective_date` | date | |
 | `reason` | string | |
 | `changed_by` | string | Aktor |
+
+### 2.5a `mutation_requests`
+Lapisan approval opsional membungkus `assignments`/`status_history` (transisi)/offboarding — lihat `03-employee-lifecycle.md` §4.1. Sebuah baris di sini **tidak** menimpa/menutup baris `assignments`/`status_history` — begitu disetujui, ia hanya memicu use case aslinya (yang menulis ke tabel-tabel itu seperti biasa).
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `tenant_id` | string | |
+| `employee_id` | string (FK) | |
+| `kind` | enum | `transition`, `assignment`, `offboarding` |
+| `status` | enum | `pending`, `approved`, `rejected`, `failed` — default `pending` |
+| `payload` | jsonb | Field spesifik `kind` (persis payload endpoint langsung-efektifnya) |
+| `reason` | string | Alasan pengajuan |
+| `requested_by` | string | |
+| `requested_at` | timestamp | |
+| `reviewed_by` | string (nullable) | |
+| `reviewed_at` | timestamp (nullable) | |
+| `review_notes` | string (nullable) | |
+| `failure_reason` | string (nullable) | Terisi hanya saat `status = failed` |
+
+### 2.5b `contracts`
+Kontrak kerja karyawan sebagai entity mandiri — berdampingan dengan (bukan pengganti) `employees.contract_terms` yang tetap ada sebagai array JSONB kasar. `contracts` menambah: tipe legal (PKWT/PKWTT/dst), status yang jelas, dan rantai perpanjangan lewat `previous_contract_id` (kontrak baru menautkan ke kontrak lama, yang otomatis berstatus `superseded` — tidak pernah menimpa baris lama). Reminder kadaluarsa (job terjadwal harian) memakai `end_date` di sini, bukan di `contract_terms`.
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `tenant_id` | string | |
+| `employee_id` | string (FK) | |
+| `type` | enum | `pkwt`, `pkwtt`, `permanent`, `contract`, `intern`, `outsource` |
+| `status` | enum | `active`, `expired`, `terminated`, `superseded` — default `active` |
+| `start_date` | date | |
+| `end_date` | date (nullable) | Null = tidak terbatas (pkwtt/permanent) |
+| `previous_contract_id` | string (FK, nullable) | Kontrak yang digantikan (rantai perpanjangan) |
+| `remark` | string (nullable) | |
+| `created_by` | string | |
+| `created_at` / `updated_at` | timestamp | |
+
+### 2.5c `contract_documents`
+Dokumen terlampir per kontrak (mis. PDF kontrak yang ditandatangani) — skema identik `employee_documents` di bawah, tapi FK ke `contracts(id)`, bukan `employees(id)`. Alur upload sama persis (presign → MinIO → konfirmasi).
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `contract_id` | string (FK) | |
+| `type` | enum | `contract_file`, `addendum`, `other` |
+| `file_name` | string | |
+| `file_ref` | string | Key objek MinIO (bucket privat) |
+| `uploaded_by` | string | Aktor |
+| `uploaded_at` | timestamp | |
 
 ### 2.6 `employee_documents`
 Dokumen milik karyawan (kontrak, KTP, sertifikat) — file sebenarnya disimpan di MinIO (object storage), bucket privat; `file_ref` hanya menyimpan key objeknya, bukan isi filenya. Alur upload: klien minta presigned PUT URL (`POST /employees/{id}/documents/presign`), upload langsung ke MinIO, lalu kirim key-nya ke `POST /employees/{id}/documents` untuk dikonfirmasi & dipromosikan ke key final. Setiap pembacaan (list/get) me-resolve `file_ref` menjadi presigned download URL baru berumur pendek — tidak pernah ada URL publik permanen untuk dokumen.
@@ -180,6 +229,13 @@ Response tiap region node: `{code, parent_code, level, name}` — kode memakai f
 | `org_units` | `parent_id` | Traversal pohon |
 | `assignments` | `(employee_id, end_date)` | Cari assignment aktif |
 | `status_history` | `employee_id` | Riwayat status |
+| `employment_history` | `employee_id` | Riwayat peristiwa kepegawaian |
+| `mutation_requests` | `(tenant_id, status)` | Daftar pengajuan tenant per status |
+| `mutation_requests` | `employee_id` | Riwayat pengajuan per karyawan |
+| `contracts` | `(tenant_id, status)` | Daftar kontrak tenant per status |
+| `contracts` | `employee_id` | Riwayat kontrak per karyawan |
+| `contracts` | `end_date` (partial, `status='active'`) | Query reminder kadaluarsa |
+| `contract_documents` | `contract_id` | Daftar dokumen per kontrak |
 
 ---
 

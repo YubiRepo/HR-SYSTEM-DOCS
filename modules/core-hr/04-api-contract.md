@@ -26,6 +26,34 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | GET | `/documents/{doc_id}` | Detail/unduh dokumen | `employees:read` |
 | DELETE | `/documents/{doc_id}` | Hapus dokumen | `employees:write` |
 
+### Mutation Requests
+Lapisan approval opsional di atas transition/assignments/offboarding di atas — lihat `03-employee-lifecycle.md` §4.1.
+
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| POST | `/employees/{id}/mutation-requests` | Ajukan mutasi/promosi/demosi, transisi status, atau offboarding untuk disetujui | `mutation_request:submit` |
+| GET | `/mutation-requests` | Daftar pengajuan tenant (filter `status`/`kind`/`employee_id`) | `mutation_request:submit` atau `mutation_request:approve` |
+| GET | `/mutation-requests/{id}` | Detail satu pengajuan | `mutation_request:submit` atau `mutation_request:approve` |
+| POST | `/mutation-requests/{id}/approve` | Setujui — mengeksekusi use case aslinya | `mutation_request:approve` |
+| POST | `/mutation-requests/{id}/reject` | Tolak — tidak ada eksekusi | `mutation_request:approve` |
+
+### Employee Contracts
+Kontrak kerja sebagai entity mandiri — berdampingan dengan `employees.contract_terms` (array JSONB lama, tetap ada). Lihat `05-data-model.md` §2.5b/§2.5c.
+
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| POST | `/employees/{id}/contracts` | Buat kontrak baru (isi `previous_contract_id` untuk perpanjangan — otomatis menandai kontrak lama `superseded`) | `contracts:write` |
+| GET | `/employees/{id}/contracts` | Daftar kontrak karyawan (filter `status`/`type`) | `contracts:read` |
+| GET | `/contracts/{id}` | Detail satu kontrak | `contracts:read` |
+| PATCH | `/contracts/{id}` | Ubah `remark`, atau set `status="terminated"` (penutupan dini manual — `active`/`expired`/`superseded` diatur sistem) | `contracts:write` |
+| GET | `/contracts/{id}/documents` | Daftar dokumen kontrak | `contracts:read` |
+| POST | `/contracts/{id}/documents/presign` | Minta presigned upload URL (MinIO) | `contracts:write` |
+| POST | `/contracts/{id}/documents` | Konfirmasi dokumen ter-upload | `contracts:write` |
+| GET | `/contract-documents/{doc_id}` | Detail/unduh dokumen kontrak | `contracts:read` |
+| DELETE | `/contract-documents/{doc_id}` | Hapus dokumen kontrak | `contracts:write` |
+
+Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lewat `end_date` sebagai `expired`, dan mengirim notifikasi untuk kontrak yang akan berakhir dalam 30 hari (saat ini hanya dicatat ke log — belum ada pengiriman email sungguhan).
+
 ### Org Units
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
@@ -230,10 +258,69 @@ Memulai proses keluar (resign/terminate → offboarded).
     "status_changes": [
       { "status": "probation", "from": "2026-09-01" },
       { "status": "active", "from": "2026-12-01" }
+    ],
+    "employment_history": [
+      { "event_type": "manager_change", "description": "manager changed from usr_A to usr_B", "effective_date": "2026-11-15" }
     ]
   }
 }
 ```
+`employment_history` menampung peristiwa kepegawaian di luar assignment/status — mis. `manager_change` saat `PATCH /employees/{id}` mengubah `manager_id`. Pengajuan mutasi yang masih `pending`/`rejected`/`failed` **tidak** ikut di sini — lihat `GET /mutation-requests?employee_id=...` untuk itu.
+
+---
+
+## 8a. Mutation Requests
+
+Lapisan approval opsional di atas endpoint #5–#7 di atas — lihat `03-employee-lifecycle.md` §4.1 untuk alurnya.
+
+### POST /employees/{id}/mutation-requests
+
+Ajukan satu dari tiga jenis mutasi untuk disetujui lebih dulu — `kind` menentukan payload mana yang wajib diisi (persis field yang sama dengan endpoint langsung-efektifnya).
+
+**Request** (`kind: "transition"`)
+```json
+{
+  "kind": "transition",
+  "transition": { "to_status": "active", "effective_date": "2027-01-01" },
+  "reason": "Lulus masa percobaan"
+}
+```
+**Request** (`kind: "assignment"`)
+```json
+{
+  "kind": "assignment",
+  "assignment": { "org_unit_id": "org_02H8...", "position_id": "pos_02H8...", "type": "promotion", "effective_date": "2027-01-01" },
+  "reason": "Promosi kinerja tahunan"
+}
+```
+**Request** (`kind: "offboarding"`)
+```json
+{
+  "kind": "offboarding",
+  "offboarding": { "exit_date": "2027-02-28", "revoke_access": true },
+  "reason": "Pindah perusahaan"
+}
+```
+**Response `201 Created`** — status `pending`; karyawan belum berubah sama sekali.
+
+### GET /mutation-requests
+
+Daftar pengajuan tenant, terbaru dulu. Query: `status` (`pending`/`approved`/`rejected`/`failed`), `kind` (`transition`/`assignment`/`offboarding`), `employee_id`, `page`, `per_page`.
+
+### GET /mutation-requests/{id}
+
+Detail satu pengajuan — termasuk `review_notes`/`failure_reason` bila sudah direview.
+
+### POST /mutation-requests/{id}/approve / POST /mutation-requests/{id}/reject
+
+**Request** (opsional)
+```json
+{ "notes": "Sudah dikonfirmasi manajer unit" }
+```
+**Response `200 OK`** — pengajuan dengan status terbaru.
+- **approve** mengeksekusi use case aslinya (transition/assignment/offboarding). Sukses → `approved`. Gagal (mis. status karyawan sudah berubah sejak diajukan) → `failed` dengan `failure_reason` terisi; **error dari use case aslinya tetap dikembalikan ke caller** (mis. `422 INVALID_TRANSITION`), karyawan tidak berubah.
+- **reject** tidak pernah mengeksekusi apapun; langsung `rejected`.
+- Meninjau pengajuan yang bukan `pending` (sudah direview sebelumnya) mengembalikan `422 MUTATION_REQUEST_NOT_PENDING`.
 
 ---
 
@@ -473,4 +560,9 @@ Baris yang sukses **di-commit**; yang gagal dikumpulkan di `error_report_url` un
 | `INVALID_ORG_UNIT` | 422 | Unit tidak valid/aktif |
 | `ORG_UNIT_NOT_EMPTY` | 409 | Unit masih punya anak/karyawan |
 | `POSITION_IN_USE` | 409 | Posisi masih dipakai assignment aktif |
+| `MUTATION_REQUEST_NOT_PENDING` | 422 | Approve/reject pada pengajuan yang sudah direview |
+| `CONTRACT_NOT_ACTIVE` | 422 | Terminate/supersede/expire pada kontrak yang sudah tidak aktif |
+| `INVALID_CONTRACT_TYPE` | 422 | Tipe kontrak bukan pkwt/pkwtt/permanent/contract/intern/outsource |
+| `PREVIOUS_CONTRACT_MISMATCH` | 422 | `previous_contract_id` bukan milik karyawan yang sama |
+| `INVALID_CONTRACT_DOCUMENT_TYPE` | 422 | Tipe dokumen kontrak tidak valid |
 | `VALIDATION_ERROR` | 400/422 | Input tidak lolos validasi |

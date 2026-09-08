@@ -91,6 +91,35 @@ POST /employees (create_account = true, default)
 - **Promosi** — naik posisi/grade: assignment baru dengan posisi lebih tinggi.
 - Keduanya **menambah riwayat**, tidak menimpa data lama, sehingga jejak karier terlacak.
 
+### 4.1 Alur Persetujuan (Mutation Requests)
+
+Perubahan mutasi/promosi/demosi (assignment), transisi status, dan offboarding tidak wajib langsung efektif — bisa diajukan lebih dulu sebagai **mutation request** yang menunggu persetujuan, lalu baru dieksekusi saat disetujui. Ini adalah lapisan opsional di atas mekanisme langsung-efektif pada bagian 2 & 5: memanggil endpoint aslinya (`/transition`, `/assignments`, `/offboarding`) tetap langsung berlaku seperti biasa; mengajukan lewat `/mutation-requests` menunda eksekusinya sampai ada approval.
+
+```
+POST /employees/{id}/mutation-requests   (kind: transition | assignment | offboarding)
+        │
+        ▼
+   status: pending  ──reject──▶  status: rejected  (tidak ada perubahan apapun)
+        │
+     approve
+        ▼
+  eksekusi use case aslinya (transition / assignment / offboarding)
+        │
+   ┌────┴────┐
+ sukses     gagal (mis. status karyawan sudah berubah, org unit nonaktif)
+   │            │
+   ▼            ▼
+approved      failed  (reviewer tetap tercatat; failure_reason menjelaskan sebabnya)
+```
+
+- **pending** — diajukan, belum ada keputusan; karyawan belum berubah sama sekali.
+- **approved** — disetujui *dan* berhasil dieksekusi; karyawan sudah berubah sesuai pengajuan.
+- **rejected** — ditolak; tidak ada eksekusi sama sekali.
+- **failed** — disetujui, tapi eksekusinya gagal saat itu terjadi (mis. state karyawan sudah berbeda dari saat pengajuan). Berbeda dari `rejected`: di sini reviewer-nya sudah bertindak (approve), hanya saja perubahannya tidak berhasil diterapkan — perlu diajukan ulang.
+- Alasan pengajuan (`reason`) dan siapa yang mengajukan/meninjau (`requested_by`/`reviewed_by`) selalu tercatat pada request itu sendiri, terlepas dari status akhirnya.
+
+Lihat `04-api-contract.md` §"Mutation Requests" untuk detail endpoint dan `05-data-model.md` untuk skema `mutation_requests`.
+
 ---
 
 ## 5. Offboarding
@@ -114,5 +143,6 @@ Prinsip penting Core HR: **perubahan besar disimpan sebagai riwayat**, bukan men
 | Assignment | Riwayat unit & posisi (karier) |
 | Status lifecycle | Kapan probation→active→resigned |
 | Kontrak | Perpanjangan/perubahan kontrak |
+| Employment history | Peristiwa kepegawaian lain di luar assignment/status, mis. pergantian atasan (`manager_change`) |
 
 Ini memungkinkan pertanyaan seperti "posisi Budi Januari lalu apa?" atau "berapa lama ia di Tim AP?" terjawab akurat.
