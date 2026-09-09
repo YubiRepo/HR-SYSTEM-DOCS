@@ -49,7 +49,6 @@ Model data konseptual (stack-agnostic). Entitas `users` & `tenants` dimiliki mod
 | `bank_account` | json (nullable) | Rekening (bank, no rek, nama) — untuk transfer gaji |
 | `emergency_contact` | json (nullable) | Kontak darurat |
 | `hire_date` | date | Tanggal bergabung |
-| `employment_type` | enum | `permanent`, `contract`, `intern`, `outsource` |
 | `status` | enum | `probation`, `active`, `on_leave`, `resigned`, `terminated`, `offboarded` |
 | `manager_id` | string (FK, nullable) | Atasan (self-ref ke employees) |
 | `current_org_unit_id` | string (FK) | Unit aktif (denormalisasi dari assignment) |
@@ -162,6 +161,8 @@ Lapisan approval opsional membungkus `assignments`/`status_history` (transisi)/o
 
 ### 2.5b `contracts`
 Kontrak kerja karyawan sebagai entity mandiri — berdampingan dengan (bukan pengganti) `employees.contract_terms` yang tetap ada sebagai array JSONB kasar. `contracts` menambah: tipe legal (PKWT/PKWTT/dst), status yang jelas, dan rantai perpanjangan lewat `previous_contract_id` (kontrak baru menautkan ke kontrak lama, yang otomatis berstatus `superseded` — tidak pernah menimpa baris lama). Reminder kadaluarsa (job terjadwal harian) memakai `end_date` di sini, bukan di `contract_terms`.
+
+> `employees` tidak lagi punya kolom `employment_type` sendiri — dulu ada, tapi tidak pernah tersinkron dengan riwayat `contracts` (statis, diisi sekali saat create, tidak pernah ikut berubah walau kontraknya diperpanjang/berganti jenis). Field `employment_type` pada respons `GET/POST/PATCH /employees*` sekarang **diturunkan saat baca** dari kontrak yang sedang `active` milik karyawan tsb (nilai `type` di atas) — kosong/absen (`null`) bila karyawan belum punya kontrak aktif.
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | |

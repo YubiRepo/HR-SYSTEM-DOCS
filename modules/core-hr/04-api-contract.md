@@ -117,7 +117,6 @@ Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lew
   "national_id": "3175xxxxxxxxxxxx",
   "email": "budi@example.com",
   "hire_date": "2026-09-01",
-  "employment_type": "permanent",
   "org_unit_id": "org_01H8...",
   "position_id": "pos_01H8...",
   "manager_id": "emp_01H8...",
@@ -145,6 +144,8 @@ Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lew
 
 **Custom fields:** `custom_fields` diisi sesuai definisi tenant (`employee-fields`); field tak dikenal ditolak.
 
+**Employment type:** tidak ada field `employment_type` di request ini — "jenis kepegawaian" karyawan diturunkan dari kontrak aktifnya (§2.5b `05-data-model.md`), dibuat terpisah lewat endpoint Contracts setelah karyawan ada. `employment_type` pada response `GET/POST/PATCH /employees*` bersifat opsional/nullable (kosong sampai ada kontrak aktif).
+
 **Response `201 Created`**
 ```json
 {
@@ -170,7 +171,7 @@ Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lew
 
 ## 2. GET /employees (list)
 
-Parameter standar HRMS: `page`, `per_page`, `sort`, `search`, `filter[status]`, `filter[org_unit_id]`, `filter[employment_type]`.
+Parameter standar HRMS: `page`, `per_page`, `sort`, `search`, `filter[status]`, `filter[org_unit_id]`.
 
 **Contoh:** `GET /employees?filter[status]=active&filter[org_unit_id]=org_01H8...&sort=full_name`
 
