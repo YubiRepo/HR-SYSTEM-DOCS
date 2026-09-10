@@ -16,13 +16,14 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 | GET | `/attendance/me/today` | Jadwal & status hari ini | `attendance:self` |
 | GET | `/attendance/records` | Daftar catatan (filter) | `attendance:read` |
 | POST | `/attendance/records` | Input manual (HR) | `attendance:write` |
-| POST | `/attendance/records/{id}/correction` | Ajukan/terapkan koreksi | `attendance:self` / `attendance:write` |
+| POST | `/attendance/records/{id}/correction` | Ajukan/terapkan koreksi (self hanya untuk catatan miliknya sendiri) | `attendance:self` / `attendance:write` |
+| GET | `/attendance/me/corrections` | Status pengajuan koreksi milik sendiri | `attendance:self` |
 | POST | `/attendance/corrections/{id}/approve` | Setujui koreksi | `attendance:approve` |
 
 ### Shift & Schedule
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| GET | `/attendance/shifts` | Katalog shift | `attendance:read` |
+| GET | `/attendance/shifts` | Katalog shift | `attendance:read` / `attendance:self` |
 | POST | `/attendance/shifts` | Buat shift | `attendance:config` |
 | GET | `/attendance/schedules` | Jadwal (filter tanggal/karyawan) | `attendance:read` |
 | POST | `/attendance/schedules` | Tugaskan shift (single/pola/rotasi) | `attendance:write` |
@@ -33,6 +34,8 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 ### Overtime & Rekap
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
+| POST | `/attendance/overtime` | Ajukan lembur (self hanya untuk dirinya sendiri) | `attendance:self` / `attendance:write` |
+| GET | `/attendance/me/overtime` | Status pengajuan lembur milik sendiri | `attendance:self` |
 | POST | `/attendance/overtime/{id}/approve` | Setujui lembur | `attendance:approve` |
 | GET | `/attendance/summary` | Rekap periode (untuk Payroll) | `attendance:read` |
 

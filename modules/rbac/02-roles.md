@@ -2,12 +2,13 @@
 
 ## 1. Peran Bawaan (Default Roles)
 
-Hanya **dua peran sistem** yang di-seed — satu tingkat platform, satu tingkat tenant. Peran operasional lainnya (employee, manager, hr_admin, branch_admin, payroll_officer, service, dll) **dibentuk sebagai peran kustom per tenant** sesuai kebutuhan, bukan direplikasi sebagai peran sistem.
+**Tiga peran sistem** yang di-seed — satu tingkat platform, dua tingkat tenant. `employee` adalah peran self-service dasar yang otomatis diberikan ke setiap akun yang dibuat lewat onboarding karyawan (lihat core-hr `CreateEmployeeUseCase`), sehingga karyawan yang punya akun langsung bisa mengakses profil & absensi dirinya sendiri tanpa perlu penugasan peran manual. Peran operasional lainnya (manager, hr_admin, branch_admin, payroll_officer, service, dll) tetap **dibentuk sebagai peran kustom per tenant** sesuai kebutuhan, bukan direplikasi sebagai peran sistem.
 
 | Peran | Jenis | Cakupan Izin (ringkas) |
 |---|---|---|
 | **platform_super_admin** | Platform (global, `tenant_id` NULL) | Tertinggi tingkat platform (strict keys): `platform_tenants:read/write`, `platform_billing:read/write`, `platform_entitlement:read/write`, `platform_support:read/write`, `roles:read/write/assign`, `users:write`, `platform_audit:read` |
 | **tenant_admin** | Tenant (di-replikasi per tenant) | Tertinggi tingkat tenant (strict keys): `users:read/write`, `roles:read/write/assign`, `settings:write`, `branch:read/write`, `billing:read` + `billing:write` (kirim bukti bayar), `entitlement:read/manage` |
+| **employee** | Tenant (di-replikasi per tenant) | Peran dasar self-service (scope `self`): `profile:read`, `profile:write`, `attendance:self` — diberikan otomatis ke akun baru hasil onboarding karyawan |
 
 Peran bawaan ditandai `is_system = true` dan tidak dapat dihapus, hanya dilihat/dirujuk.
 
@@ -100,7 +101,7 @@ Tiap entri memuat: aktor (`changed_by`), target (user/role), perubahan (before/a
 
 ## 6. Template & Sinkronisasi Peran Sistem (Template → Produksi)
 
-Definisi kedua peran sistem (tenant_admin, platform_super_admin) **tersimpan di tabel `role_templates`**, di-seed dari kode di awal (`make seed-all`), lalu **dapat diedit dari platform** dan **disinkronkan ke seluruh tenant**:
+Definisi ketiga peran sistem (tenant_admin, employee, platform_super_admin) **tersimpan di tabel `role_templates`**, di-seed dari kode di awal (`make seed-all`), lalu **dapat diedit dari platform** dan **disinkronkan ke seluruh tenant**:
 
 | Jalur | Kapan | Cara |
 |---|---|---|
@@ -113,7 +114,7 @@ Definisi kedua peran sistem (tenant_admin, platform_super_admin) **tersimpan di 
 3. Sync → seed ulang tiap tenant → `ReplacePermissions` membuat permission system-role persis sesuai template terkini + invalidasi cache principal.
 4. Tidak menghapus definisi role, tidak mengubah assignment user, aman dijalankan berulang.
 
-> **Catatan migrasi:** hanya dua peran sistem yang direplikasi. Tenant lama yang masih punya peran sistem lain (employee, manager, hr_admin, dll) **tidak otomatis dihapus** oleh sync (non-destruktif); peran tsb tetap berfungsi sampai dihapus manual / peran kustom baru dibuat. Permission **catalog** bersifat in-memory di kode (`PermissionCatalog`), jadi permission baru langsung valid setelah deploy — yang perlu sinkronisasi hanyalah pemberian permission tsb ke role system tenant lama.
+> **Catatan migrasi:** hanya `tenant_admin`, `employee`, dan `platform_super_admin` yang direplikasi sebagai peran sistem. Tenant lama yang masih punya peran sistem lain (manager, hr_admin, dll — dari sebelum `employee` dipromosikan menjadi peran sistem) **tidak otomatis dihapus** oleh sync (non-destruktif); peran tsb tetap berfungsi sampai dihapus manual / peran kustom baru dibuat. Penugasan otomatis peran `employee` hanya berlaku untuk akun yang dibuat lewat onboarding karyawan setelah perubahan ini di-deploy — tidak ada tool backfill untuk karyawan/akun lama (lingkungan lama cukup di-reset). Permission **catalog** bersifat in-memory di kode (`PermissionCatalog`), jadi permission baru langsung valid setelah deploy — yang perlu sinkronisasi hanyalah pemberian permission tsb ke role system tenant lama.
 
 ---
 
