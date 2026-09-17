@@ -36,6 +36,7 @@ Modul cuti untuk HR Management System. Mengelola jenis cuti, saldo (jatah & sisa
 | [`05-api-contract.md`](./05-api-contract.md) | Endpoint cuti, saldo, approval |
 | [`06-data-model.md`](./06-data-model.md) | Skema entitas leave |
 | [`07-integration.md`](./07-integration.md) | Integrasi Attendance, Payroll, Core HR |
+| [`08-period-basis-implementation-plan.md`](./08-period-basis-implementation-plan.md) | Rencana implementasi `period_basis` anniversary/hybrid (belum dikerjakan) |
 
 ---
 
