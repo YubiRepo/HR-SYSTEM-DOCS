@@ -41,6 +41,14 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 
 ---
 
+## 0. Kontrak Timezone (berlaku di semua endpoint di bawah)
+
+Setiap field instant yang diterima dari client (`timestamp` pada clock-in/clock-out, `clock_in`/`clock_out` pada input manual & koreksi) **wajib RFC3339 dengan offset eksplisit** — `Z` atau `±HH:MM`; string tanpa offset (mis. `"2026-01-15T07:55:00"`) ditolak `422 INVALID_RECORD_ARGUMENT`/`INVALID_CORRECTION_ARGUMENT`.
+
+Offset yang dikirim client **tidak menentukan** tanggal kalender atau jam dinding yang dipakai untuk hitung telat/pulang cepat/lembur. Server selalu me-reproyeksi instant tersebut ke timezone cabang karyawan yang bersangkutan (fallback: timezone tenant, lalu default platform — lihat [platform/tenant/04-data-model.md](../platform/tenant/04-data-model.md)), apa pun offset yang dikirim. Jadi `"2026-01-14T18:30:00Z"`, `"2026-01-15T01:30:00+07:00"`, dan `"2026-01-15T02:30:00+08:00"` — tiga representasi instant fisik yang sama — menghasilkan tanggal/status yang identik untuk cabang ber-timezone Asia/Jakarta (UTC+7), bukan tiga hasil berbeda tergantung offset yang kebetulan dikirim client itu. Ini defense-in-depth di server: berlaku sama untuk kiriman dari mobile app, kiosk, maupun integrasi pihak ketiga di masa depan, tanpa bergantung pada offset lokal perangkat pengirim.
+
+---
+
 ## 1. POST /attendance/clock-in
 ```json
 { "timestamp": "2026-01-15T08:03:00+07:00", "lat": -6.200, "lng": 106.816, "source": "mobile", "photo_ref": "storage://..." }
