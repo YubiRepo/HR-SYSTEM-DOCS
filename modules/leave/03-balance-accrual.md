@@ -43,6 +43,15 @@ Des: +1 → saldo 12
 
 **Pro-rata karyawan baru:** karyawan masuk pertengahan tahun mendapat jatah proporsional (mis. masuk Juli → 6 hari untuk tahun itu), tergantung mode & kebijakan.
 
+**Implementasi (Okt 2026):**
+- **Monthly** = `quota_days ÷ 12` per bulan, dikreditkan di **awal bulan**, dihitung dari yang lebih akhir antara 1 Januari dan tanggal masuk (masuk 15 Maret → Maret sudah dapat). Dibulatkan **ke bawah ke kelipatan 0,5** (kuota 10 → bulan pertama 0,5, bukan 0,83). Wajib punya `quota_days`.
+- **Upfront** dan **None** sama-sama memberi kuota penuh sejak saldo dibuka (None dipakai jenis cuti per kejadian).
+- Akrual **dihitung saat dibaca**, bukan ditulis job bulanan — tak ada job yang bisa terlewat/dobel, dan tak ada baris ledger `accrual`.
+- Pengajuan dicek terhadap jatah yang terkumpul **sampai tanggal mulai cuti** (boleh merencanakan cuti bulan depan). Cuti lain yang sudah diajukan untuk tanggal lebih akhir tetap ikut mengurangi — pengecekannya konservatif.
+- Penyesuaian HR (adjust) dihitung penuh seketika, tidak di-pro-rata.
+- Mode akrual, kuota, dan tanggal mulai akrual **di-snapshot ke baris saldo** saat dibuka; mengubah mode di jenis cuti hanya berlaku untuk saldo yang dibuka sesudahnya.
+- Saat rollover, sisa dihitung dari akrual setahun penuh (per 31 Des), bukan per hari rollover dijalankan.
+
 ---
 
 ## 3. Kebijakan Tahun Pertama (Hak Setelah 12 Bulan)
@@ -123,6 +132,12 @@ akhir periode:
   └─ buka jatah periode baru (upfront) / mulai akrual baru (monthly)
 ```
 Dijalankan otomatis oleh sistem (background job) + dapat dipicu manual HR.
+
+**Implementasi saat ini** (`POST /leave/balances/rollover`, dipicu manual):
+- Idempoten — setiap saldo yang sudah ditutup diberi `rolled_over_at`; menjalankan ulang tidak membawa sisa dua kali.
+- Hanya `carried_in` periode baru yang ditambah; `quota` periode baru tidak ditimpa (adjustment HR yang sudah ada tetap).
+- Reservasi `pending` yang belum diputus tetap dihitung terpakai saat menghitung sisa.
+- Kedaluwarsa carry-over (`carry_over_expiry`) baru disimpan, belum ditegakkan.
 
 ---
 

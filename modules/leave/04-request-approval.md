@@ -15,16 +15,21 @@ lampiran : (opsional / wajib tergantung jenis)
 ```
 
 **Validasi saat pengajuan:**
-- Saldo cukup? (kecuali jenis tanpa jatah)
-- Memenuhi kelayakan? (masa kerja, gender)
+- Jenis cuti masih aktif? (jenis nonaktif → `LEAVE_TYPE_INACTIVE`)
+- Saldo cukup? (kecuali jenis tanpa jatah) — dipotong dari saldo **periode tanggal mulai cuti**, bukan periode saat diajukan
+- Memenuhi kelayakan? (masa kerja dihitung sampai **tanggal mulai cuti**, gender)
 - Lampiran ada bila `requires_document`? (mis. surat dokter untuk sakit)
-- Tidak bentrok dengan cuti lain / tanggal lampau?
+- Tidak bentrok dengan cuti lain?
 
-Setelah valid → masuk alur approval, status `pending`.
+**Setengah hari:** `half_day: true` hanya untuk pengajuan satu tanggal (hari kerja) → `days = 0,5`. Selain itu `days` = jumlah hari kerja Sen–Jum dalam rentang.
+
+Setelah valid → masuk alur approval, status `pending`, dan hari yang diajukan direservasi (`pending`) di saldo. Pengecekan bentrok + reservasi saldo dijalankan dalam satu transaksi dengan lock per karyawan, sehingga dua pengajuan bersamaan tidak bisa sama-sama lolos.
 
 ---
 
 ## 2. Alur Approval — Configurable per Jenis
+
+> **Status implementasi (Okt 2026):** approval saat ini **satu step** (atasan langsung, fallback HR bila tak punya atasan) untuk semua jenis cuti. Tenant hanya di-seed flow "1 Level (Atasan Direct)", tenant lama dipindahkan ke flow itu oleh migrasi `20261016000002`, dan backoffice tidak menampilkan/mengatur flow. Skema & domain tetap mendukung multi-step (contoh di bawah) untuk diaktifkan nanti.
 
 Tiap jenis cuti menunjuk **approval flow**. Contoh:
 
@@ -48,6 +53,13 @@ step 3: role tertentu / jabatan tertentu
 ## 3. Approver dari Reporting Line
 
 Langkah "atasan" memakai **reporting line Core HR** — sistem tahu manajer si karyawan tanpa hardcode. Bila atasan kosong (mis. level tertinggi), fallback ke HR (configurable).
+
+**Aturan otorisasi per step** (selain permission `leave:approve`):
+- Pemohon tidak boleh meng-approve/reject pengajuannya sendiri.
+- Satu user tidak boleh meng-approve lebih dari satu step pada pengajuan yang sama.
+- Step `manager` → hanya atasan langsung pemohon (atau siapa pun pemegang `leave:approve` bila atasan kosong).
+- Step `role` → reviewer wajib memegang role `approver_ref` (mis. `hr_admin`).
+- Pelanggaran → `NOT_CURRENT_APPROVER`. Dua approver yang bertindak bersamaan pada step yang sama: yang kedua mendapat `INVALID_STATE`.
 
 Delegasi: bila approver berhalangan (sedang cuti juga), bisa didelegasikan ke pengganti (configurable).
 

@@ -45,13 +45,17 @@ Entitas milik modul Leave. `employees` dirujuk dari Core HR.
 | `id` | string (PK) | |
 | `employee_id` | string (FK) | |
 | `type_id` | string (FK) | |
-| `period` | string | mis. `2026` |
-| `quota` | int | Jatah |
-| `used` | int | Terpakai |
-| `pending` | int | Diajukan belum disetujui |
-| `carried_in` | int | Dari carry-over periode lalu |
+| `period` | string | mis. `2026` — tahun dari **tanggal mulai cuti**, bukan tanggal pengajuan |
+| `quota` | number (5,1) | Jatah satu periode penuh, snapshot `quota_days` jenis cuti saat saldo dibuka |
+| `adjusted` | number (5,1) | Total penyesuaian HR (bisa negatif); dihitung penuh, tidak ikut di-pro-rata |
+| `accrual` | enum | Snapshot mode akrual: `upfront` / `monthly` / `none` |
+| `accrual_start` | date | Mulai akrual = max(1 Jan periode, tanggal masuk) |
+| `used` | number (5,1) | Terpakai |
+| `pending` | number (5,1) | Diajukan belum disetujui (reservasi) |
+| `carried_in` | number (5,1) | Dari carry-over periode lalu |
+| `rolled_over_at` | timestamp (nullable) | Diisi saat periode ini ditutup oleh rollover; rollover kedua kali di-skip (idempotent) |
 
-**Indeks:** `(employee_id, type_id, period)` unik. `balance` = quota + carried_in − used (dihitung).
+**Indeks:** `(tenant_id, employee_id, type_id, period)` unik. `balance` = accrued + carried_in − used − pending (dihitung), dengan accrued = bagian `quota` yang sudah terkumpul (penuh untuk upfront/none, `quota/12` per bulan untuk monthly) + `adjusted`. Baris saldo hanya ada untuk jenis cuti yang punya kuota.
 
 ### 2.3 `leave_requests`
 | Field | Tipe | Keterangan |
@@ -61,11 +65,13 @@ Entitas milik modul Leave. `employees` dirujuk dari Core HR.
 | `type_id` | string (FK) | |
 | `branch_id` | string (FK) | |
 | `date_from` / `date_to` | date | |
-| `days` | number | Jumlah hari (memperhitungkan hari kerja/libur) |
+| `days` | number (5,1) | Jumlah hari kerja (Sen–Jum); 0,5 untuk cuti setengah hari |
 | `reason` | string | |
 | `document_ref` | string (nullable) | Lampiran |
-| `status` | enum | `draft`, `pending`, `approved`, `rejected`, `cancelled` |
+| `balance_id` | string (FK, nullable) | Saldo yang direservasi saat submit; approve/reject/cancel menyelesaikan reservasi di baris ini. Null untuk jenis cuti tanpa kuota |
+| `status` | enum | `pending`, `approved`, `rejected`, `cancelled` (`draft` belum dipakai) |
 | `current_step` | int | Step approval berjalan |
+| `requested_by` | string | User id pengaju (karyawan sendiri, atau HR yang mengajukan atas nama karyawan) |
 
 ### 2.4 `approval_flows` & `approval_steps`
 `approval_flows`
@@ -80,9 +86,9 @@ Entitas milik modul Leave. `employees` dirujuk dari Core HR.
 |---|---|---|
 | `id` | string (PK) | |
 | `flow_id` | string (FK) | |
-| `step_order` | int | Urutan |
-| `approver_type` | enum | `manager` (reporting line) / `role` / `position` |
-| `approver_ref` | string (nullable) | Role/jabatan bila bukan manager |
+| `step_order` | int | Urutan, wajib 1..N tanpa celah/duplikat |
+| `approver_type` | enum | `manager` (reporting line) / `role`. `position` belum didukung (ditolak saat membuat flow) |
+| `approver_ref` | string (nullable) | Nama role (mis. `hr_admin`) untuk step `role` |
 
 ### 2.5 `leave_request_approvals`
 Jejak tiap keputusan approval (audit).
@@ -103,7 +109,7 @@ Riwayat perubahan saldo (auditable).
 | `id` | string (PK) | |
 | `employee_id` | string (FK) | |
 | `type_id` | string (FK) | |
-| `change` | int | +/− hari |
+| `change` | number (5,1) | Bertanda dari sisi karyawan: `used`/`expired` negatif, `carry_over` positif, `adjustment` sesuai tanda penyesuaian |
 | `reason` | enum | `accrual`, `used`, `carry_over`, `expired`, `adjustment`, `encashment` |
 | `ref_id` | string (nullable) | Rujuk request/proses |
 | `created_at` | timestamp | |

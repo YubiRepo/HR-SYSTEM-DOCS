@@ -19,7 +19,9 @@ Prefix `/api/v1/leave`. Envelope standar HRMS. Dijaga Entitlement (fitur `leave`
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
 | GET | `/leave/me/balance` | Saldo cuti sendiri | `leave:self` |
+| GET | `/leave/me/balance/preview?type_code=&date=` | Saldo sendiri yang akan dicek bila cuti dimulai `date` (akrual monthly dihitung s/d `date`; saldo belum ada → disimulasikan) | `leave:self` |
 | GET | `/leave/balances` | Saldo (filter karyawan/jenis) | `leave:read` |
+| GET | `/leave/balances/preview?employee_id=&type_code=&date=` | Sama seperti di atas, untuk karyawan tertentu | `leave:read` |
 | POST | `/leave/balances/adjust` | Penyesuaian saldo manual (HR) | `leave:config` |
 | POST | `/leave/balances/rollover` | Proses carry-over periode | `leave:config` |
 
