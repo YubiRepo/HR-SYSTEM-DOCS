@@ -41,17 +41,34 @@ Konfigurabel per cabang/lokasi. Bisa juga dilonggarkan untuk WFH.
 
 ## 4. Status Kehadiran Harian
 
-Setelah clock & dibandingkan jadwal, tiap hari punya status:
+Setelah clock & dibandingkan jadwal, status tiap hari disimpan sebagai **array** dengan paling banyak satu nilai per dimensi, berurutan **hari → kehadiran → masuk → pulang**. Tiap dimensi di-resolve sendiri, jadi kombinasi tidak hilang (telat sekaligus lembur tetap terlihat). Dimensi yang tidak relevan untuk hari itu tidak muncul di array.
 
-| Status | Arti |
-|---|---|
-| `present` | Hadir sesuai jadwal |
-| `late` | Masuk melewati toleransi |
-| `early_leave` | Pulang sebelum jadwal |
-| `overtime` | Ada jam lembur |
-| `absent` (alpha) | Tidak hadir tanpa keterangan |
-| `on_leave` | Cuti (dari modul Leave — bukan alpha) |
-| `holiday` / `day_off` | Libur |
+| Dimensi | Nilai | Arti / kapan diisi |
+|---|---|---|
+| Hari (`day`) | `workday` | Hari kerja terjadwal |
+| | `holiday` | Libur nasional/perusahaan |
+| | `day_off` | Tidak ada jadwal (libur) |
+| | `on_leave` | Cuti (dari modul Leave — bukan alpha) |
+| Kehadiran (`presence`) | `present` | Clock-in & clock-out ada |
+| | `incomplete` | Sudah clock-in, belum clock-out |
+| | `absent` (alpha) | Hari kerja tanpa clock-in |
+| Masuk (`arrival`) | `on_time` / `late` | Hanya hari kerja terjadwal yang sudah clock-in; `late` = melewati toleransi |
+| Pulang (`departure`) | `left_on_time` / `early_leave` / `overtime` / `auto_clock_out` | Hanya hari kerja terjadwal yang sudah clock-out; `auto_clock_out` didahulukan karena jamnya diisi sistem |
+
+Prioritas dimensi hari: `on_leave` > `holiday` > `day_off` > `workday`.
+
+Contoh:
+```
+["workday", "present", "late", "overtime"]   telat, tapi lembur
+["workday", "incomplete", "on_time"]         sedang bekerja
+["workday", "absent"]                        alpha
+["holiday", "present"]                       masuk di hari libur (lembur via overtime request)
+["on_leave"]                                 cuti
+```
+
+- Menit telat/pulang awal/lembur tetap disimpan terpisah (`late_minutes`, `early_leave_minutes`, `overtime_minutes`).
+- Koreksi `field=status` berisi **satu nilai**, yang mengganti nilai di dimensi yang sama (mis. `on_leave` mengganti `workday`). `old_value` adalah nilai lama di dimensi itu.
+- Shift `flexible`: `arrival` selalu `on_time`; `departure` dihitung dari total jam kerja vs target.
 
 > **Penting:** sistem membaca data **Leave** sebelum menandai `absent`. Karyawan yang cuti sah tidak boleh dihitung alpha.
 

@@ -86,7 +86,7 @@ Pola penugasan shift per **grup** (dept/posisi/custom/individual) — sumber gen
 | `source` | enum | `mobile`, `web`, `machine`, `kiosk`, `manual` |
 | `in_lat` / `in_lng` | number (nullable) | Lokasi clock-in |
 | `photo_ref` | string (nullable) | Bukti |
-| `status` | enum | `present`, `late`, `early_leave`, `overtime`, `absent`, `on_leave`, `holiday`, `day_off` |
+| `status` | text[] | Satu nilai per dimensi, urut hari → kehadiran → masuk → pulang (lihat 03 §4). Nilai: `workday`, `holiday`, `day_off`, `on_leave`, `present`, `absent`, `incomplete`, `on_time`, `late`, `left_on_time`, `early_leave`, `overtime`, `auto_clock_out`. Default `{workday,absent}`, index GIN |
 | `late_minutes` | int | |
 | `overtime_minutes` | int | |
 | `geofence_ok` | boolean | |

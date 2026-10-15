@@ -57,7 +57,7 @@ Offset yang dikirim client **tidak menentukan** tanggal kalender atau jam dindin
 ```json
 {
   "success": true,
-  "data": { "id": "att_01H8...", "clock_in": "08:03", "status": "present", "geofence": "ok" }
+  "data": { "id": "att_01H8...", "clock_in": "08:03", "status": ["workday", "incomplete", "on_time"], "geofence": "ok" }
 }
 ```
 **Error:** `422 OUTSIDE_GEOFENCE`, `422 OUTSIDE_CLOCK_WINDOW`, `409 ALREADY_CLOCKED_IN`.
@@ -128,7 +128,7 @@ Ringkasan hari ini untuk layar utama karyawan (mobile): jadwal hari ini + apakah
     "shift": { "name": "Reguler", "start": "08:00", "end": "17:00" },
     "clock_in": "08:03",
     "clock_out": null,
-    "status": "present"
+    "status": ["workday", "incomplete", "on_time"]
   }
 }
 ```
@@ -146,7 +146,7 @@ Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
 | `period` / `date_from` / `date_to` | Rentang waktu |
 | `employee_id` / `branch_id` / `department_id` | Cakupan subjek |
 | `shift_id` | Filter shift tertentu |
-| `work_time[status]` | Filter status kerja: `present`/`late`/`overtime`/`absent`/`on_leave` |
+| `work_time[status]` | Filter nilai status (03 §4). Boleh beberapa (diulang atau dipisah koma) — record harus memuat **semua** nilai, mis. `work_time[status]=late,overtime` |
 | `work_time[min_hours]` / `work_time[max_hours]` | Filter jam kerja (mis. < 4 jam / > 10 jam) |
 | `work_time[has_overtime]` | Hanya yang ada lembur |
 | `work_time[has_late]` | Hanya yang telat |

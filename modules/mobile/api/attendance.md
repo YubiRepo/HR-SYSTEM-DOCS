@@ -34,7 +34,7 @@ Endpoint Attendance yang dipakai aplikasi mobile. Semua memakai envelope standar
     "record_id": "att_01H...",
     "type": "in",
     "clock_in": "08:03",
-    "status": "present",
+    "status": ["workday", "incomplete", "on_time"],
     "late_minutes": 3,
     "within_geofence": true
   }
@@ -79,7 +79,7 @@ Endpoint Attendance yang dipakai aplikasi mobile. Semua memakai envelope standar
     "shift": { "name": "Pagi", "start": "08:00", "end": "17:00" },
     "clock_in": "08:03",
     "clock_out": null,
-    "status": "present",
+    "status": ["workday", "incomplete", "on_time"],
     "can_clock_out": true
   }
 }
@@ -143,8 +143,8 @@ Endpoint Attendance yang dipakai aplikasi mobile. Semua memakai envelope standar
   "data": {
     "summary": { "present": 8, "late": 1, "absent": 1, "on_leave": 2 },
     "members": [
-      { "employee_id": "emp_budi", "name": "Budi", "status": "present", "clock_in": "08:03" },
-      { "employee_id": "emp_sari", "name": "Sari", "status": "on_leave" }
+      { "employee_id": "emp_budi", "name": "Budi", "status": ["workday", "incomplete", "on_time"], "clock_in": "08:03" },
+      { "employee_id": "emp_sari", "name": "Sari", "status": ["on_leave"] }
     ]
   }
 }
