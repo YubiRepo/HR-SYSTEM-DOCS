@@ -60,7 +60,7 @@ Offset yang dikirim client **tidak menentukan** tanggal kalender atau jam dindin
   "data": { "id": "att_01H8...", "clock_in": "08:03", "status": "present", "geofence": "ok" }
 }
 ```
-**Error:** `422 OUTSIDE_GEOFENCE`, `409 ALREADY_CLOCKED_IN`.
+**Error:** `422 OUTSIDE_GEOFENCE`, `422 OUTSIDE_CLOCK_WINDOW`, `409 ALREADY_CLOCKED_IN`.
 
 ---
 
@@ -185,6 +185,7 @@ Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
 |---|---|---|
 | `FEATURE_NOT_IN_PLAN` | 403 | Tenant tak berlangganan fitur attendance |
 | `OUTSIDE_GEOFENCE` | 422 | Clock-in di luar area kerja |
+| `OUTSIDE_CLOCK_WINDOW` | 422 | Clock-in/out di luar `clock_in_window`/`clock_out_window` shift |
 | `ALREADY_CLOCKED_IN` | 409 | Sudah clock-in & belum clock-out |
 | `NO_SCHEDULE` | 422 | Tidak ada jadwal & tanpa default |
 | `CORRECTION_NOT_ALLOWED` | 409 | Periode sudah dikunci Payroll |

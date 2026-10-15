@@ -38,10 +38,11 @@ Shift Pagi:
 | `start` / `end` | Jam spesifik (mis. 12:00–13:00) |
 | `paid` | Dihitung jam kerja atau tidak (default tidak) |
 | `flexible` | Jam pasti, atau durasi bebas dalam rentang |
+| `duration_minutes` | Khusus break `flexible`: jatah durasi di dalam rentang `start`–`end` (0 = seluruh rentang). Break `flexible` boleh tanpa `start`/`end` (diambil kapan saja selama shift) — maka `duration_minutes` wajib > 0 |
 
 - **Jam kerja efektif** = durasi shift − total break tak berbayar.
 - Break berjam spesifik memudahkan validasi (mis. clock-out saat jam istirahat bukan "pulang").
-- Break `flexible` — karyawan ambil kapan saja asal total ≤ jatah (mis. 60' bebas).
+- Break `flexible` — karyawan ambil kapan saja asal total ≤ jatah (mis. 60' bebas). Contoh: `start` 11:00, `end` 14:00, `duration_minutes` 60 → yang dipotong dari jam kerja 60', bukan 180'.
 
 ### 1.2 Jam Absensi Efektif (Clock-in Window)
 
@@ -57,6 +58,12 @@ Shift Pagi (08:00–17:00):
 - Clock-in **sesudah** window → dianggap sangat telat / butuh koreksi.
 - Untuk shift `cross_midnight`, window menyesuaikan lintas hari.
 - Configurable per shift; bila kosong, pakai default longgar tenant.
+
+**Implementasi (API):**
+- Clock-in/clock-out mandiri (mobile/web) di luar window **ditolak** dengan `422 OUTSIDE_CLOCK_WINDOW`; perbaikannya lewat pengajuan koreksi.
+- Input manual HR, persetujuan koreksi, dan auto clock-out **tidak** dibatasi window.
+- Window ditempatkan relatif ke jam mulai shift (clock-in) / jam selesai shift (clock-out, +1 hari untuk `cross_midnight`), sehingga window yang melewati tengah malam (mis. 23:00–01:00) tetap benar.
+- Pada PATCH shift, kirim `{"from": "", "to": ""}` untuk menghapus window; field yang tidak dikirim berarti tidak berubah.
 
 ---
 
