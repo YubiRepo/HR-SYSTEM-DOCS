@@ -54,6 +54,8 @@ clock-in     : 08:20 → telat 20' (5' melewati toleransi)
 
 > Sebelum menandai alpha, sistem cek modul **Leave** — bila ada cuti sah, bukan alpha.
 
+**Penandaan alpha (implementasi):** karyawan yang tidak clock-in tidak punya record, jadi alpha/cuti baru tercatat lewat **evaluasi periode** (`POST /attendance/records/evaluate`, tombol *Evaluate Attendance* di Daily Records). Evaluasi membuat record `source=system` untuk setiap hari kosong, dengan urutan status yang sama seperti clock-in: cuti approved → `on_leave`, libur → `holiday`, tanpa jadwal → `day_off`, selain itu `absent`. Record system dihitung ulang tiap evaluasi (cuti yang di-approve belakangan mengubah absent → on_leave); koreksi yang di-approve atas record system menjadikannya `manual` sehingga tak ditimpa lagi. Tanggal yang periode payroll-nya terkunci dan tanggal sebelum tanggal masuk di-skip. Rencana: job harian yang mengevaluasi "kemarin" memakai use case yang sama.
+
 ---
 
 ## 5. Rekap Periode (untuk Payroll)

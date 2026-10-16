@@ -16,6 +16,7 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 | GET | `/attendance/me/today` | Jadwal & status hari ini | `attendance:self` |
 | GET | `/attendance/records` | Daftar catatan (filter) | `attendance:read` |
 | POST | `/attendance/records` | Input manual (HR) | `attendance:write` |
+| POST | `/attendance/records/evaluate` | Evaluasi periode: `{date_from, date_to, branch_id?}` (maks 31 hari, s/d kemarin). Hari tanpa record diisi record `source=system` (absent/on_leave/holiday/day_off); record system lama dihitung ulang; record ber-clock-in/manual/terkoreksi tidak disentuh. Response: ringkasan jumlah per status + yang di-skip | `attendance:write` |
 | POST | `/attendance/records/{id}/correction` | Ajukan/terapkan koreksi (self hanya untuk catatan miliknya sendiri) | `attendance:self` / `attendance:write` |
 | GET | `/attendance/me/corrections` | Status pengajuan koreksi milik sendiri | `attendance:self` |
 | POST | `/attendance/corrections/{id}/approve` | Setujui koreksi | `attendance:approve` |
