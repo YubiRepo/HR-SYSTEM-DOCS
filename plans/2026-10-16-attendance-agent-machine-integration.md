@@ -47,6 +47,8 @@ Keputusan dari user (2026-10-17): untuk sementara **full memakai vendor `fake`**
 | — | Import mapping massal (Cara 3) | ✅ Selesai (2026-10-17) | `POST /attendance/employee-mappings/import`, dry-run + commit, partial success |
 | — | Backoffice: halaman agent, mesin, mapping (+ import CSV), raw punches | ✅ Selesai (2026-10-17) | 3 halaman baru; mock `devices.vue`/`enrollment.vue` dibiarkan tersembunyi |
 | — | **Web UI agent**: setting di SQLite, `.env` untuk bootstrap, hot-apply, detach | ✅ Selesai (2026-10-17) | `agent.yaml` dihapus; lihat "Web UI agent" di §3 |
+| — | **Mesin "Database" generik (`sqldb`)**: MySQL/MariaDB, PostgreSQL, SQL Server, SQLite, MS Access | ✅ Selesai (2026-10-17) | Lihat "Mesin Database" di §3; Access/server DB asli belum diuji di lapangan |
+| — | Mesin file teks (CSV/TXT) | ⏸️ Ditunda | Keputusan user 2026-10-17: fokus DB dulu |
 
 **Kondisi kode:** semua perubahan masih **uncommitted** di working tree HR-SYSTEM-API (branch `main`). `go build ./...`, `go vet ./...`, dan `go test ./...` seluruh repo lulus.
 
@@ -185,6 +187,38 @@ Keputusan user: UI dibuka dari LAN + password · HTML/JS di-embed · hot-apply �
   - screenshot UI via Chrome headless;
   - cross-compile Windows OK.
 
+### Mesin "Database" generik — `sqldb` (2026-10-17)
+Agent membaca tabel/output yang ditulis software mesin ke database, tanpa adapter per vendor. Keputusan user: MySQL/MariaDB, PostgreSQL, SQL Server, SQLite, MS Access (ODBC) · pilih tabel + mapping kolom + opsi custom SQL · cursor ID atau waktu · file teks ditunda.
+
+- **`pkg/attendanceagent/machine/sqldb`:**
+  - opsi + validasi (identifier di-quote dan divalidasi; custom query hanya satu SELECT read-only);
+  - dialek per DBMS (placeholder `?`/`$n`/`@pn`, quoting, `LIMIT` vs `TOP`);
+  - DSN per driver; SQLite & Access dibuka read-only;
+  - konversi nilai: datetime atau teks dengan format/deteksi, kolom tanggal+jam terpisah, `local` vs `absolute`, mapping arah dan metode;
+  - filter mesin.
+- **Cursor:**
+  - `id` (`> terakhir`);
+  - `time` (`> terakhir`), dengan rewind untuk grup detik yang sama di batas halaman, baca penuh bila satu halaman berisi detik yang sama, dan re-check window untuk baris telat + memori "sudah dikirim";
+  - `Fetch` terus membaca halaman sampai event-nya genap satu limit, supaya baris yang dilewati tidak dikira "sudah habis".
+- **Driver baru:** `go-sql-driver/mysql` v1.10.1, `microsoft/go-mssqldb` v1.11.2 (sebelumnya v1.0.0 tidak langsung), `alexbrainman/odbc` (hanya Windows, tanpa CGO). `pgx` dan `modernc.org/sqlite` sudah ada. Build rilis sekitar 15–18 MB (sebelumnya sekitar 11 MB).
+- **Kontrak `machine` diperluas:**
+  - `OptionSpec` + `Group`/`Choices`/`ShowIf`/`Default`/`Secret`;
+  - tipe `select`/`password`/`number`/`table`/`column`;
+  - interface `Browser` (+ `RegisterBrowser`/`NewBrowser` yang hanya butuh opsi koneksi);
+  - `Closer`: agent menutup adapter saat stop/reload.
+- **Web UI:**
+  - form mesin dirender per grup, field muncul/hilang sesuai `ShowIf`;
+  - password tidak pernah dikirim ke browser; kosong = tidak berubah, termasuk saat Test/Browse lewat `original_serial`;
+  - tombol **Load tables / Load columns / Preview rows** (`POST /api/devices/browse`).
+- **Build:** `make agent-build` sekarang juga menghasilkan `attendance-agent-windows-386.exe` untuk ODBC Access 32-bit.
+- **Verifikasi:**
+  - test SQLite asli: cursor id/time, batas detik sama, re-check window, query JOIN, tanggal/jam terpisah, format teks, validasi opsi, SQL per dialek, DSN, browse;
+  - test web UI: secret tidak bocor/tersimpan, browse, test dengan `original_serial`;
+  - E2E binary + DB tiruan skema ZKTeco + mock API: browse, test, tambah mesin, punch baru terbaca tanpa duplikat;
+  - screenshot form;
+  - cross-compile windows amd64/386.
+  - **Belum:** koneksi Access/ODBC di Windows asli dan server MySQL/PostgreSQL/SQL Server sungguhan.
+
 ---
 
 ## 4. Yang Belum Dikerjakan
@@ -225,6 +259,8 @@ Keputusan user: UI dibuka dari LAN + password · HTML/JS di-embed · hot-apply �
 | Backoffice dicoba di **browser** terhadap API yang berjalan | ❌ Belum |
 | Web UI agent: test + E2E binary vs mock API + screenshot Chrome headless | ✅ Lulus |
 | Web UI agent di **Windows asli** / dari PC lain di LAN | ❌ Belum |
+| Mesin `sqldb`: test SQLite + E2E (DB tiruan skema ZKTeco) + screenshot | ✅ Lulus |
+| Mesin `sqldb` vs **MS Access (ODBC) di Windows** dan server **MySQL/PostgreSQL/SQL Server** sungguhan | ❌ Belum |
 | Adapter vendor asli vs mesin sungguhan | ⏸️ Belum ada adapter (ditunda) |
 
 **Langkah verifikasi yang disarankan** (detail di doc 12):
@@ -278,7 +314,7 @@ Angka-angka ini ditetapkan saat implementasi dan perlu dicocokkan dengan praktik
 - **Wiring:** `internal/modules/attendance/module.go`, `cmd/api/main.go`, `cmd/worker/main.go`, `internal/shared/httperror/status_map.go`
 - **Core HR:** `core-hr/contract.go` (`FindEmployeeByEmployeeNumber`), repo employee + 7 test fake
 - **Migrations:** `20261017000001_create_attendance_agent_ingestion_tables`, `20261017000002_create_attendance_employee_mappings_table`, `20261017000003_attendance_machine_punch_processing`
-- **Agent:** `cmd/attendance-agent/{main.go,proc_unix.go,proc_windows.go,.env.example}`, `pkg/attendanceagent/{config,store,client,agent,machine,machine/fake,webui}`, target `agent-build` di `Makefile`
+- **Agent:** `cmd/attendance-agent/{main.go,proc_unix.go,proc_windows.go,.env.example}`, `pkg/attendanceagent/{config,store,client,agent,machine,machine/fake,machine/sqldb,webui}`, target `agent-build` di `Makefile`
 
 ## 9. Peta File (HR-SYSTEM-BACKOFFICE)
 

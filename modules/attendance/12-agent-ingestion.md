@@ -190,8 +190,58 @@ Binary Go tunggal (`cmd/attendance-agent`, kode di `pkg/attendanceagent`), tanpa
 | Vendor (`vendor:`) | Keterangan |
 |---|---|
 | `fake` | Mesin simulasi untuk dev/test (mode `grid` & `logs`) |
+| `sqldb` | **Database (generik)**: membaca tabel/output yang ditulis software mesin ke database (MySQL/MariaDB, PostgreSQL, SQL Server, SQLite, MS Access). Lihat di bawah |
 
-Adapter vendor asli (Fingerspot via EasyLink SDK, lalu Solution) **ditunda** sampai respons SDK/mesin asli tersedia. Sementara agent hanya memakai `fake`.
+Adapter protokol mesin langsung (Fingerspot via EasyLink SDK, lalu Solution) **ditunda** sampai respons SDK/mesin asli tersedia.
+
+### Mesin "Database" (`sqldb`)
+
+Banyak mesin dikelola software bawaan vendor yang menyedot log mesin lalu menulisnya ke database. Agent cukup membaca tabel itu, tanpa adapter per vendor. Semua diatur dari form **Machines** di web UI (tipe "Database (machine software's table)").
+
+**Koneksi:**
+
+| DBMS | Isian | Catatan |
+|---|---|---|
+| MySQL / MariaDB | host, port (3306), database, username, password | |
+| PostgreSQL | host, port (5432), database, username, password | `sslmode=prefer` default |
+| SQL Server | host (boleh `SERVER\SQLEXPRESS`), port (1433), database, username, password | |
+| SQLite | path file | Dibuka **read-only** |
+| MS Access `.mdb/.accdb` | path file, password (opsional), nama driver ODBC | **Hanya build Windows.** Butuh *Microsoft Access Database Engine* dengan bitness sama dengan exe agent (Office/ACE 32-bit → `attendance-agent-windows-386.exe`). Dibuka read-only |
+
+- Parameter driver tambahan lewat "Extra connection parameters" (`key=value&...`, mis. `tls=true`, `encrypt=disable`).
+- **Password disimpan hanya di `agent.db` PC itu** dan tidak pernah dikirim balik ke browser. Field password yang dikosongkan saat mengedit berarti "tidak berubah".
+- **Gunakan user database read-only.**
+
+**Sumber data:**
+- **Tabel/view:** tombol **Load tables** mengisi pilihan tabel.
+- **Custom SELECT:** satu pernyataan `SELECT`/`WITH`, tanpa `ORDER BY` dan `;`. Kata kunci tulis (INSERT/UPDATE/DELETE/DROP/INTO/…) ditolak. Agent menambahkan filter, urutan, dan limit sendiri.
+- Contoh ZKTeco Attendance Management (Access):
+  ```sql
+  SELECT u.BADGENUMBER AS badge, c.CHECKTIME AS checktime, c.CHECKTYPE AS checktype,
+         c.VERIFYCODE AS verifycode, c.SENSORID AS sensorid
+  FROM CHECKINOUT c INNER JOIN USERINFO u ON u.USERID = c.USERID
+  ```
+- **Filter mesin (opsional):** bila satu tabel berisi banyak mesin, pilih kolom mesin + nilainya (mis. `sensorid = 1`). Daftarkan satu "mesin" per nilai, masing-masing dengan serial-nya sendiri di backoffice.
+
+**Mapping kolom** (tombol **Load columns** mengisi pilihan kolom; **Preview rows** menampilkan 5 baris mentah):
+
+| Field | Wajib | Keterangan |
+|---|---|---|
+| Employee ID column | ✓ | PIN/badge di mesin → `employee_ref` |
+| Punch time column | ✓ | Datetime, atau teks |
+| Date column | | Bila tanggal & jam terpisah (butuh cursor ID) |
+| Time format | | Untuk waktu berupa teks; layout Go atau `YYYY-MM-DD HH:mm:ss`. Kosong = deteksi otomatis (tanggal bergaris miring dibaca hari-dulu) |
+| Time values are | | `local` (jam dinding mesin, default) / `absolute` (mis. `timestamptz`) |
+| In/out column + nilai IN/OUT | | Mis. `I` / `O`; nilai lain → `unknown` |
+| Verification column + nilai | | Mis. `1=fingerprint,15=face,4=card`; nilai lain → `unknown`; tanpa kolom → `fingerprint` |
+
+**Cursor** (cara membaca baris baru):
+- **ID column** (disarankan): kolom yang selalu naik (auto-increment). `WHERE id > terakhir`. Paling andal.
+- **Punch time**: `WHERE waktu > terakhir`, ditambah **re-check window** (default 10 menit) yang membaca ulang baris lebih lama yang telat ditulis.
+  - Baris dengan detik yang sama di batas halaman tidak terlewat.
+  - Kalau dipakai dengan waktu berupa teks, formatnya harus bisa diurutkan (mis. `YYYY-MM-DD HH:mm:ss`).
+
+Membaca ulang selalu aman: idempotency key dibentuk dari serial, employee ref, waktu, dan ID baris. Tombol **Test** menampilkan punch persis seperti yang akan diterima sistem HR.
 
 ### Adapter uji `fake`
 
