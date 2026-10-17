@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Sebagian dikerjakan** — PR1–PR5, import mapping massal, dan halaman Backoffice selesai · Agent **hanya memakai vendor `fake`** (adapter Fingerspot dihapus 2026-10-17, vendor asli ditunda) · Semua belum di-commit, belum diuji ke DB asli · Sisa: adapter vendor asli, commit, uji ke infrastruktur asli |
+| **Status** | **Sebagian dikerjakan** — PR1–PR5, import mapping massal, halaman Backoffice, dan **web UI agent** (SQLite + `.env`, menggantikan `agent.yaml`) selesai · Agent **hanya memakai vendor `fake`** (adapter Fingerspot dihapus 2026-10-17, vendor asli ditunda) · Semua belum di-commit, belum diuji ke DB asli · Sisa: adapter vendor asli, commit, uji ke infrastruktur asli |
 | **Tanggal** | Dibuat 2026-10-16 · terakhir diperbarui 2026-10-17 |
 | **Pemicu** | Kebutuhan integrasi absensi dari mesin eksternal (fingerprint/face) melalui **agent yang di-install lokal** di jaringan klien, dengan vendor pertama sebagai blueprint untuk vendor berikutnya |
 | **Menggantikan** | [plans/2026-09-21-virtual-attendance-machine-device-integration.md](2026-09-21-virtual-attendance-machine-device-integration.md) (push langsung dari mesin + tulis record sinkron; tidak pernah dikoding) |
@@ -46,6 +46,7 @@ Keputusan dari user (2026-10-17): untuk sementara **full memakai vendor `fake`**
 | PR6 | Adapter vendor asli (**Fingerspot**, lalu **Solution**) | ⏸️ Ditunda | Sempat dibuat untuk Fingerspot dari format asumsi, lalu **dihapus** (2026-10-17). Sementara hanya `fake` (§6) |
 | — | Import mapping massal (Cara 3) | ✅ Selesai (2026-10-17) | `POST /attendance/employee-mappings/import`, dry-run + commit, partial success |
 | — | Backoffice: halaman agent, mesin, mapping (+ import CSV), raw punches | ✅ Selesai (2026-10-17) | 3 halaman baru; mock `devices.vue`/`enrollment.vue` dibiarkan tersembunyi |
+| — | **Web UI agent**: setting di SQLite, `.env` untuk bootstrap, hot-apply, detach | ✅ Selesai (2026-10-17) | `agent.yaml` dihapus; lihat "Web UI agent" di §3 |
 
 **Kondisi kode:** semua perubahan masih **uncommitted** di working tree HR-SYSTEM-API (branch `main`). `go build ./...`, `go vet ./...`, dan `go test ./...` seluruh repo lulus.
 
@@ -90,14 +91,14 @@ Keputusan dari user (2026-10-17): untuk sementara **full memakai vendor `fake`**
 
 ### PR5 — Agent lokal
 - `pkg/attendanceagent/`:
-  - `config`: `agent.yaml` + env `ATTENDANCE_AGENT_KEY`;
+  - `config`: struct setting + validasi (sejak web UI: tanpa YAML, lihat di bawah);
   - `store`: SQLite pure-Go. Event + checkpoint disimpan dalam satu transaksi;
   - `client`: klasifikasi 401/413/retryable/permanent;
   - `agent`: poller, sender, heartbeat, maintenance;
   - `machine`: kontrak adapter + registry; adapter `fake` untuk dev/test (mode `grid` dan `logs`, lihat doc 12 §5).
-- `cmd/attendance-agent`: `run`, `install`, `start`, `stop`, `restart`, `uninstall`, `status`, `test-device`, `version`. Berjalan sebagai Windows service / systemd. Contoh config ada di `agent.example.yaml`.
+- `cmd/attendance-agent`: `run`, `install`, `start`, `stop`, `restart`, `uninstall`, `status`, `test-device`, `version`. Berjalan sebagai Windows service / systemd. (`agent.example.yaml` kemudian diganti `.env.example`.)
 - `make agent-build AGENT_VERSION=x.y.z` menghasilkan `bin/` (Windows + Linux amd64).
-- Dependensi baru: `github.com/kardianos/service v1.2.2`, `go.yaml.in/yaml/v3 v3.0.4`. `modernc.org/sqlite` naik dari v1.18.1 ke v1.34.1 (sebelumnya sudah dependensi tidak langsung).
+- Dependensi baru: `github.com/kardianos/service v1.2.2` (`go.yaml.in/yaml/v3` kemudian dilepas lagi bersama `agent.yaml`). `modernc.org/sqlite` naik dari v1.18.1 ke v1.34.1 (sebelumnya sudah dependensi tidak langsung).
 
 ### PR6 — Adapter Fingerspot (dibuat lalu dihapus, 2026-10-17)
 Adapter `fingerspot_easylink` + simulator `cmd/easylink-sim` sempat dibangun dari format EasyLink SDK yang umum dikenal (belum diverifikasi), lalu **dihapus atas permintaan user**: untuk sementara agent hanya memakai `fake`. Catatan desain untuk saat vendor asli dikerjakan:
@@ -149,6 +150,41 @@ Adapter `fingerspot_easylink` + simulator `cmd/easylink-sim` sempat dibangun dar
   - parser CSV diuji dengan 6 kasus via Node.
   - **Belum** dicoba di browser terhadap API yang berjalan.
 
+### Web UI agent (2026-10-17) — menggantikan `agent.yaml`
+Keputusan user: UI dibuka dari LAN + password · HTML/JS di-embed · hot-apply · detach sendiri · `agent.yaml` diganti `.env`.
+
+- **Bootstrap `.env`** (`config/env.go`):
+  - variabel `AGENT_LISTEN` (default `0.0.0.0:8787`), `AGENT_DATA_DIR`, `AGENT_LOG_FILE`, `AGENT_LOG_LEVEL`;
+  - override opsional `AGENT_API_BASE` dan `ATTENDANCE_AGENT_KEY`;
+  - prioritas flag > env asli > `.env` > default;
+  - parser `.env` ditulis sendiri (komentar, kutip, `export`);
+  - YAML loader dan `agent.example.yaml` dihapus, diganti `.env.example`.
+- **SQLite** (`store/{schema,settings,ui}.go`):
+  - migrasi via `PRAGMA user_version`; DB lama ter-upgrade dengan antrean/checkpoint utuh;
+  - tabel `settings`, `devices` (+ `enabled`), dan `ui_sessions` (hanya hash token);
+  - `ListQueue`, `RetryDead`, `RetryPendingNow`.
+- **Supervisor** (`agent/supervisor.go`):
+  - `Apply` memuat ulang setting dan mengganti `Agent` yang berjalan **tanpa restart proses**;
+  - setting invalid → agent lama tetap jalan dan error dikembalikan per field;
+  - setting belum lengkap → state `not_configured`;
+  - setelah apply, antrean pending langsung jatuh tempo.
+  - `Agent.Snapshot()`: status mesin, batch/heartbeat terakhir, hasil cek mesin terdaftar di backoffice.
+- **Opsi adapter deklaratif:** `machine.RegisterVendor` + `OptionSpec`. Form mesin di UI digambar otomatis per vendor (`fake` mendaftarkan `employee_refs`, `interval`, `start`, `logs`, `fail`).
+- **Web UI** (`pkg/attendanceagent/webui`): `net/http` + `embed`, JS vanilla, teks bahasa Inggris, mode gelap/terang otomatis.
+  - Tab: Status, Connection (+ Test connection), Machines (+ Test), Settings (+ nilai `.env` read-only, ganti password), Queue (retry), Logs (ring buffer).
+  - Keamanan:
+    - setup code sekali pakai (terminal/log, `status`, `data/setup-code.txt`);
+    - bcrypt; cookie `HttpOnly` + `SameSite=Strict`, idle 12 jam;
+    - header CSRF `X-Agent-UI`; throttling login per IP;
+    - key tidak pernah dikirim balik ke browser;
+    - CSP ketat; endpoint shutdown hanya dari loopback + token.
+- **CLI:** `run [-d]`, `shutdown`, `status`, `reset-password` (tanpa restart), `test-device` (membaca dari DB), plus `install/start/stop/restart/uninstall`. Satu agent per data dir. Detach per OS (`proc_unix.go` Setsid, `proc_windows.go` DETACHED_PROCESS).
+- **Verifikasi:**
+  - test (config/env, store + upgrade DB lama, supervisor dengan `-race`, webui httptest: auth/setup/throttle/CSRF/settings/devices/shutdown) lulus;
+  - E2E binary + mock API: `run -d` → setup code → konfigurasi lewat API UI → key salah (punch tertahan, 401 tampil) → perbaiki key tanpa restart (punch langsung terkirim) → mesin kedua + edit invalid ditolak → `status`, `shutdown` → restart tetap terkonfigurasi;
+  - screenshot UI via Chrome headless;
+  - cross-compile Windows OK.
+
 ---
 
 ## 4. Yang Belum Dikerjakan
@@ -158,9 +194,11 @@ Adapter `fingerspot_easylink` + simulator `cmd/easylink-sim` sempat dibangun dar
    - dibangun dari respons SDK/mesin asli (§6), sebagai paket baru `pkg/attendanceagent/machine/<vendor>` mengikuti `fake`;
    - lalu tambahkan vendornya ke `MACHINE_VENDORS` di Backoffice.
 2. **Commit & PR** untuk PR1–PR5, import mapping, dan Backoffice (3 repo), idealnya dipisah per tahap.
-3. **Uji Backoffice di browser** terhadap API + worker yang berjalan (alur: register agent → key → register mesin → agent `fake` → punch muncul → mapping/import → reprocess).
-4. **Verifikasi ke infrastruktur asli** (§5).
-5. **Opsional/hardening:**
+3. **Uji web UI agent di Windows asli** (`run -d`, `install`/`start` service, akses dari PC lain di LAN; pastikan firewall Windows mengizinkan port `AGENT_LISTEN`).
+4. **Uji Backoffice di browser** terhadap API + worker yang berjalan (alur: register agent → key → register mesin → agent `fake` → punch muncul → mapping/import → reprocess).
+5. **Verifikasi ke infrastruktur asli** (§5).
+6. **Opsional/hardening:**
+   - web UI agent: HTTPS/TLS untuk akses LAN, rotasi log;
    - Backoffice: hapus atau ganti mock `devices.vue`/`enrollment.vue` setelah fitur method config/enrollment diputuskan;
    - rotasi file log agent;
    - auto-update agent;
@@ -185,13 +223,15 @@ Adapter `fingerspot_easylink` + simulator `cmd/easylink-sim` sempat dibangun dar
 | `cmd/migrate` setelah upgrade `modernc.org/sqlite` | ❌ Belum dijalankan |
 | Backoffice: `eslint` + `nuxt typecheck` file baru, parser CSV (Node) | ✅ Bersih / lulus |
 | Backoffice dicoba di **browser** terhadap API yang berjalan | ❌ Belum |
+| Web UI agent: test + E2E binary vs mock API + screenshot Chrome headless | ✅ Lulus |
+| Web UI agent di **Windows asli** / dari PC lain di LAN | ❌ Belum |
 | Adapter vendor asli vs mesin sungguhan | ⏸️ Belum ada adapter (ditunda) |
 
 **Langkah verifikasi yang disarankan** (detail di doc 12):
 1. `make migrate-up`, lalu jalankan `cmd/api` + `cmd/worker`.
 2. Register agent (simpan key) dan register device `FAKE-001`.
 3. Pastikan `employee_number` karyawan uji = `1023`.
-4. Jalankan `attendance-agent run` dengan vendor `fake`.
+4. Jalankan `attendance-agent run -d`, buka web UI, masukkan setup code, isi Connection (API + key), lalu tambahkan mesin `fake` (mode `logs`).
 5. Cek `GET /attendance/raw-events` dan `GET /attendance/records` (`source=machine`, `verification=fingerprint`).
 6. Matikan API sebentar, hidupkan lagi → punch tidak hilang dan tidak dobel.
 7. Jalankan `POST /attendance/records/evaluate` → record machine tidak berubah.
@@ -238,7 +278,7 @@ Angka-angka ini ditetapkan saat implementasi dan perlu dicocokkan dengan praktik
 - **Wiring:** `internal/modules/attendance/module.go`, `cmd/api/main.go`, `cmd/worker/main.go`, `internal/shared/httperror/status_map.go`
 - **Core HR:** `core-hr/contract.go` (`FindEmployeeByEmployeeNumber`), repo employee + 7 test fake
 - **Migrations:** `20261017000001_create_attendance_agent_ingestion_tables`, `20261017000002_create_attendance_employee_mappings_table`, `20261017000003_attendance_machine_punch_processing`
-- **Agent:** `cmd/attendance-agent/`, `pkg/attendanceagent/{config,store,client,agent,machine,machine/fake}`, target `agent-build` di `Makefile`
+- **Agent:** `cmd/attendance-agent/{main.go,proc_unix.go,proc_windows.go,.env.example}`, `pkg/attendanceagent/{config,store,client,agent,machine,machine/fake,webui}`, target `agent-build` di `Makefile`
 
 ## 9. Peta File (HR-SYSTEM-BACKOFFICE)
 

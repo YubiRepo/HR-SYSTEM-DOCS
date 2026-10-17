@@ -108,7 +108,43 @@ idempotency_key = sha256( lower(vendor) | device_serial | employee_ref | occurre
 
 ## 5. Agent Lokal
 
-Binary Go tunggal (`cmd/attendance-agent`, kode di `pkg/attendanceagent`), tanpa CGO. Jalan sebagai **Windows service** atau **systemd** (via `kardianos/service`).
+Binary Go tunggal (`cmd/attendance-agent`, kode di `pkg/attendanceagent`), tanpa CGO. Bisa dijalankan di foreground, **detach ke background** (`run -d`), atau sebagai **Windows service** / **systemd** (via `kardianos/service`).
+
+**Konfigurasi = UI browser + SQLite.** Semua setting operasional diatur dari **web UI agent** dan disimpan di `data/agent.db` (SQLite, bersama antrean dan checkpoint). Setting itu berlaku **langsung tanpa restart**:
+- API base dan agent key;
+- interval poll/kirim/heartbeat, timeout, batch, fetch limit, retensi;
+- daftar mesin + opsi adapter.
+
+`agent.yaml` **tidak dipakai lagi**. File **`.env`** (opsional, di folder exe atau lewat `-env`) hanya berisi bootstrap yang dibutuhkan sebelum database dibuka:
+
+| Variabel | Default | Keterangan |
+|---|---|---|
+| `AGENT_LISTEN` | `0.0.0.0:8787` | Alamat/port web UI (bisa dari LAN, dilindungi password) |
+| `AGENT_DATA_DIR` | `<folder exe>/data` | Database, pid file, token kontrol |
+| `AGENT_LOG_FILE` | `<data>/logs/agent.log` | `""` = stdout saja |
+| `AGENT_LOG_LEVEL` | `info` | `debug`/`info`/`warn`/`error` |
+| `AGENT_API_BASE`, `ATTENDANCE_AGENT_KEY` | — | Opsional: menimpa nilai di UI (UI menampilkannya read-only) |
+
+- Prioritas: flag (`-listen`, `-data`) > environment variable asli > `.env` > default.
+- Contoh: `cmd/attendance-agent/.env.example`.
+- Mengubah `.env` butuh restart.
+
+**Keamanan web UI:**
+- **Setup pertama** butuh **setup code** sekali pakai. Code dicetak di terminal/log dan ditampilkan oleh `status` (juga ada di `data/setup-code.txt` sampai password dibuat), lalu pengguna membuat password.
+- Login (bcrypt) dengan cookie sesi `HttpOnly` + `SameSite=Strict`, idle 12 jam.
+- Header `X-Agent-UI` wajib di setiap request yang mengubah data.
+- Throttling login per IP.
+- Agent key tidak pernah dikirim balik ke browser; yang tampil hanya `hra_xxxx…`.
+- HTTP biasa di LAN = risiko yang diterima untuk saat ini.
+- Lupa password: `attendance-agent reset-password`.
+
+**Tab UI:**
+- **Status**: state agent, mesin online/offline, antrean, kirim/heartbeat terakhir, mesin yang belum terdaftar di backoffice.
+- **Connection**: API base + key, dengan tombol *Test connection*.
+- **Machines**: tambah/edit/aktif-nonaktif/hapus. Form opsi digambar otomatis dari `OptionSpec` adapter; ada tombol *Test*.
+- **Settings**: interval/limit; nilai `.env` efektif (read-only); ganti password.
+- **Queue**: punch pending/dead/sent, *Retry all rejected*, *Send now*.
+- **Logs**.
 
 **Cara kerja:**
 - **Poller** (satu per mesin): adapter `Fetch` dari checkpoint → event + checkpoint baru disimpan **dalam satu transaksi SQLite** → tidak ada punch hilang/ganda saat crash (punch yang di-fetch ulang punya `idempotency_key` sama). Halaman diambil terus sampai habis. Mesin gagal → backoff per mesin, mesin lain tetap jalan.
@@ -118,19 +154,36 @@ Binary Go tunggal (`cmd/attendance-agent`, kode di `pkg/attendanceagent`), tanpa
   - 413 → ukuran batch dibagi dua;
   - 401 → jeda 5 mnt + log error. Punch **tidak pernah dihapus**.
 - **Heartbeat** tiap 5 mnt: versi agent + status online/error per mesin.
-- Saat start, agent mencocokkan daftar mesin di `agent.yaml` dengan yang terdaftar di backoffice dan memberi peringatan bila tidak cocok.
+- Saat start (dan setiap setting diterapkan), agent mencocokkan mesinnya dengan yang terdaftar di backoffice. Ketidakcocokan tampil di tab Status.
+- Setiap setting yang berhasil diterapkan langsung membuat antrean pending jatuh tempo, jadi setelah key/URL diperbaiki punch langsung terkirim tanpa menunggu backoff.
 - Event `sent` > 30 hari dihapus dari antrean lokal.
 
-**Instalasi (Windows, PowerShell sebagai Administrator):**
-```
-attendance-agent-windows-amd64.exe test-device      # cek koneksi ke mesin
-attendance-agent-windows-amd64.exe install          # pasang service (config: agent.yaml di folder yang sama)
-attendance-agent-windows-amd64.exe start
-attendance-agent-windows-amd64.exe status           # status service + antrean (pending/sent/dead)
-```
-Perintah lain: `run` (foreground), `stop`, `restart`, `uninstall`, `version`. Contoh config: `cmd/attendance-agent/agent.example.yaml`. Key agent bisa lewat env `ATTENDANCE_AGENT_KEY`. Build: `make agent-build AGENT_VERSION=x.y.z` → `bin/`.
+**Instalasi:**
+1. Salin binary (+ opsional `.env` dari `.env.example`) ke sebuah folder di PC kantor.
+2. `attendance-agent run -d` → mencetak URL web UI + setup code.
+3. Buka UI dari browser (PC itu atau PC lain di LAN):
+   - masukkan setup code dan buat password;
+   - isi **Connection** (API base + key dari backoffice) lalu *Test connection*;
+   - tambahkan mesin di **Machines**.
+4. Untuk start otomatis saat boot, pakai service: `install` lalu `start` (Windows: PowerShell sebagai Administrator).
 
-**Menambah vendor (blueprint):** buat paket `pkg/attendanceagent/machine/<vendor>` yang mengimplementasikan `machine.Adapter` (`Ping`, `Fetch(cursor, limit)`), memanggil `machine.Register("<vendor>", ...)` di `init()`, dan membangun event via `machine.NewEvent` (yang menghitung `idempotency_key`). Lalu tambahkan satu blank import di `cmd/attendance-agent/main.go`. Server tidak berubah. Contoh acuan: adapter `fake`.
+**Perintah:**
+
+| Perintah | Fungsi |
+|---|---|
+| `run [-d]` | Jalankan agent + web UI (foreground, atau `-d` di background; output ke `data/agent.out`) |
+| `shutdown` | Hentikan agent yang dijalankan dengan `run -d` (graceful lewat endpoint kontrol lokal, fallback kill) |
+| `status` | Status service/proses, URL UI, setup code bila perlu, statistik antrean |
+| `install` / `uninstall` / `start` / `stop` / `restart` | Service OS |
+| `reset-password` | Hapus password UI; setup code baru langsung diterbitkan |
+| `test-device [-serial SN]` | Ping mesin dari database + dry-run fetch |
+| `version` | Versi + vendor yang tersedia |
+
+- Flag umum: `-env PATH`, `-data DIR`, `-listen ADDR`.
+- Satu data dir hanya bisa dipakai satu agent; instance kedua ditolak.
+- Build: `make agent-build AGENT_VERSION=x.y.z` → `bin/`.
+
+**Menambah vendor (blueprint):** buat paket `pkg/attendanceagent/machine/<vendor>` yang mengimplementasikan `machine.Adapter` (`Ping`, `Fetch(cursor, limit)`), memanggil `machine.RegisterVendor(machine.VendorInfo{Name, Label, NeedsEndpoint, Options: []OptionSpec{...}}, factory)` di `init()` (form mesin di UI dibangun otomatis dari `Options`), dan membangun event via `machine.NewEvent` (yang menghitung `idempotency_key`). Lalu tambahkan satu blank import di `cmd/attendance-agent/main.go`. Server tidak berubah. Contoh acuan: adapter `fake`.
 
 **Vendor yang tersedia:**
 
@@ -142,21 +195,16 @@ Adapter vendor asli (Fingerspot via EasyLink SDK, lalu Solution) **ditunda** sam
 
 ### Adapter uji `fake`
 
-Mesin simulasi untuk dev/test tanpa hardware (`pkg/attendanceagent/machine/fake`), dipakai lewat `test-device`/`run`. Dua mode:
+Mesin simulasi untuk dev/test tanpa hardware (`pkg/attendanceagent/machine/fake`). Diatur dari tab **Machines** di UI (vendor "Simulated machine"), lalu dicek dengan tombol *Test* atau `test-device`. Dua mode:
 
 - **grid** (default): satu punch per `employee_refs` setiap `interval`, mulai `start`. Praktis untuk aliran cepat, tapi hanya di kelipatan `interval`, semua ref pada jam yang sama, dan clock-out bergeser seiring tick baru (punch terakhir = pulang).
 - **`logs`**: mereplay log eksplisit — satu punch per baris `employee_ref,occurred_at[,direction[,verification]]` (RFC3339 dengan offset; default `unknown`/`fingerprint`; baris kosong/berawalan `#` diabaikan). Menentukan tanggal & jam persis dan hasilnya tetap. Saat `logs` diisi, `employee_refs`/`interval`/`start` diabaikan.
 
-```yaml
-devices:
-  - serial: FAKE-001
-    vendor: fake
-    timezone: Asia/Jakarta
-    options:
-      logs: |
-        1023,2026-10-15T09:00:00+07:00,in,fingerprint
-        1023,2026-10-15T17:05:00+07:00,out,fingerprint
-        5001,2026-10-15T08:15:00+07:00
+Contoh isi field **Logs** di form mesin:
+```
+1023,2026-10-15T09:00:00+07:00,in,fingerprint
+1023,2026-10-15T17:05:00+07:00,out,fingerprint
+5001,2026-10-15T08:15:00+07:00
 ```
 
 `occurred_at` tidak boleh lebih dari 5 menit di masa depan (aturan kontrak §2); punch dengan `employee_ref` yang sudah dipetakan (§6) akan ter-resolve ke karyawan tersebut.
