@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | Rencana disetujui (plan mode) · Belum dieksekusi/dikoding |
+| **Status** | **Superseded** (2026-10-16) oleh [plans/2026-10-16-attendance-agent-machine-integration.md](2026-10-16-attendance-agent-machine-integration.md) (progres) dan [modules/attendance/12-agent-ingestion.md](../modules/attendance/12-agent-ingestion.md) (spek) — model agent lokal (pull) + raw event + pemrosesan async · Tidak dikoding |
 | **Tanggal** | 2026-09-21 |
 | **Pemicu** | Permintaan membuat modul "virtual machine absen" — simulator mesin absensi fisik yang interfacing-nya dibuat semirip mungkin dengan produk mesin absensi nyata di industri (Fingerspot), agar nanti bisa disetting koneksi ke sistem attendance yang sudah ada |
 | **Modul terdampak** | Attendance (HR-SYSTEM-API), Core HR (HR-SYSTEM-API, untuk resolusi `employee_ref`), Backoffice (tidak diubah — lihat §7) |

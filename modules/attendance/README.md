@@ -42,6 +42,7 @@ Modul kehadiran untuk HR Management System. Mencatat kapan karyawan masuk & pula
 | [`09-method-config.md`](./09-method-config.md) | Konfigurasi metode absen per tenant/cabang |
 | [`10-identity-enrollment.md`](./10-identity-enrollment.md) | Daftar sidik jari/wajah/kartu & tautkan ke karyawan |
 | [`11-geofence.md`](./11-geofence.md) | Validasi lokasi: radius (Haversine), server-side, anti-fake-GPS |
+| [`12-agent-ingestion.md`](./12-agent-ingestion.md) | Agent lokal (pull mesin) & kontrak ingestion netral vendor |
 
 ---
 
