@@ -1,62 +1,68 @@
 # 02 · Evaluation
 
-## 1. Dua Jenis Pengecekan
+## 1. Tiga Jenis Pengecekan
 
-### 1.1 Feature check (on/off)
-"Boleh pakai fitur ini?"
+### 1.1 Access mode
 ```
-require_feature("payroll")
-  → entitlement.features.includes("payroll") ? lanjut : 403 FEATURE_NOT_IN_PLAN
+access_mode == none                       → 402 SUBSCRIPTION_INACTIVE
+access_mode == read_only && bukan GET     → 402 SUBSCRIPTION_READ_ONLY
 ```
 
-### 1.2 Limit check (kuota)
-"Masih dalam batas?"
+### 1.2 Benefit check (tersedia / tidak)
 ```
-check_limit("max_employees", current=498, adding=5)
-  → 498 + 5 > 500 ? 402 LIMIT_EXCEEDED : lanjut
+require_benefit("payroll")
+  → effective.benefits["payroll"].enabled ? lanjut : 403 FEATURE_NOT_IN_PLAN
 ```
-Limit dicek **sebelum** operasi yang menambah pemakaian (tambah karyawan, buat cabang, dsb). Nilai `-1` berarti unlimited.
+
+### 1.3 Quota check
+```
+ensure_quota("max_employees", current=15, adding=1)
+  → quota == -1 ? lanjut
+  → 15 + 1 > quota ? 402 LIMIT_EXCEEDED : lanjut
+```
+Quota dicek **sebelum** operasi yang menambah pemakaian. Benefit quota yang tidak ada atau dimatikan dihitung sebagai quota `0`.
 
 ---
 
 ## 2. Penegakan: Backend Wajib, Frontend Kosmetik
 
-- **Backend** penegak sebenarnya (Feature & Limit dicek di server sebelum eksekusi).
-- **Frontend** hanya menyembunyikan/menonaktifkan UI demi UX — tidak boleh jadi satu-satunya penjaga.
+- **Backend** adalah penegak sebenarnya: middleware route + cek kuota di use case.
+- **Frontend** hanya menyembunyikan menu (`useEntitlementGate`) dan menampilkan banner read-only.
 
 ---
 
 ## 3. Urutan Cek dengan RBAC
 
-Untuk endpoint yang butuh keduanya, cek berlapis:
-
 ```
-request → 1) Entitlement: tenant punya Feature? & dalam Limit?
-        → 2) RBAC: user punya permission?
-        → lolos keduanya → eksekusi
+request → auth → principal → 1) Entitlement: access mode + benefit modul/sub-fitur
+                           → 2) RBAC: user punya permission?
+                           → 3) Use case: quota (bila menambah pemakaian)
+                           → eksekusi
 ```
 
-Bila fitur tak dientitle → `403 FEATURE_NOT_IN_PLAN` (arahkan upgrade).
-Bila izin kurang → `403 PERMISSION_DENIED`.
+Platform staff (tanpa `tenant_id`) melewati gate entitlement; RBAC tetap berlaku.
 
 ---
 
 ## 4. Sumber Pemakaian (Usage)
 
-Limit check butuh angka pemakaian terkini. Sumbernya dari modul pemilik data:
+| Quota | Sumber angka | Ditegakkan di |
+|---|---|---|
+| `max_employees` | Core HR (karyawan `is_active`) | Create employee, bulk import (per baris; dry-run ikut mensimulasikan) |
+| `max_branches` | Tenant (cabang aktif) | Tambah cabang (self-service & platform) |
+| `max_devices` | Attendance (mesin `status=active`) | Daftar mesin, aktivasi ulang mesin |
+| `max_users` | Auth (user tenant non-disabled) | Register/invite user. Admin pertama saat provisioning dikecualikan |
 
-| Limit | Sumber angka |
-|---|---|
-| `max_employees` | Core HR (jumlah karyawan aktif) |
-| `max_branches` | Tenant module (jumlah cabang) |
-| `payroll.max_payslips_month` | Payroll |
+Entitlement menyediakan **batas**; modul pemilik menyediakan **pemakaian**.
 
-Entitlement menyediakan **batas**; modul pemilik menyediakan **pemakaian**; perbandingan dilakukan saat operasi.
+Ganti plan juga dicek: bila pemakaian saat ini melebihi quota plan tujuan (mis. downgrade 30 karyawan ke plan 15), perubahan ditolak `LIMIT_EXCEEDED`. Key yang tertutup override aktif dilewati.
 
 ---
 
 ## 5. Performa & Caching
 
-- Entitlement efektif per tenant dapat **di-cache** dengan TTL pendek.
-- **Invalidasi** cache saat: plan berubah, override diterapkan, atau status subscription berpindah.
-- Untuk latensi rendah, entitlement ringkas bisa disematkan di konteks request (mis. gateway) — tetap dengan penegakan backend.
+- Entitlement efektif per tenant di-cache di Redis (`platform:entitlement:v1:<tenant_id>`, TTL 60 detik, fail-open).
+- Dalam satu request, hasilnya di-resolve sekali walau beberapa gate bertumpuk.
+- **Invalidasi** setelah: ganti/cancel subscription, override, renewal, dunning (past_due/suspend), pembayaran (webhook/approval manual).
+- Edit plan **tidak** perlu invalidasi (snapshot tidak berubah).
+- Perubahan status tenant di luar dunning, serta perubahan dari proses worker (yang tidak terhubung Redis), menyusul dalam ≤ TTL.

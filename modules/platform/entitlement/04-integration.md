@@ -1,65 +1,67 @@
 # 04 · Integration
 
-Cara modul lain (Core HR, Payroll, dst) mengonsumsi Entitlement.
+Cara modul lain (Core HR, Leave, Attendance, Payroll, Auth) mengonsumsi Entitlement.
 
 ---
 
-## 1. Pola Konsumsi
+## 1. Gate bersama: `internal/shared/entitlementgate`
 
-| Titik | Contoh |
+Gate tidak dimiliki modul mana pun. `platform.Contract.ResolveEntitlement(ctx, tenantID)` mengimplementasikan `entitlementgate.Resolver`, dan setiap modul meneruskan `platform.Contract`-nya:
+
+| Fungsi | Dipakai untuk |
 |---|---|
-| **Gerbang fitur** | Payroll menolak jalan bila `payroll` tak dientitle |
-| **Guard kapasitas** | Core HR menolak `POST /employees` bila `max_employees` terlampaui |
-| **UI adaptif** | Frontend menyembunyikan menu fitur yang tak dientitle |
+| `RequireBenefit(resolver, keys...)` | Middleware gin di route group / sub-router |
+| `EnsureQuota(ctx, resolver, tenantID, key, current, adding)` | Use case yang menambah pemakaian |
+| `EnsureBenefit(ctx, resolver, tenantID, write, keys...)` | Jalur tanpa principal (agent attendance) |
+
+Resolver `nil` (modul dibangun tanpa platform, mis. di test) mematikan gate.
 
 ---
 
-## 2. Alur Cek di Modul Lain
+## 2. Penempatan Gate
 
-```
-Core HR: POST /employees
-   │
-   ├─ Entitlement.check(feature "core_hr", limit max_employees +1)
-   │      └─ allow? tidak → 402/403 (arahkan upgrade)
-   ├─ RBAC: user punya employees:write?
-   │      └─ tidak → 403
-   └─ ya semua → buat karyawan
-```
-
-Dua penjaga berlapis: **Entitlement** (tenant boleh & dalam batas) + **RBAC** (user berizin).
-
----
-
-## 3. Menyediakan Angka Pemakaian
-
-Entitlement tahu **batas**, tapi tidak menyimpan **pemakaian**. Modul pemilik data menyediakannya saat cek:
-
-| Limit | Modul penyedia usage |
+| Route / aksi | Benefit |
 |---|---|
-| `max_employees` | Core HR |
-| `max_branches` | Tenant module |
-| `payroll.max_payslips_month` | Payroll |
+| `/api/v1/core-hr/*` | `core_hr` |
+| `/api/v1/core-hr/employees/import*` | + `core_hr.bulk_import` |
+| `/api/v1/attendance/*` | `attendance` |
+| `/attendance/agents`, `/devices`, `/employee-mappings`, `/raw-events` | + `attendance.device` |
+| `/attendance/overtime*`, `/attendance/me/overtime` | + `attendance.overtime` |
+| `/api/v1/attendance/agent/*` (X-Agent-Key) | `attendance` + `attendance.device`, dicek di `AuthenticateAgent` |
+| `/api/v1/leave/*` | `leave` |
+| `/api/v1/payroll/*` | `payroll` |
+| `/payroll/employees/{id}/tax-profile` | + `payroll.tax` |
+| Create employee / bulk import | quota `max_employees` |
+| Tambah cabang | quota `max_branches` |
+| Daftar / aktivasi mesin | quota `max_devices` |
+| Register / invite user | quota `max_users` |
+| Job generate jadwal bulanan | dilewati untuk tenant tanpa `attendance` atau access ≠ `full` |
 
-Pola: modul menghitung `current`, kirim ke `POST /entitlement/check` bersama `adding`.
+Tidak di-gate: `/api/v1/entitlement`, `/billing`, `/tenants/me`, `/branches` (read), `/auth`, `/rbac`.
+
+---
+
+## 3. Menambah Benefit Baru
+
+1. Daftarkan benefit di backoffice (*Plans & Entitlements → Master benefits*) atau di `entitlement_catalog_seeder.go`.
+2. Isi selnya di matriks plan.
+3. Pasang gate: `entitlementgate.RequireBenefit(m.entitlement, "<key>")` di route, atau `EnsureQuota` di use case.
+4. Subscription berjalan baru menerima benefit itu saat ganti plan / renewal. Seeder katalog juga menambahkan baris snapshot yang **belum ada** untuk subscription berjalan (nilai yang sudah ada tidak diubah).
 
 ---
 
 ## 4. Propagasi Perubahan
 
-| Perubahan (di Billing) | Efek di Entitlement |
+| Perubahan | Efek |
 |---|---|
-| Upgrade/downgrade plan | Entitlement efektif berubah; invalidasi cache tenant |
-| Override diterapkan/kedaluwarsa | Hitung ulang; invalidasi cache |
-| Status subscription berubah | Entitlement dipangkas/dipulihkan |
-
-Entitlement mendengarkan event dari Billing (mis. `subscription.updated`, `override.applied`) untuk menyegarkan cache.
+| Edit plan / sel matriks | Tidak ada untuk subscription berjalan (snapshot) |
+| Ganti plan / subscribe | Snapshot ulang + invalidasi cache |
+| Renewal ke periode baru | Snapshot ulang dari plan terkini + invalidasi cache |
+| Override diterapkan | Invalidasi cache |
+| Past due / suspend / pembayaran | Invalidasi cache (access mode bisa berubah) |
 
 ---
 
-## 5. Kontrak Antar Modul
+## 5. Frontend
 
-**Entitlement menyediakan:** hasil Feature/Limit efektif & endpoint cek.
-**Billing menyediakan:** definisi Plan/Feature/Limit & override (sumber).
-**Modul konsumen menyediakan:** angka pemakaian + penegakan hasil cek di endpoint mereka.
-
-> Entitlement menentukan *boleh atau tidak*; eksekusi & penyaringan data tetap tanggung jawab modul pemilik.
+`useEntitlementGate()` membaca `GET /entitlement/me`: `hasFeature(key)` untuk menyembunyikan menu, dan `accessMode` untuk banner read-only. Frontend tetap kosmetik; backend yang menegakkan.

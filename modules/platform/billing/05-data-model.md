@@ -7,12 +7,11 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 ## 1. Diagram Relasi
 
 ```
-  plans ───< plan_features >─── features
-    │  └──< plan_limits
+  plans ───< plan_benefits >─── benefits
     │ 1
     │ N
   subscriptions >─── tenants (modul Tenant)
-    │ 1
+    │ 1 └──< subscription_benefits   (snapshot benefit per periode)
     │ N
   invoices ───< payments
   tenant_overrides (1:N ke tenants)
@@ -22,13 +21,17 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 
 ## 2. Entitas
 
-### 2.1 `features`
+### 2.1 `benefits` (master)
 | Field | Tipe | Keterangan |
 |---|---|---|
-| `key` | string (PK) | mis. `payroll`, `sso` |
+| `key` | string (PK) | mis. `payroll`, `attendance.device`, `max_employees` |
 | `name` | string | |
 | `description` | string | |
-| `module` | string | Modul pemilik (info) |
+| `module` | string | Modul pemilik (info & pengelompokan matriks) |
+| `type` | enum | `feature` (tersedia/tidak) atau `quota` (+ angka batas) |
+| `unit` | string | Satuan quota, mis. `employees` |
+| `sort_order` | int | Urutan tampil |
+| `is_active` | boolean | Soft delete |
 
 ### 2.2 `plans`
 | Field | Tipe | Keterangan |
@@ -40,20 +43,27 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 | `trial_days` | int | 0 = tanpa trial |
 | `is_active` | boolean | |
 
-### 2.3 `plan_features` (join)
-| Field | Tipe |
-|---|---|
-| `plan_id` | string (FK) |
-| `feature_key` | string (FK) |
-> PK `(plan_id, feature_key)`.
-
-### 2.4 `plan_limits`
+### 2.3 `plan_benefits` (matriks plan)
 | Field | Tipe | Keterangan |
 |---|---|---|
-| `id` | string (PK) | |
 | `plan_id` | string (FK) | |
-| `limit_key` | string | `max_employees`, `payroll.max_payslips_month` |
-| `value` | int | −1 = unlimited |
+| `benefit_key` | string (FK) | |
+| `enabled` | boolean | Termasuk dalam plan |
+| `quota` | int (nullable) | Hanya untuk `quota`; −1 = unlimited |
+> PK `(plan_id, benefit_key)`. Baris tidak ada = benefit tidak termasuk.
+
+### 2.4 `subscription_benefits` (snapshot)
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `subscription_id` | string (FK, cascade) | |
+| `tenant_id` | string | |
+| `benefit_key` | string | |
+| `benefit_name` / `benefit_type` | string | Disalin agar snapshot tetap terbaca |
+| `enabled` | boolean | |
+| `quota` | int (nullable) | |
+| `source_plan_id` | string | Plan asal snapshot |
+| `snapshot_at` | timestamp | |
+> PK `(subscription_id, benefit_key)`. Ditulis ulang saat subscribe, ganti plan, dan renewal — **tidak** saat plan diedit.
 
 ### 2.5 `subscriptions`
 | Field | Tipe | Keterangan |
@@ -63,7 +73,7 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 | `plan_id` | string (FK) | |
 | `status` | enum | `trialing`, `active`, `past_due`, `canceled` |
 | `billing_cycle` | string | Kode cycle terpilih (`monthly`, `quarterly`, `annual`, ...) |
-| `period_start` / `period_end` | date | |
+| `period_start` / `period_end` | date | `period_end` = "aktif sampai"; lewat `period_end + grace` → read-only |
 | `seat_count` | int | Basis PEPM (karyawan **aktif** saja) |
 | `trial_ends_at` | date (nullable) | |
 
@@ -84,9 +94,7 @@ Opsi jangka waktu + diskon per plan (configurable).
 |---|---|---|
 | `id` | string (PK) | |
 | `tenant_id` | string (FK) | |
-| `add_features` | json | |
-| `remove_features` | json | |
-| `limits` | json | Override (menang atas plan) |
+| `benefits` | json | `{ benefit_key: { enabled, quota? } }` — menang atas snapshot per key |
 | `reason` | string | |
 | `expires_at` | date (nullable) | |
 
@@ -132,12 +140,12 @@ Opsi jangka waktu + diskon per plan (configurable).
 |---|---|---|
 | `subscriptions` | `tenant_id`, `status` | Lookup langganan aktif |
 | `invoices` | `(tenant_id, status)`, `due_date` | Tagihan & tunggakan |
-| `plan_features` | `plan_id` | Rakit definisi plan |
+| `subscription_benefits` | `tenant_id` | Hitung entitlement efektif |
 | `tenant_overrides` | `tenant_id`, `expires_at` | Override & auto-expire |
 
 ---
 
 ## 4. Catatan
 - **Uang** = integer minor unit + `currency` (konsisten API Response Architecture).
-- Definisi Plan/Feature/Limit & override di sini menjadi **sumber** bagi Entitlement (yang menghitung hasil efektif).
-- Perubahan (plan, override, refund) memancarkan event untuk invalidasi cache Entitlement.
+- Master benefit, matriks plan, snapshot subscription & override di sini menjadi **sumber** bagi Entitlement (yang menghitung hasil efektif dari snapshot + override).
+- Edit plan tidak mengubah subscription berjalan; ganti plan / renewal / override / perubahan status menginvalidasi cache Entitlement. Lihat [`entitlement/01-model.md`](../entitlement/01-model.md).

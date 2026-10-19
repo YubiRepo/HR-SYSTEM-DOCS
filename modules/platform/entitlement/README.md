@@ -1,7 +1,7 @@
 <!-- 📁 modules/entitlement/README.md -->
 # Entitlement Module
 
-Modul **foundational** yang menjadi sumber kebenaran atas "apa yang boleh diakses sebuah tenant" — Feature (on/off) & Limit (kapasitas). Dikonsumsi oleh **semua modul** HRMS untuk gerbang fitur & kuota.
+Modul **foundational** yang menjadi sumber kebenaran atas "apa yang boleh diakses sebuah tenant" — **Benefit** bertipe `feature` (tersedia/tidak) atau `quota` (kapasitas), dibekukan per subscription. Dikonsumsi oleh **semua modul** HRMS untuk gerbang fitur & kuota.
 
 | | |
 |---|---|
@@ -21,7 +21,7 @@ Sama seperti RBAC dipisah dari Auth: entitlement dikonsumsi **lintas modul**. Bi
 | Modul | Menjawab |
 |---|---|
 | **Billing** | Tenant *berlangganan* plan apa (uang, invoice) |
-| **Entitlement** | Dari langganan itu, Feature & Limit *efektif* apa |
+| **Entitlement** | Dari langganan itu (snapshot benefit + override), benefit *efektif* & access mode apa |
 | **RBAC** | User *berperan* apa (izin per user) |
 
 Entitlement membaca plan & subscription dari Billing, lalu menghitung hasil efektif yang dipakai modul lain.
@@ -33,8 +33,8 @@ Entitlement membaca plan & subscription dari Billing, lalu menghitung hasil efek
 | File | Isi |
 |---|---|
 | [`README.md`](./README.md) | Indeks (dokumen ini) |
-| [`01-model.md`](./01-model.md) | Feature, Limit, entitlement efektif, override |
-| [`02-evaluation.md`](./02-evaluation.md) | Cara cek Feature & Limit; penegakan |
+| [`01-model.md`](./01-model.md) | Benefit, matriks plan, snapshot, override, access mode |
+| [`02-evaluation.md`](./02-evaluation.md) | Cara cek benefit, quota & access mode; penegakan; cache |
 | [`03-api-contract.md`](./03-api-contract.md) | Endpoint (dikonsumsi service internal) |
 | [`04-integration.md`](./04-integration.md) | Cara modul lain mengonsumsi |
 
@@ -42,9 +42,9 @@ Entitlement membaca plan & subscription dari Billing, lalu menghitung hasil efek
 
 ## Prinsip
 
-1. **Sumber kebenaran tunggal** — modul lain tak mengecek nama plan; mereka tanya Feature/Limit ke sini.
+1. **Sumber kebenaran tunggal** — modul lain tak mengecek nama plan; mereka tanya benefit ke sini (lewat `shared/entitlementgate`).
 2. **Backend penegak** — frontend hanya kosmetik (sembunyikan UI).
-3. **Configurable** — mengikuti Plan/Feature/Limit yang dirakit di Billing.
+3. **Configurable** — benefit & matriks plan dirakit di backoffice; edit plan berlaku pada ganti plan / renewal berikutnya (snapshot).
 4. **Berlapis dengan RBAC** — fitur harus ada di plan (entitlement) **dan** user harus punya izin (RBAC).
 
 ---
