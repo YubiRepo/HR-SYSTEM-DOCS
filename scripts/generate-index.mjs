@@ -2,12 +2,13 @@ import { readdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const ROOT = process.cwd()
-const DIRS = ['business', 'architectures', 'modules']
+const DIRS = ['business', 'architectures', 'modules', 'manual']
 
 const labels = {
   business: 'Bisnis',
   architectures: 'Arsitektur',
   modules: 'Modul',
+  manual: 'Manual',
 }
 
 function getGroup(dir, parts) {

@@ -13,6 +13,8 @@
 - [08 device integration](/modules/attendance/08-device-integration)
 - [09 method config](/modules/attendance/09-method-config)
 - [10 identity enrollment](/modules/attendance/10-identity-enrollment)
+- [11 geofence](/modules/attendance/11-geofence)
+- [12 agent ingestion](/modules/attendance/12-agent-ingestion)
 - [README](/modules/attendance/README)
 
 ### auth
@@ -46,7 +48,20 @@
 - [05 api contract](/modules/leave/05-api-contract)
 - [06 data model](/modules/leave/06-data-model)
 - [07 integration](/modules/leave/07-integration)
+- [08 period basis implementation plan](/modules/leave/08-period-basis-implementation-plan)
 - [README](/modules/leave/README)
+
+### mobile
+
+- [01 feature breakdown](/modules/mobile/01-feature-breakdown)
+- [README](/modules/mobile/README)
+- [README](/modules/mobile/api/README)
+- [attendance](/modules/mobile/api/attendance)
+- [core hr](/modules/mobile/api/core-hr)
+- [leave](/modules/mobile/api/leave)
+- [payroll](/modules/mobile/api/payroll)
+- [performance](/modules/mobile/api/performance)
+- [recruitment](/modules/mobile/api/recruitment)
 
 ### payroll
 
@@ -59,6 +74,7 @@
 - [07 integration](/modules/payroll/07-integration)
 - [08 formula engine](/modules/payroll/08-formula-engine)
 - [09 grade templates](/modules/payroll/09-grade-templates)
+- [10 loan deduction](/modules/payroll/10-loan-deduction)
 - [README](/modules/payroll/README)
 
 ### performance

@@ -9,6 +9,7 @@ function findAllMd(): string[] {
     { dir: join(ROOT, 'business'), recursive: true },
     { dir: join(ROOT, 'architectures'), recursive: true },
     { dir: join(ROOT, 'modules'), recursive: true },
+    { dir: join(ROOT, 'manual'), recursive: true },
   ]
   const files: string[] = []
 
@@ -54,12 +55,13 @@ function getSidebarGroupLabel(group: string): string {
 
 function buildSidebar() {
   const files = findAllMd()
-  const sectionDirs = ['business', 'architectures', 'modules']
+  const sectionDirs = ['business', 'architectures', 'modules', 'manual']
 
   const labels: Record<string, string> = {
     business: 'Bisnis',
     architectures: 'Arsitektur',
     modules: 'Modul',
+    manual: 'Manual',
   }
 
   const sidebar: Record<string, any[]> = {}
@@ -131,6 +133,7 @@ export default defineConfig({
       ...(sidebar['/business/'] ? [{ text: 'Bisnis', link: '/business/' }] : []),
       ...(sidebar['/architectures/'] ? [{ text: 'Arsitektur', link: '/architectures/' }] : []),
       ...(sidebar['/modules/'] ? [{ text: 'Modul', link: '/modules/' }] : []),
+      ...(sidebar['/manual/'] ? [{ text: 'Manual', link: '/manual/' }] : []),
     ],
     sidebar,
     socialLinks: [{ icon: 'github', link: 'https://github.com/YubiRepo/HR-SYSTEM-DOCS' }],
