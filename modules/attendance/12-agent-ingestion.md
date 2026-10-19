@@ -246,6 +246,8 @@ Opsi lama `time_kind` / `time_format` tanpa `time_type` tetap dibaca, jadi konfi
   - Baris dengan detik yang sama di batas halaman tidak terlewat.
   - Kalau dipakai dengan waktu berupa teks, formatnya harus bisa diurutkan (mis. `YYYY-MM-DD HH:mm:ss`).
 
+Mengganti jenis cursor (ID ↔ Punch time) atau tipe mesin mereset posisi baca, jadi mesin dibaca ulang dari awal (atau dari tanggal **Read punches from**).
+
 Membaca ulang selalu aman: idempotency key dibentuk dari serial, employee ref, waktu, dan ID baris. Tombol **Test** menampilkan punch persis seperti yang akan diterima sistem HR.
 
 ### Adapter uji `fake`
