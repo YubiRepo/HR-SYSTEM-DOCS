@@ -219,6 +219,14 @@ Agent membaca tabel/output yang ditulis software mesin ke database, tanpa adapte
   - cross-compile windows amd64/386.
   - **Belum:** koneksi Access/ODBC di Windows asli dan server MySQL/PostgreSQL/SQL Server sungguhan.
 
+### Mulai tanggal per mesin (2026-10-19)
+
+- Field **Read punches from** (`start_from`, `YYYY-MM-DD`, opsional) di form mesin web UI agent, berlaku untuk semua vendor. Kolom baru `devices.start_from` (migrasi SQLite agent #3).
+- **Agent** (`PollOnce`): punch sebelum 00:00 tanggal itu (timezone mesin) dibuang sebelum masuk antrean; checkpoint tetap maju.
+- **`sqldb`:** filter `waktu >= tanggal` di query bila kolom waktunya date-time tunggal. Untuk waktu teks atau tanggal/jam terpisah, hanya agent yang memfilter.
+- **Mengubah tanggal mereset checkpoint mesin**, sehingga mesin dibaca ulang. Duplikat aman.
+- **Test:** validasi config, migrasi + reset checkpoint di store, filter agent, push-down sqldb (cursor id/time + teks), round-trip web UI.
+
 ---
 
 ## 4. Yang Belum Dikerjakan

@@ -157,6 +157,10 @@ Binary Go tunggal (`cmd/attendance-agent`, kode di `pkg/attendanceagent`), tanpa
 - Saat start (dan setiap setting diterapkan), agent mencocokkan mesinnya dengan yang terdaftar di backoffice. Ketidakcocokan tampil di tab Status.
 - Setiap setting yang berhasil diterapkan langsung membuat antrean pending jatuh tempo, jadi setelah key/URL diperbaiki punch langsung terkirim tanpa menunggu backoff.
 - Event `sent` > 30 hari dihapus dari antrean lokal.
+- **Mulai tanggal (per mesin, opsional):** field **Read punches from** di form mesin. Berlaku untuk semua tipe mesin.
+  - Punch sebelum tanggal itu (pukul 00:00 di timezone mesin) **tidak pernah dikirim**: dibuang sebelum masuk antrean, tapi posisi baca (checkpoint) tetap maju.
+  - Mesin `sqldb` juga memfilter di query (`waktu >= tanggal`) agar riwayat lama tidak ikut dibaca. Pengecualian: waktu bertipe teks atau tanggal/jam di kolom terpisah, yang hanya difilter oleh agent.
+  - **Mengubah tanggal mereset checkpoint mesin itu**, sehingga mesin dibaca ulang dari awal. Memundurkan tanggal berarti punch lama ikut terkirim; duplikat aman (idempotency key).
 
 **Instalasi:**
 1. Salin binary (+ opsional `.env` dari `.env.example`) ke sebuah folder di PC kantor.
@@ -223,17 +227,18 @@ Banyak mesin dikelola software bawaan vendor yang menyedot log mesin lalu menuli
   ```
 - **Filter mesin (opsional):** bila satu tabel berisi banyak mesin, pilih kolom mesin + nilainya (mis. `sensorid = 1`). Daftarkan satu "mesin" per nilai, masing-masing dengan serial-nya sendiri di backoffice.
 
-**Mapping kolom** (tombol **Load columns** mengisi pilihan kolom; **Preview rows** menampilkan 5 baris mentah):
+**Mapping kolom** ditampilkan sebagai tabel 3 kolom: **field sistem HR** | **kolom database** | **tipe data / format**. Tombol **Load columns** mengisi pilihan kolom sekaligus menampilkan tipe data tiap kolom dari database (mis. `DB: datetime`). **Preview rows** menampilkan 5 baris mentah.
 
-| Field | Wajib | Keterangan |
+| Field sistem HR | Wajib | Tipe / format (kolom 3) |
 |---|---|---|
-| Employee ID column | ✓ | PIN/badge di mesin → `employee_ref` |
-| Punch time column | ✓ | Datetime, atau teks |
-| Date column | | Bila tanggal & jam terpisah (butuh cursor ID) |
-| Time format | | Untuk waktu berupa teks; layout Go atau `YYYY-MM-DD HH:mm:ss`. Kosong = deteksi otomatis (tanggal bergaris miring dibaca hari-dulu) |
-| Time values are | | `local` (jam dinding mesin, default) / `absolute` (mis. `timestamptz`) |
-| In/out column + nilai IN/OUT | | Mis. `I` / `O`; nilai lain → `unknown` |
-| Verification column + nilai | | Mis. `1=fingerprint,15=face,4=card`; nilai lain → `unknown`; tanpa kolom → `fingerprint` |
+| Employee ID | ✓ | — (PIN/badge di mesin → `employee_ref`) |
+| Punch time | ✓ | **Type**: `Date-time (jam lokal mesin)` (default) / `Date-time with timezone` (mis. `timestamptz`) / `Text` + **Format** (layout Go atau `YYYY-MM-DD HH:mm:ss`; kosong = deteksi otomatis, tanggal bergaris miring dibaca hari-dulu). UI memperingatkan bila kolomnya bertipe teks tapi Type belum `Text` |
+| Punch date | | Hanya bila tanggal & jam di kolom terpisah (butuh cursor ID) |
+| Direction (in/out) | | **IN values** / **OUT values**, mis. `I` / `O`; nilai lain → `unknown` |
+| Verification method | | **Value map**, mis. `1=fingerprint,15=face,4=card`; nilai lain → `unknown`; tanpa kolom → `fingerprint` |
+| Row ID | ✓ bila cursor = ID | — (kolom yang selalu naik) |
+
+Opsi lama `time_kind` / `time_format` tanpa `time_type` tetap dibaca, jadi konfigurasi mesin yang sudah tersimpan tidak perlu diubah.
 
 **Cursor** (cara membaca baris baru):
 - **ID column** (disarankan): kolom yang selalu naik (auto-increment). `WHERE id > terakhir`. Paling andal.
