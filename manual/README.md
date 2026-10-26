@@ -13,7 +13,7 @@ langkah operasional, tabel field, dan mock UI yang bisa dirender menjadi gambar.
 | Menu sidebar | Folder | Cakupan | Status |
 |---|---|---|---|
 | Employees | [`employees/`](./employees/) | Data karyawan & mutasi/transfer | Selesai |
-| HR Setting | [`hr-setting/`](./hr-setting/) | Struktur & kebijakan (organisasi, posisi, jam kerja, cuti, gaji, custom field) | Belum |
+| HR Setting | [`hr-setting/`](./hr-setting/) | Struktur & kebijakan (organisasi, posisi, jam kerja, cuti, gaji, custom field) | Selesai |
 | Leave | [`leave/`](./leave/) | Pengajuan & saldo cuti | Belum |
 | Attendance | [`attendance/`](./attendance/) | Absensi, jadwal, lembur, mesin absen | Belum |
 | Salary | [`salary/`](./salary/) | Payroll, run, payslip | Belum |
