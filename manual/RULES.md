@@ -60,7 +60,7 @@ Peta menu → folder → sub-halaman (sumber: `app/layouts/default.vue` sidebar)
 | Salary | `salary/` | Employee Payrolls, Payroll Runs, Payslips |
 | Recruitment & ATS | `recruitment/` | Lowongan Kerja, Pipeline Seleksi (ATS), Database Pelamar, Penawaran & Konversi, Konfigurasi Pipeline |
 | Performance & Goals | `performance/` | Sasaran Kerja (KPI/OKR), Siklus Penilaian, Penilaian Kinerja, 360° Feedback, Sesi Kalibrasi (9-Box), Kerangka & Kompetensi |
-| Company Settings | `company-settings/` | Overview, Cabang, Billing, Pengguna, Peran & Hak Akses, Aktivitas |
+| Company Settings | `company-settings/` | Overview, Branches, Common Codes, Billing, Users, Roles & Permissions (Activity nonaktif) |
 | Employee Portal | `ess/` | Beranda, Absensi Saya, Cuti Saya, Profil, Payslip |
 | Account | `account/` | Profil, Keamanan |
 
@@ -102,7 +102,7 @@ bawah ini. Semua path relatif terhadap dua repo:
 | `salary/` | `app/pages/tenants/salary/**` | `usePayroll`, `usePayrollRuns`, `usePayrollConfig`, `usePayrollProfiles`, `usePayslips`, `usePayComponents` | `modules/payroll/**` |
 | `recruitment/` | `app/pages/tenants/recruitment/**` | `useRecruitment` | `modules/recruitment/**` |
 | `performance/` | `app/pages/tenants/performance/**` | (logika di halaman/komponen) | `modules/performance/**` |
-| `company-settings/` | `app/pages/tenants/settings/**`, `settings.vue` | `useTenants`, `useTenantBranches`, `useMyTenant`, `useBilling`, `useMyBilling`, `useAccessUsers`, `useAccessRoles`, `useAccessPermissions` | `modules/platform/tenant/**`, `modules/platform/billing/**`, `modules/rbac/**` |
+| `company-settings/` | `app/pages/tenants/settings/**`, `settings.vue` | `useMyTenant`, `useTenantBranches`, `useCommonCodes`, `useMyBilling`, `useAccessUsers`, `useAccessRoles`, `useAccessPermissions` | `modules/platform/tenant/**`, `modules/platform/billing/**`, `modules/rbac/**` |
 | `ess/` | `app/pages/ess/**` | `useMyEmployee`, `useMyProfile`, `useMyTenant`, `useMyBilling` | `modules/mobile/**` |
 | `account/` | `app/pages/tenants/account/**` | `useMyProfile`, `useAccessPermissions` | `modules/auth/**` |
 

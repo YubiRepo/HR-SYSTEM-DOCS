@@ -19,7 +19,7 @@ langkah operasional, tabel field, dan mock UI yang bisa dirender menjadi gambar.
 | Salary | [`salary/`](./salary/) | Payroll, run, payslip | Belum |
 | Recruitment & ATS | [`recruitment/`](./recruitment/) | Lowongan, pipeline, pelamar, penawaran | Belum |
 | Performance & Goals | [`performance/`](./performance/) | KPI/OKR, siklus penilaian, 360°, kalibrasi | Belum |
-| Company Settings | [`company-settings/`](./company-settings/) | Profil perusahaan, cabang, billing, pengguna, peran | Belum |
+| Company Settings | [`company-settings/`](./company-settings/) | Profil perusahaan, cabang, common codes, billing, pengguna, peran | Selesai |
 | Employee Portal | [`ess/`](./ess/) | Self-service karyawan (absensi, cuti, profil, payslip) | Belum |
 | Account | [`account/`](./account/) | Profil & keamanan akun user | Belum |
 
