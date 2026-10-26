@@ -31,6 +31,8 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 | POST | `/attendance/schedules/generate` | Generate baris dari pola (rentang tertentu) | `attendance:write` |
 | GET | `/attendance/holidays` | Kalender libur | `attendance:read` |
 | POST | `/attendance/holidays` | Kelola libur | `attendance:config` |
+| GET | `/attendance/holidays/external` | Preview kalender libur eksternal (tidak disimpan) | `attendance:config` |
+| POST | `/attendance/holidays/bulk` | Simpan hasil mapping preview (all-or-nothing) | `attendance:config` |
 
 ### Overtime & Rekap
 | Method | Endpoint | Deskripsi | Izin |
@@ -180,6 +182,43 @@ Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
 
 ---
 
+## 4b. Import hari libur dari kalender eksternal
+
+Sumber saat ini: [api-libur opica](https://app.opica.id/api-libur/) — gabungan `/api` (libur nasional & cuti bersama) dan `/api/hari-nasional` (hari peringatan). Hasil di-cache di server 6 jam per (tahun, bulan).
+
+### GET /attendance/holidays/external?year=2026&month=12
+`year` wajib (2000–2100), `month` opsional (1–12). **Tidak menyimpan apa pun.** Setiap baris belum punya kategori (`type: null` → *Uncategorized*) dan belum ditentukan libur/tidak (`is_observed: null`) — user memetakannya di UI.
+```json
+{
+  "success": true,
+  "data": [
+    { "date": "2026-12-22", "name": "Hari Ibu", "source": "national_observance", "source_type": "sosial",
+      "description": null, "is_public_holiday": false, "type": null, "is_observed": null, "already_exists": false },
+    { "date": "2026-12-25", "name": "Hari Raya Natal", "source": "national_holiday", "source_type": "libur_nasional",
+      "description": null, "is_public_holiday": null, "type": null, "is_observed": null,
+      "already_exists": true, "existing_holiday_id": "…" }
+  ]
+}
+```
+`source`: `national_holiday` (libur resmi/cuti bersama) atau `national_observance` (peringatan; `is_public_holiday` hanya petunjuk dari sumber). `already_exists`: tenant sudah punya libur dengan tanggal + nama sama (case-insensitive).
+
+### POST /attendance/holidays/bulk
+```json
+{ "items": [
+  { "date": "2026-12-24", "name": "Cuti Bersama Hari Raya Natal", "type": "collective_leave", "is_observed": false },
+  { "date": "2026-12-25", "name": "Hari Raya Natal", "type": "national", "is_observed": true, "overtime_multiplier": 2.0 }
+] }
+```
+Maks 500 item. `type` (kode `holiday_category` aktif) dan `is_observed` **wajib** per item. Satu item invalid → `422 INVALID_HOLIDAY_ARGUMENT` (pesan diawali `row N:`) dan tidak ada yang disimpan. Item yang sudah ada (tanggal + nama) di-skip, bukan error.
+
+**Response `201 Created`**
+```json
+{ "success": true, "data": { "created": [ { "id": "…", "date": "2026-12-24", "type": "collective_leave", "type_name": "Collective Leave (Cuti Bersama)", "is_observed": false, "…": "…" } ],
+  "skipped": [ { "date": "2026-12-25", "name": "Hari Raya Natal", "reason": "already_exists" } ] } }
+```
+
+---
+
 ## 5. Ringkasan Error
 
 | Code | HTTP | Arti |
@@ -191,3 +230,5 @@ Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
 | `NO_SCHEDULE` | 422 | Tidak ada jadwal & tanpa default |
 | `CORRECTION_NOT_ALLOWED` | 409 | Periode sudah dikunci Payroll |
 | `VALIDATION_ERROR` | 400/422 | Input tidak valid |
+| `INVALID_HOLIDAY_ARGUMENT` | 422 | Data libur / parameter import tidak valid |
+| `HOLIDAY_SOURCE_UNAVAILABLE` | 502 | Kalender libur eksternal gagal diakses |
