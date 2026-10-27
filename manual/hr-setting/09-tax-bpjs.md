@@ -1,4 +1,4 @@
-# 08 · Tax and BPJS
+# 09 · Tax and BPJS
 
 Tabel tarif yang dipakai mesin payroll untuk menghitung **iuran BPJS** dan
 **PPh 21** di setiap slip gaji: persentase iuran BPJS, tarif efektif rata-rata
@@ -101,7 +101,7 @@ hanya bisa ditambah, tidak diubah atau dihapus.
 | **Effective From** | Tanggal mulai tarif berlaku |
 
 Iuran dihitung dari upah dasar BPJS, yaitu jumlah komponen gaji yang bertanda
-**BPJS base** di [Salary Component](./07-salary-component). Bagian karyawan muncul
+**BPJS base** di [Salary Component](./08-salary-component). Bagian karyawan muncul
 sebagai potongan di slip gaji.
 
 ### Tab TER Rates — *PPh 21 TER Rates*

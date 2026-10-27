@@ -1,7 +1,7 @@
 # 02 · Tambah Karyawan
 
 Formulir pendaftaran karyawan baru dalam satu halaman panjang yang dibagi per
-bagian: informasi dasar, penempatan, kontrak pertama, data pribadi, alamat,
+bagian: informasi dasar, penempatan (termasuk jadwal kerja dan status awal), kontrak pertama, data pribadi, alamat,
 akses login, custom fields, dan riwayat. Hanya field bertanda `*` yang wajib —
 sisanya bisa dilengkapi belakangan dari halaman detail.
 
@@ -37,12 +37,15 @@ sisanya bisa dilengkapi belakangan dari halaman detail.
     </div>
     <div style="border-top:1px solid #e4e4e7;margin:16px 0"></div>
     <div style="display:grid;grid-template-columns:200px 1fr;gap:16px">
-      <div><div style="font-weight:700">💼 Employment</div><div style="color:#71717a;font-size:11px;margin-top:3px">Where the employee sits in the organization and when they started.</div></div>
+      <div><div style="font-weight:700">💼 Employment</div><div style="color:#71717a;font-size:11px;margin-top:3px">The employee's first career path entry: placement, working schedule, starting status, and start date.</div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><div style="font-size:11px;font-weight:600">Org Unit <span style="color:#dc2626">*</span></div><div style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 8px;margin-top:3px">Engineering ▾</div></div>
         <div><div style="font-size:11px;font-weight:600">Position <span style="color:#dc2626">*</span></div><div style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 8px;margin-top:3px">Software Engineer ▾</div></div>
         <div><div style="font-size:11px;font-weight:600">Work Branch</div><div style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 8px;margin-top:3px;color:#a1a1aa">Default branch ▾</div><div style="color:#71717a;font-size:10px;margin-top:2px">Leave empty to use the default branch.</div></div>
         <div><div style="font-size:11px;font-weight:600">Hire Date <span style="color:#dc2626">*</span></div><div style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 8px;margin-top:3px">2026-11-02</div></div>
+        <div><div style="font-size:11px;font-weight:600">Schedule Type</div><div style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 8px;margin-top:3px">📅 Fixed ▾</div><div style="color:#71717a;font-size:10px;margin-top:2px">Fixed = the same weekly hours; Rotation = a rotating cycle. Leave empty to set it up later (the employee can't clock in until then).</div></div>
+        <div><div style="font-size:11px;font-weight:600">Pattern <span style="color:#dc2626">*</span></div><div style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 8px;margin-top:3px">Office Mon–Fri ▾</div></div>
+        <div><div style="font-size:11px;font-weight:600">Starting Status <span style="color:#dc2626">*</span></div><div style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 8px;margin-top:3px">Probation ▾</div></div>
       </div>
     </div>
     <div style="border-top:1px solid #e4e4e7;margin:16px 0"></div>
@@ -96,15 +99,34 @@ Setiap bagian tampil dengan judul + deskripsi di kiri dan field di kanan.
 
 ### 2. Employment
 
-| Field | Tipe | Wajib | Catatan |
-|---|---|---|---|
-| **Org Unit** | pencarian (server) | Ya | Ketik nama unit untuk mencari |
-| **Position** | pencarian (server) | Ya | Pilihan dibatasi pada **Org Unit** terpilih |
-| **Work Branch** | pencarian | Tidak | Kosong = pakai default branch |
-| **Hire Date** | tanggal | Ya | Default: hari ini |
+*The employee's first career path entry: placement, working schedule, starting
+status, and start date.* Isian bagian ini menjadi entri pertama **career path**
+karyawan (terlihat di tab **Career History** pada halaman detail).
+
+| Field | Tipe | Wajib | Catatan | Contoh |
+|---|---|---|---|---|
+| **Org Unit** | dropdown bertahap + pencarian | Ya | Ketik untuk mencari; daftar dimuat 10 per halaman dan bertambah saat digulir. Keterangan di bawah nama = tipe unit | Engineering |
+| **Position** | dropdown bertahap + pencarian | Ya | Hanya posisi milik **Org Unit** terpilih; keterangan = nama unit, atau *Not assigned to a unit* | Software Engineer |
+| **Work Branch** | dropdown bertahap + pencarian | Tidak | Kosong = pakai default branch; cabang default diberi keterangan *Default branch* | Jakarta HQ |
+| **Hire Date** | tanggal | Ya | Default: hari ini | 2026-11-02 |
+| **Schedule Type** | pilihan | Tidak | `Fixed` (jam kerja mingguan yang sama) atau `Rotation` (siklus bergilir). Placeholder *None*; bisa dikosongkan | Fixed |
+| **Pattern** | pilihan | Ya* | Working pattern dengan mode sama dengan **Schedule Type**. Nonaktif (*Choose a schedule type first*) sampai tipe dipilih. Pattern nonaktif tidak ditampilkan | Office Mon–Fri |
+| **Starting Status** | pilihan | Ya | `Probation` (default) atau `Active` | Probation |
+
+\* Wajib hanya bila **Schedule Type** diisi.
 
 > **Penting:** Mengganti **Org Unit** akan mengosongkan **Position** bila posisi
-> sebelumnya tidak berada di unit tersebut.
+> sebelumnya tidak berada di unit tersebut. Mengganti/mengosongkan **Schedule
+> Type** juga mengosongkan **Pattern** yang tidak cocok dengan tipe baru.
+
+> **Tip:** **Schedule Type** dan **Pattern** boleh dikosongkan dan diatur
+> belakangan lewat **Career Mutation** ([`05-mutasi.md`](./05-mutasi.md)) —
+> tetapi karyawan **belum bisa clock-in** sampai jadwalnya ditetapkan. Pilihan
+> **Pattern** berasal dari **HR Setting → Working Patterns**
+> ([`../hr-setting/04-working-patterns.md`](../hr-setting/04-working-patterns.md)):
+> pattern `Fixed` menampilkan shift & hari kerja (mis. *Fixed · Office · Mon,
+> Tue, Wed, Thu, Fri*), pattern `Rotation` menampilkan panjang siklus (mis.
+> *Rotation · 14-day cycle*).
 
 > **Catatan:** Field **Direct Manager** untuk sementara disembunyikan dari form.
 
@@ -196,11 +218,14 @@ baris yang sudah diisi. Tiap baris ditambah lewat tombol **Add** → modal
 1. Klik **Tambah Karyawan** dari halaman daftar.
 2. Isi **Full Name**, **Work Email**, dan **NIK**.
 3. Pilih **Org Unit**, **Position**, dan pastikan **Hire Date** benar.
-4. (Opsional) pilih **Contract Type** untuk langsung membuat kontrak pertama,
+   Tentukan **Starting Status** (`Probation` atau `Active`).
+4. (Disarankan) pilih **Schedule Type** lalu **Pattern** agar karyawan bisa
+   langsung absen.
+5. (Opsional) pilih **Contract Type** untuk langsung membuat kontrak pertama,
    lalu lengkapi tanggal dan remark.
-5. (Opsional) lengkapi data pribadi, alamat, custom fields, dan riwayat.
-6. Tentukan **Create a login account** (nyala/mati).
-7. Klik **Save Employee**.
+6. (Opsional) lengkapi data pribadi, alamat, custom fields, dan riwayat.
+7. Tentukan **Create a login account** (nyala/mati).
+8. Klik **Save Employee**.
 
 ## Hasil Setelah Simpan
 
@@ -217,6 +242,8 @@ baris yang sudah diisi. Tiap baris ditambah lewat tombol **Add** → modal
 | Kondisi | Pesan |
 |---|---|
 | Ada field wajib kosong | Toast **"Incomplete Form"** — *Full name, NIK, email, org unit, position, and hire date are required.* Field yang kosong ditandai **Required**. |
+| **Schedule Type** diisi tetapi **Pattern** kosong | Toast **"Incomplete Form"** — *Select a pattern for the chosen schedule type, or clear the schedule type.* |
+| Mode pattern tidak sama dengan **Schedule Type** | Toast **"Invalid Schedule"** — *The selected pattern is not a fixed pattern.* (atau *rotation*) |
 
 ## Sumber
 
@@ -226,5 +253,6 @@ baris yang sudah diisi. Tiap baris ditambah lewat tombol **Add** → modal
 | Bagian form | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrFormSection.vue`, `CoreHrEmployeePersonalSections.vue` |
 | Alamat | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrAddressFields.vue` |
 | Riwayat | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrRecordListEditor.vue` |
-| Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useEmployees.ts`, `useContracts.ts`, `useEmployeeRecordSections.ts`, `useEmployeeFields.ts`, `useOrgUnits.ts`, `usePositions.ts` |
+| Dropdown | `HR-SYSTEM-BACKOFFICE/app/components/PagedSelect.vue` (Org Unit/Position/Work Branch), `PatternSelect.vue` (Pattern) |
+| Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useEmployees.ts`, `useContracts.ts`, `useEmployeeRecordSections.ts`, `useEmployeeFields.ts`, `useOrgUnits.ts`, `usePositions.ts`, `useTenantBranches.ts`, `usePagedOptions.ts`, `useCareerPathLookups.ts` |
 | Endpoint | `modules/core-hr/04-api-contract.md` |

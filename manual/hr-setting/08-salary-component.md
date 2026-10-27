@@ -1,4 +1,4 @@
-# 07 · Salary Component
+# 08 · Salary Component
 
 Katalog **komponen gaji** perusahaan — semua jenis pendapatan (gaji pokok,
 tunjangan) dan potongan (pinjaman, iuran) yang bisa muncul di slip gaji. Di sini
@@ -178,7 +178,7 @@ Pesan:
   bawaan yang dihitung sistem dan tidak dapat diedit.
 - Tidak ada aksi hapus/nonaktifkan komponen di halaman ini.
 - Perubahan sifat komponen berlaku untuk payroll run berikutnya; tarif pajak dan
-  BPJS diatur di [Tax and BPJS](./08-tax-bpjs).
+  BPJS diatur di [Tax and BPJS](./09-tax-bpjs).
 - Pengguna tanpa `payroll:config` tetap bisa melihat katalog, tetapi tidak bisa
   menambah komponen.
 

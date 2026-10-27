@@ -16,6 +16,7 @@ pertama juga bisa dibuat langsung dari form **Add Employee**
   <div style="display:flex;gap:4px;border-bottom:1px solid #e4e4e7;margin-bottom:12px;font-size:12px">
     <span style="padding:8px 14px;color:#71717a">Profile</span>
     <span style="padding:8px 14px;border-bottom:2px solid #2563eb;color:#2563eb;font-weight:600">Contracts</span>
+    <span style="padding:8px 14px;color:#71717a">Career History</span>
     <span style="padding:8px 14px;color:#71717a">Work Policy</span>
     <span style="padding:8px 14px;color:#71717a">Others</span>
     <span style="padding:8px 14px;color:#71717a">Account Settings</span>

@@ -2,15 +2,17 @@
 
 Menu **Employees** mengelola data induk karyawan sebuah tenant: data pribadi,
 penempatan jabatan, manajer langsung, status siklus hidup (lifecycle), akun
-login, kontrak, kebijakan kerja (OT type & shift), serta pengajuan **mutasi** (promosi/transfer/berhenti) yang
-butuh persetujuan.
+login, kontrak, kebijakan kerja (OT type & shift), serta pengajuan **Career Mutation** (promosi/transfer/perubahan jadwal/berhenti) yang
+butuh persetujuan. Penempatan karyawan (cabang, unit, posisi, jadwal kerja,
+status) dicatat sebagai **career path** yang bisa dilihat di tab **Career
+History**.
 
 | | |
 |---|---|
 | **Menu** | Employees |
 | **Aktor** | `tenant_admin` / HR admin, approver |
 | **Akses** | `/tenants/employee`, `/tenants/employee/mutasi` |
-| **Tampil bila** | `employees:read` (Employees Info) atau `core_hr:write` / `org:write` (Mutasi) |
+| **Tampil bila** | `employees:read` (Employees Info) atau `core_hr:write` / `org:write` (Career Mutation) |
 
 ## Daftar Halaman
 
@@ -18,10 +20,10 @@ butuh persetujuan.
 |---|---|---|---|---|
 | 1 | Employees Info (daftar) | [`01-daftar-karyawan.md`](./01-daftar-karyawan.md) | `/tenants/employee` | Cari, filter, dan buka data karyawan |
 | 2 | Tambah Karyawan | [`02-tambah-karyawan.md`](./02-tambah-karyawan.md) | `/tenants/employee/create` | Formulir pendaftaran karyawan baru |
-| 3 | Detail Karyawan | [`03-detail-karyawan.md`](./03-detail-karyawan.md) | `/tenants/employee/:id` | Ringkasan profil, data pribadi, riwayat & data lainnya, akun, ubah penempatan/status |
+| 3 | Detail Karyawan | [`03-detail-karyawan.md`](./03-detail-karyawan.md) | `/tenants/employee/:id` | Ringkasan profil, data pribadi, career history, riwayat & data lainnya, akun, ubah penempatan/status |
 | 4 | Kontrak Kerja | [`04-kontrak-kerja.md`](./04-kontrak-kerja.md) | Tab **Contracts** di halaman detail | Catat/perpanjang/akhiri kontrak kerja |
-| 5 | Mutasi (daftar & pengajuan) | [`05-mutasi.md`](./05-mutasi.md) | `/tenants/employee/mutasi` | Ajukan perubahan siklus massal |
-| 6 | Detail Mutasi (approval) | [`06-detail-mutasi.md`](./06-detail-mutasi.md) | `/tenants/employee/mutasi/:id` | Setujui/tolak/revisi pengajuan |
+| 5 | Career Mutation (daftar & pengajuan) | [`05-mutasi.md`](./05-mutasi.md) | `/tenants/employee/mutasi` | Ajukan perubahan karier untuk satu/banyak karyawan |
+| 6 | Detail Career Mutation (approval) | [`06-detail-mutasi.md`](./06-detail-mutasi.md) | `/tenants/employee/mutasi/:id` | Setujui/tolak/revisi pengajuan |
 | 7 | Work Policy *(rencana)* | [`07-work-policy.md`](./07-work-policy.md) | Tab **Work Policy** di halaman detail | Tetapkan OT Type & Working Time (shift) karyawan |
 | 8 | Import Karyawan dari Excel *(rencana)* | [`08-import-karyawan.md`](./08-import-karyawan.md) | `/tenants/employee/import` | Daftarkan banyak karyawan sekaligus: upload → review → result |
 | — | FAQ & Troubleshooting | [`99-faq.md`](./99-faq.md) | — | Pertanyaan umum |
@@ -48,7 +50,7 @@ Ada dua jalur yang **berbeda** dan sering tertukar:
    ubah status lifecycle, atau offboarding. Perubahan **langsung diterapkan**
    (tanpa approval) dan tercatat sebagai riwayat karier. Lihat
    [`03-detail-karyawan.md`](./03-detail-karyawan.md).
-2. **Lewat Mutasi** — pengajuan massal untuk satu/beberapa karyawan sekaligus.
+2. **Lewat Career Mutation** — pengajuan massal untuk satu/beberapa karyawan sekaligus.
    Perubahan **menunggu persetujuan** sebelum diterapkan. Lihat
    [`05-mutasi.md`](./05-mutasi.md).
 
@@ -64,7 +66,8 @@ Ada dua jalur yang **berbeda** dan sering tertukar:
    ([`04-kontrak-kerja.md`](./04-kontrak-kerja.md)).
 4. **Tetapkan Work Policy** *(rencana)* — tab **Work Policy**: OT Type &
    Working Time ([`07-work-policy.md`](./07-work-policy.md)).
-5. **Ubah penempatan/status** — lewat Actions (langsung) atau Mutasi (approval).
+5. **Ubah penempatan/status/jadwal** — lewat Actions (langsung, unit & posisi)
+   atau **Career Mutation** (approval).
 
 ## Sumber
 

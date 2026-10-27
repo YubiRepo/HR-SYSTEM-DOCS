@@ -53,10 +53,10 @@ Peta menu → folder → sub-halaman (sumber: `app/layouts/default.vue` sidebar)
 
 | Menu sidebar | Folder | Sub-halaman |
 |---|---|---|
-| Employees | `employees/` | Employees Info, Mutasi |
-| HR Setting | `hr-setting/` | Organizations, Positions, Working Time, Holiday & Leave Calendar, Attendance Rules, Leave Types, Salary Component, Tax and BPJS, Custom Fields |
+| Employees | `employees/` | Employees Info, Career Mutation |
+| HR Setting | `hr-setting/` | Organizations, Positions, Working Time, Working Patterns, Holiday & Leave Calendar, Attendance Rules, Leave Types, Salary Component, Tax and BPJS, Custom Fields |
 | Leave | `leave/` | Leave Request, Leave Balances |
-| Attendance | `attendance/` | Working Time Patterns, Employee Calendars, Daily Records, Overtime Request, Payroll Rekap Summary, Machines & Agents, Machine ID Mapping, Machine Punches |
+| Attendance | `attendance/` | Employee Calendars, Rotation Simulations, Daily Records, Overtime Request, Payroll Rekap Summary, Machines & Agents, Machine ID Mapping, Machine Punches |
 | Salary | `salary/` | Employee Payrolls, Payroll Runs, Payslips |
 | Recruitment & ATS | `recruitment/` | Lowongan Kerja, Pipeline Seleksi (ATS), Database Pelamar, Penawaran & Konversi, Konfigurasi Pipeline |
 | Performance & Goals | `performance/` | Sasaran Kerja (KPI/OKR), Siklus Penilaian, Penilaian Kinerja, 360° Feedback, Sesi Kalibrasi (9-Box), Kerangka & Kompetensi |

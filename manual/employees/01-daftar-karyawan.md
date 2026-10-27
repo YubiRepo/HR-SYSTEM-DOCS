@@ -32,27 +32,46 @@ tabel yang bisa dicari dan difilter, serta pintu masuk ke detail tiap karyawan.
     <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
       <span style="flex:1;border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 10px;color:#a1a1aa">Search employee name, email, or ID...</span>
       <span style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 10px">All branches ▾</span>
+      <span style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 10px">All org units ▾</span>
+      <span style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 10px">All statuses ▾</span>
       <span style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:6px 10px">Display ⚙</span>
     </div>
     <div style="margin-top:12px;border:1px solid #e4e4e7;border-radius:10px;background:#fff;overflow:hidden">
-      <div style="display:grid;grid-template-columns:90px 1.2fr 1.4fr 0.9fr 1.4fr 0.9fr;background:#fafafa;border-bottom:1px solid #e4e4e7;color:#71717a;font-size:11px;font-weight:600">
-        <div style="padding:10px">Emp No</div><div style="padding:10px">Name</div><div style="padding:10px">Email</div><div style="padding:10px">Branch</div><div style="padding:10px">Assignment</div><div style="padding:10px">Auth Account</div>
+      <div style="display:grid;grid-template-columns:70px 0.9fr 1.3fr 0.8fr 0.8fr 1fr 1.3fr 0.6fr 0.7fr;background:#fafafa;border-bottom:1px solid #e4e4e7;color:#71717a;font-size:11px;font-weight:600">
+        <div style="padding:10px 8px">Emp No</div><div style="padding:10px 8px">Name</div><div style="padding:10px 8px">Email</div><div style="padding:10px 8px">Branch</div><div style="padding:10px 8px">Org Unit</div><div style="padding:10px 8px">Position</div><div style="padding:10px 8px">Schedule</div><div style="padding:10px 8px">Status</div><div style="padding:10px 8px">Auth Account</div>
       </div>
-      <div style="display:grid;grid-template-columns:90px 1.2fr 1.4fr 0.9fr 1.4fr 0.9fr;border-bottom:1px solid #f4f4f5;align-items:center">
-        <div style="padding:10px;font-family:monospace;font-size:11px;color:#71717a">EMP-0001</div>
-        <div style="padding:10px;font-weight:600">Budi Santoso</div>
-        <div style="padding:10px">budi@perusahaan.co.id</div>
-        <div style="padding:10px">Jakarta HQ</div>
-        <div style="padding:10px"><div style="font-weight:500">Software Engineer</div><div style="color:#71717a;font-size:10px">Engineering</div></div>
-        <div style="padding:10px"><span style="background:#dcfce7;color:#15803d;border-radius:6px;padding:2px 8px;font-size:11px">Linked</span></div>
+      <div style="display:grid;grid-template-columns:70px 0.9fr 1.3fr 0.8fr 0.8fr 1fr 1.3fr 0.6fr 0.7fr;border-bottom:1px solid #f4f4f5;align-items:center;font-size:12px">
+        <div style="padding:10px 8px;font-family:monospace;font-size:11px;color:#71717a">EMP-0001</div>
+        <div style="padding:10px 8px;font-weight:600">Budi Santoso</div>
+        <div style="padding:10px 8px">budi@perusahaan.co.id</div>
+        <div style="padding:10px 8px">Jakarta HQ</div>
+        <div style="padding:10px 8px">Engineering</div>
+        <div style="padding:10px 8px;font-weight:500">Software Engineer</div>
+        <div style="padding:10px 8px"><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:2px 6px;font-size:10px">🕑 Fixed</span> Office Mon–Fri</div>
+        <div style="padding:10px 8px"><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:2px 6px;font-size:11px">Active</span></div>
+        <div style="padding:10px 8px"><span style="background:#dcfce7;color:#15803d;border-radius:6px;padding:2px 8px;font-size:11px">Linked</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:90px 1.2fr 1.4fr 0.9fr 1.4fr 0.9fr;align-items:center">
-        <div style="padding:10px;font-family:monospace;font-size:11px;color:#71717a">EMP-0002</div>
-        <div style="padding:10px;font-weight:600">Dewi Lestari</div>
-        <div style="padding:10px">dewi@perusahaan.co.id</div>
-        <div style="padding:10px">Bandung</div>
-        <div style="padding:10px"><div style="font-weight:500">HR Officer</div><div style="color:#71717a;font-size:10px">People Ops</div></div>
-        <div style="padding:10px"><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:2px 8px;font-size:11px">Not linked</span></div>
+      <div style="display:grid;grid-template-columns:70px 0.9fr 1.3fr 0.8fr 0.8fr 1fr 1.3fr 0.6fr 0.7fr;border-bottom:1px solid #f4f4f5;align-items:center;font-size:12px">
+        <div style="padding:10px 8px;font-family:monospace;font-size:11px;color:#71717a">EMP-0002</div>
+        <div style="padding:10px 8px;font-weight:600">Dewi Lestari</div>
+        <div style="padding:10px 8px">dewi@perusahaan.co.id</div>
+        <div style="padding:10px 8px">Bandung</div>
+        <div style="padding:10px 8px">Produksi</div>
+        <div style="padding:10px 8px;font-weight:500">Operator</div>
+        <div style="padding:10px 8px"><span style="background:#f3e8ff;color:#7e22ce;border-radius:6px;padding:2px 6px;font-size:10px">↻ Rotation</span> 3 Shift Pabrik</div>
+        <div style="padding:10px 8px"><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:2px 6px;font-size:11px">Probation</span></div>
+        <div style="padding:10px 8px"><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:2px 8px;font-size:11px">Not linked</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:70px 0.9fr 1.3fr 0.8fr 0.8fr 1fr 1.3fr 0.6fr 0.7fr;align-items:center;font-size:12px">
+        <div style="padding:10px 8px;font-family:monospace;font-size:11px;color:#71717a">EMP-0003</div>
+        <div style="padding:10px 8px;font-weight:600">Rina Wijaya</div>
+        <div style="padding:10px 8px">rina@perusahaan.co.id</div>
+        <div style="padding:10px 8px">Jakarta HQ</div>
+        <div style="padding:10px 8px">People Ops</div>
+        <div style="padding:10px 8px;font-weight:500">HR Officer</div>
+        <div style="padding:10px 8px;color:#b45309;font-size:11px">No schedule</div>
+        <div style="padding:10px 8px"><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:2px 6px;font-size:11px">Active</span></div>
+        <div style="padding:10px 8px"><span style="background:#dcfce7;color:#15803d;border-radius:6px;padding:2px 8px;font-size:11px">Linked</span></div>
       </div>
     </div>
   </main>
@@ -70,11 +89,13 @@ tabel yang bisa dicari dan difilter, serta pintu masuk ke detail tiap karyawan.
 
 | Elemen | Fungsi |
 |---|---|
-| **Refresh** | Memuat ulang daftar karyawan, unit organisasi, dan posisi |
+| **Refresh** | Memuat ulang daftar karyawan, unit organisasi, posisi, dan working pattern |
 | **Tambah Karyawan** | Buka form pendaftaran (butuh `employees:write`) |
 | **Import Excel** *(rencana — belum ada di aplikasi)* | Daftarkan banyak karyawan sekaligus dari file Excel — lihat [`08-import-karyawan.md`](./08-import-karyawan.md) |
 | Kolom pencarian | Placeholder *Search employee name, email, or ID...* — mencari berdasarkan nama |
 | **All branches** | Filter berdasarkan cabang |
+| **All org units** | Filter berdasarkan unit organisasi |
+| **All statuses** | Filter berdasarkan status karyawan (mis. `Probation`, `Active`) |
 | **Display** | Atur kolom mana yang ditampilkan |
 | Baris tabel (dobel klik) | Buka halaman detail karyawan |
 
@@ -86,18 +107,31 @@ tabel yang bisa dicari dan difilter, serta pintu masuk ke detail tiap karyawan.
 | **Name** | Nama lengkap |
 | **Email** | Email kerja |
 | **Branch** | Nama cabang kerja |
-| **Assignment** | Posisi/jabatan di atas, unit organisasi di bawah |
+| **Org Unit** | Unit organisasi saat ini |
+| **Position** | Posisi/jabatan saat ini |
+| **Schedule** | Badge tipe jadwal (`Fixed` / `Rotation`) + nama working pattern. Tulisan kuning `No schedule` bila karyawan belum punya jadwal |
+| **Status** | Status karyawan: `Probation`, `Active`, `On leave`, `Resigned`, `Terminated`, `Offboarded` |
 | **Auth Account** | `Linked` bila punya akun login, `Not linked` bila belum |
 
-> **Catatan:** Kolom Direct Manager, Employment, dan Lifecycle Status (beserta
-> filternya) sudah **tidak** ditampilkan di daftar. Informasi tersebut tetap
-> bisa dilihat di halaman detail karyawan.
+Kolom **Branch** sampai **Status** berasal dari entri *career path* yang sedang
+berlaku (penempatan terakhir karyawan). Untuk melihat riwayatnya, buka tab
+**Career History** di halaman detail.
+
+> **Penting:** Karyawan dengan `No schedule` belum bisa melakukan absensi
+> (clock-in). Tetapkan jadwalnya lewat **Career Mutation**
+> ([`05-mutasi.md`](./05-mutasi.md)). Daftar working pattern dikelola di
+> **HR Setting → Working Patterns**
+> ([`../hr-setting/04-working-patterns.md`](../hr-setting/04-working-patterns.md)).
+
+> **Catatan:** Kolom Direct Manager dan Employment sudah **tidak** ditampilkan
+> di daftar. Informasi tersebut tetap bisa dilihat di halaman detail karyawan.
 
 ## Langkah
 
 1. Masuk ke menu **Employees → Employees Info** di sidebar.
 2. (Opsional) ketik kata kunci pada kolom pencarian.
-3. (Opsional) pilih cabang pada filter **All branches**.
+3. (Opsional) persempit daftar dengan filter **All branches**, **All org
+   units**, atau **All statuses**.
 4. **Dobel klik** baris karyawan untuk membuka detail
    ([`03-detail-karyawan.md`](./03-detail-karyawan.md)).
 5. Klik **Tambah Karyawan** untuk mendaftarkan karyawan baru
@@ -122,5 +156,6 @@ tabel yang bisa dicari dan difilter, serta pintu masuk ke detail tiap karyawan.
 | Halaman | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/employee/index.vue` |
 | Wrapper | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/employee.vue` |
 | Tabel | `HR-SYSTEM-BACKOFFICE/app/components/AppDataTable.vue` |
-| Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useEmployees.ts`, `useOrgUnits.ts`, `usePositions.ts` |
+| Badge jadwal | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/ScheduleTypeBadge.vue` |
+| Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useEmployees.ts`, `useOrgUnits.ts`, `usePositions.ts`, `useCareerPathLookups.ts` (`useSchedulePatternLookup`), `useEmployeeMovement.ts` (label status) |
 | Endpoint | `modules/core-hr/04-api-contract.md` |

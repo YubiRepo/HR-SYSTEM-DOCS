@@ -6,13 +6,13 @@
 Periksa permission `employees:write`. Tombol tersembunyi bila akun Anda tidak
 punya hak tulis.
 
-**Menu "Mutasi" tidak tampil di sidebar.**
-Menu Mutasi mengikuti gate `core_hr:write` / `org:write`. Hubungi admin bila
+**Menu "Career Mutation" tidak tampil di sidebar.**
+Menu **Career Mutation** (dulu bernama *Mutasi*) mengikuti gate `core_hr:write` / `org:write`. Hubungi admin bila
 Anda membutuhkannya.
 
 **Karyawan yang dicari tidak muncul di daftar.**
 Daftar memuat maksimal 100 karyawan. Gunakan kolom pencarian atau filter
-**All branches**. Bila tetap tidak ada, karyawan mungkin sudah
+**All branches**, **All org units**, dan **All statuses**. Bila tetap tidak ada, karyawan mungkin sudah
 diarsipkan.
 
 **Muncul pesan "Incomplete Form" saat menyimpan karyawan.**
@@ -23,9 +23,16 @@ Field wajib belum lengkap: **Full Name**, **NIK**, **Work Email**,
 **Field "Direct Manager" tidak ada di form.**
 Untuk sementara field ini disembunyikan dari form tambah dan detail karyawan.
 
-**Tab "Career History" / "Documents Vault" tidak ada lagi.**
-Kedua tab tersebut saat ini tidak ditampilkan di halaman detail. Dokumen kontrak
-tetap bisa dikelola lewat **Contracts → ⋮ → Manage Documents**.
+**Tab "Documents Vault" tidak ada lagi.**
+Tab tersebut saat ini tidak ditampilkan di halaman detail. Dokumen kontrak
+tetap bisa dikelola lewat **Contracts → ⋮ → Manage Documents**. (Tab **Career
+History** sudah tampil kembali dan kini menampilkan career path karyawan.)
+
+**Kolom "Schedule" berisi "No schedule".**
+Karyawan belum punya jadwal kerja (schedule type + working pattern) dan belum
+bisa clock-in. Tetapkan lewat **Career Mutation**
+([`05-mutasi.md`](./05-mutasi.md)), atau isi **Schedule Type** & **Pattern**
+saat menambah karyawan.
 
 ## Akun Login
 
@@ -58,30 +65,40 @@ bisa ke `Active` atau `Terminated`; dari `Resigned` hanya ke `Offboarded`.
 
 **Kenapa unit/posisi tidak bisa diedit di tab Profile?**
 Penempatan di kartu ringkasan sengaja read-only. Perubahan unit/posisi harus lewat **Actions
-→ Transfer or promotion** (langsung) atau **Mutasi** (butuh approval), agar
+→ Transfer or promotion** (langsung) atau **Career Mutation** (butuh approval), agar
 riwayat karier tetap utuh.
 
-## Mutasi
+## Career Mutation
 
 **Tidak bisa mengedit atau menghapus baris di batch.**
-Baris berstatus **Disetujui** bersifat kekal (immutable) dan harus dipertahankan
-saat menyimpan perubahan.
+Baris berstatus **Approved** atau **Scheduled** terkunci (ikon gembok) dan tidak
+bisa diubah atau dihapus.
 
-**Karyawan tidak bisa ditambahkan dua kali dalam satu batch.**
-Satu karyawan hanya boleh muncul sekali per batch. Muncul pesan *"Karyawan ini
-sudah ditambahkan dalam pengajuan ini"*.
+**Karyawan tidak muncul di pemilih karyawan.**
+Karyawan yang sudah ada di pengajuan otomatis dilewati — satu karyawan hanya
+boleh muncul sekali per batch.
 
-**Pesan "Pilih unit & posisi tujuan terlebih dahulu".**
-Jenis **Promosi Jabatan** dan **Mutasi Unit / Posisi** wajib mengisi Unit dan
-Posisi tujuan.
+**Muncul "Change at least one of branch, department, position, schedule or
+employee status".**
+Setiap baris wajib mengubah minimal satu hal: cabang, department, posisi,
+jadwal (Schedule type + Pattern), atau status karyawan.
 
-**Baris muncul sebagai "Gagal Diterapkan".**
-Penyebab kegagalan ditampilkan pada baris tersebut. Gunakan **Revisi** untuk
+**Muncul "Select a pattern for the schedule type".**
+**Schedule type** dan **Pattern** harus diisi berpasangan, dan mode pattern
+(fixed/rotation) harus sama dengan schedule type.
+
+**Baris muncul sebagai "Failed".**
+Penyebab kegagalan ditampilkan pada baris tersebut. Gunakan **Revise** untuk
 memperbaiki lalu ajukan kembali.
 
-**Perbedaan "Transfer or promotion" (Actions) dengan "Mutasi".**
-Actions di detail karyawan **langsung diterapkan**; Mutasi **menunggu
-persetujuan** dan bisa massal.
+**Baris berstatus "Scheduled".**
+Pengajuan sudah disetujui dan akan diterapkan otomatis pada tanggal efektifnya
+(*Applies on …*).
+
+**Perbedaan "Transfer or promotion" (Actions) dengan "Career Mutation".**
+Actions di detail karyawan **langsung diterapkan** dan hanya mengubah unit &
+posisi; Career Mutation **menunggu persetujuan**, bisa massal, dan juga bisa
+mengubah cabang, jadwal kerja, serta status.
 
 ## Import Excel
 

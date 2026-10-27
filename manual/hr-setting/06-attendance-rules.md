@@ -1,7 +1,7 @@
-# 05 · Attendance Rules (Aturan Presensi)
+# 06 · Attendance Rules (Aturan Presensi)
 
-Mengatur kebijakan absensi: shift & hari kerja bawaan, toleransi telat, aturan
-lembur, geofence kantor, dan auto clock-out bila karyawan lupa absen pulang.
+Mengatur kebijakan absensi: toleransi telat, aturan lembur, geofence kantor, dan
+auto clock-out bila karyawan lupa absen pulang.
 Kebijakan dibuat sekali untuk seluruh perusahaan (**Default Tenant**) dan bisa
 ditimpa per cabang.
 
@@ -26,7 +26,7 @@ butuh `attendance:config`
     <div style="padding:14px 20px;border-bottom:1px solid #e4e4e7;font-weight:700;font-size:15px;background:#fff">Attendance Rules</div>
     <div style="padding:18px 20px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid #e4e4e7;padding-bottom:10px">
-        <div><div style="font-weight:800;font-size:15px">Attendance Rules</div><div style="color:#71717a;font-size:11px;margin-top:3px">Configure lateness tolerance, overtime rounding, geofence, and auto clock-out per branch or tenant-wide.</div></div>
+        <div><div style="font-weight:800;font-size:15px">Attendance Rules</div><div style="color:#71717a;font-size:11px;margin-top:3px">Configure lateness tolerance, overtime rounding, geofence, and auto clock-out per branch or tenant-wide. Working days are set on each fixed shift in <span style="color:#2563eb">Working Time</span>.</div></div>
         <span style="border:1px solid #e4e4e7;background:#fff;border-radius:8px;padding:5px 10px;font-weight:600;font-size:11px;white-space:nowrap">&#8635; Refresh</span>
       </div>
       <div style="margin-top:12px;border:1px solid #e4e4e7;background:#fff;border-radius:14px;padding:12px 14px">
@@ -40,8 +40,6 @@ butuh `attendance:config`
           <span style="color:#71717a">&#9650;</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px">
-          <div style="display:flex;justify-content:space-between;background:#f4f4f5;border-radius:8px;padding:8px 10px"><span style="color:#71717a">Default Shift</span><b>Regular Office</b></div>
-          <div style="display:flex;justify-content:space-between;background:#f4f4f5;border-radius:8px;padding:8px 10px"><span style="color:#71717a">Working Days</span><b>Mon, Tue, Wed, Thu, Fri</b></div>
           <div style="display:flex;justify-content:space-between;background:#f4f4f5;border-radius:8px;padding:8px 10px"><span style="color:#71717a">Lateness Tolerance</span><b>15 min</b></div>
           <div style="display:flex;justify-content:space-between;background:#f4f4f5;border-radius:8px;padding:8px 10px"><span style="color:#71717a">OT Threshold / Rounding</span><b>30m / 30m</b></div>
           <div style="display:flex;justify-content:space-between;background:#f4f4f5;border-radius:8px;padding:8px 10px"><span style="color:#71717a">Approval Required</span><b>Yes</b></div>
@@ -78,6 +76,7 @@ butuh `attendance:config`
 
 | Elemen | Fungsi |
 |---|---|
+| Teks pengantar | *"Working days are set on each fixed shift in Working Time."* dengan tautan ke **Working Time**. Catatan: saat ini hari kerja sebenarnya diatur pada pola **Fixed** di **Working Patterns** |
 | **Refresh** | Muat ulang kebijakan Default Tenant dan semua cabang |
 | Daftar kebijakan (accordion) | Baris pertama **Default Tenant** (terbuka otomatis), lalu satu baris per cabang. Klik baris untuk membuka/menutup rinciannya; beberapa baris boleh terbuka bersamaan |
 | Ringkasan baris | `Late (menit)m · OT (ambang)m/(pembulatan)m · Geofence (radius)m` atau `Geofence Off`; *No policy configured* bila belum ada kebijakan |
@@ -94,8 +93,6 @@ butuh `attendance:config`
 
 | Baris | Isi |
 |---|---|
-| **Default Shift** | Nama shift bawaan, atau *Not set* |
-| **Working Days** | Hari kerja, mis. *Mon, Tue, Wed, Thu, Fri* |
 | **Lateness Tolerance** | Toleransi telat, mis. *15 min* |
 | **OT Threshold / Rounding** | Ambang mulai lembur / pembulatan lembur, mis. *30m / 30m* |
 | **Approval Required** | **Yes**/**No** — lembur perlu persetujuan atasan |
@@ -110,15 +107,11 @@ overtime rounding rules."* Bila kebijakan sudah ada, form terisi nilainya; saat
 **Set Own Policy** pada cabang yang mengikuti default, form terisi nilai Default
 Tenant sebagai titik awal.
 
-### Default Regular Shift & Working Days
-
-*"Used as the fallback schedule when an employee has no specific shift
-assignment on a working day."*
-
-| Field | Tipe | Wajib | Catatan | Contoh |
-|---|---|---|---|---|
-| **Default Regular Shift** | pilihan (cari) | Tidak | Daftar shift dari Working Time (nama, jam, badge **Fixed**/**Flexible**). Dipakai untuk karyawan yang tidak punya jadwal khusus pada hari kerja | Regular Office (08:00 - 17:00) |
-| **Working Days** | centang Mon–Sun | Tidak | Hari yang dianggap hari kerja saat memakai shift bawaan; hari tanpa centang = libur. Default Mon–Fri | Mon, Tue, Wed, Thu, Fri |
+Di bagian atas modal ada kotak info: *"Working days and shifts are no longer set
+here: working days live on each fixed shift, and every employee's schedule comes
+from the schedule type + shift on their career path."* dengan tombol **Open
+Working Time** untuk pindah ke halaman shift. Hari kerja kini diatur pada pola
+**Fixed** di **Working Patterns**, bukan pada shift.
 
 ### Telat & Lembur
 
@@ -148,9 +141,9 @@ assignment on a working day."*
 | **Forgot Cap (Hours)** | angka | Ya | *"Runs after this duration."* Batas isian 1–48 | 23 |
 | **Reminder (Min)** | angka | Ya | *"Sent before the cap."* Batas isian 0–180 | 30 |
 
-Tombol: **Cancel** / **Save Policy**. Berhasil → toast **Kebijakan Presensi
-Diperbarui**; gagal → **Gagal Memperbarui Kebijakan**. Bila memuat gagal muncul
-**Gagal Memuat Kebijakan Presensi** atau **Failed to Load Branch List**.
+Tombol: **Cancel** / **Save Policy**. Berhasil → toast **Attendance Rule
+Updated**; gagal → **Failed to Update Attendance Rule**. Bila memuat gagal muncul
+**Failed to Load Attendance Rule** atau **Failed to Load Branch List**.
 
 ## Arti Setiap Pengaturan bagi Karyawan
 
@@ -162,19 +155,17 @@ Diperbarui**; gagal → **Gagal Memperbarui Kebijakan**. Bila memuat gagal muncu
 | **Requires Direct Manager Approval** | Bila aktif, hanya lembur yang disetujui atasan langsung yang masuk ke komponen gaji |
 | **Office Geofence** | Bila aktif, clock-in/out dari aplikasi hanya diterima dalam radius dari titik kantor; di luar radius ditolak |
 | **Auto Clock-Out** | Bila karyawan lupa clock-out, sesi yang terbuka lebih lama dari **Forgot Cap** ditutup otomatis oleh sistem dan ditandai otomatis agar HR bisa mengoreksinya. Karyawan menerima pengingat **Reminder** menit sebelum cap tercapai |
-| **Default Regular Shift / Working Days** | Menentukan jadwal karyawan yang tidak punya jadwal khusus: pada hari yang dicentang memakai shift bawaan, hari lain dianggap libur |
 
 ## Langkah — Mengatur Kebijakan Perusahaan
 
 1. Buka **HR Setting → Attendance Rules**.
 2. Pada baris **Default Tenant**, klik **Edit** (atau **Create Policy** bila
    belum ada).
-3. Pilih **Default Regular Shift** dan centang **Working Days**.
-4. Isi **Lateness Tolerance (Min)**, **OT Start Threshold (Min)**, dan **OT
+3. Isi **Lateness Tolerance (Min)**, **OT Start Threshold (Min)**, dan **OT
    Rounding (Min)**.
-5. Atur sakelar **Requires Direct Manager Approval**, **Office Geofence**, dan
+4. Atur sakelar **Requires Direct Manager Approval**, **Office Geofence**, dan
    **Auto Clock-Out**, lalu lengkapi isiannya bila diaktifkan.
-6. Klik **Save Policy**.
+5. Klik **Save Policy**.
 
 ## Langkah — Membuat Kebijakan Khusus Cabang
 
@@ -187,6 +178,12 @@ Diperbarui**; gagal → **Gagal Memperbarui Kebijakan**. Bila memuat gagal muncu
 
 ## Catatan & Aturan
 
+- Kebijakan ini **tidak** lagi menentukan shift atau hari kerja. Shift (jam kerja
+  & istirahat) diatur di **Working Time**
+  ([`03-working-time.md`](./03-working-time.md)); hari kerja dan rotasi diatur di
+  **Working Patterns** ([`04-working-patterns.md`](./04-working-patterns.md)).
+  Jadwal tiap karyawan berasal dari tipe jadwal + pola kerja pada riwayat
+  kariernya.
 - Setiap cakupan hanya punya **satu** kebijakan: satu Default Tenant dan
   paling banyak satu per cabang. Menyimpan lagi akan menimpa kebijakan cakupan
   itu.
@@ -205,6 +202,5 @@ Diperbarui**; gagal → **Gagal Memperbarui Kebijakan**. Bila memuat gagal muncu
 | Halaman | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/hr-setting/attendance-rules.vue` |
 | Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useAttendanceRules.ts` |
 | Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useTenantBranches.ts` |
-| Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useShifts.ts` |
 | Gate menu | `HR-SYSTEM-BACKOFFICE/app/layouts/default.vue` |
 | Modul | [Pencatatan Absensi](/modules/attendance/03-attendance-recording), [Lembur & Keterlambatan](/modules/attendance/04-overtime-lateness), [Geofence](/modules/attendance/11-geofence) |

@@ -1,4 +1,4 @@
-# 06 · Leave Types (Jenis Cuti)
+# 07 · Leave Types (Jenis Cuti)
 
 Mengatur jenis cuti yang bisa diajukan karyawan: jatah (kuota), cara saldo
 bertambah, sisa akhir periode (carry-over), syarat masa kerja, dan siapa yang

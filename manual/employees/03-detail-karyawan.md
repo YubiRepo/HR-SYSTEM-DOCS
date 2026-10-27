@@ -1,8 +1,8 @@
 # 03 · Detail Karyawan
 
 Halaman profil satu karyawan. Menampilkan ringkasan profil (foto + data
-kunci), form edit data pribadi, kontrak, kebijakan kerja (work policy), riwayat
-& data lainnya, custom fields, dan pengaturan akun login — plus menu
+kunci), form edit data pribadi, kontrak, riwayat karier (career path),
+kebijakan kerja (work policy), riwayat & data lainnya, custom fields, dan pengaturan akun login — plus menu
 **Actions** untuk mengubah penempatan atau status siklus hidup.
 
 **Akses:** `/tenants/employee/:id` · **Permission:** `employees:read` (lihat),
@@ -35,6 +35,7 @@ kunci), form edit data pribadi, kontrak, kebijakan kerja (work policy), riwayat
     <div style="display:flex;gap:4px;border-bottom:1px solid #e4e4e7;margin-top:12px;font-size:12px">
       <span style="padding:8px 14px;border-bottom:2px solid #2563eb;color:#2563eb;font-weight:600">Profile</span>
       <span style="padding:8px 14px;color:#71717a">Contracts</span>
+      <span style="padding:8px 14px;color:#71717a">Career History</span>
       <span style="padding:8px 14px;color:#71717a">Work Policy</span>
       <span style="padding:8px 14px;color:#71717a">Others</span>
       <span style="padding:8px 14px;color:#71717a">Account Settings</span>
@@ -86,7 +87,7 @@ kunci), form edit data pribadi, kontrak, kebijakan kerja (work policy), riwayat
 | **Back to Employee List** | Kembali ke daftar |
 | Badge status | Status siklus hidup saat ini (`Probation`, `Active`, `On leave`, `Resigned`, `Terminated`, `Offboarded`) |
 | Nama & subjudul | Nama lengkap, lalu *Posisi · Unit (Cabang)* |
-| **Refresh** | Muat ulang data karyawan & akun |
+| **Refresh** | Muat ulang data karyawan & akun (serta riwayat karier bila tab **Career History** sedang dibuka) |
 | **Actions** | Menu aksi (lihat tabel di bawah) |
 
 ### Menu Actions
@@ -111,13 +112,13 @@ kunci), form edit data pribadi, kontrak, kebijakan kerja (work policy), riwayat
 |---|---|---|
 | **Profile** | Ringkasan profil + form edit data pribadi | Selalu |
 | **Contracts** | Panel kontrak kerja — lihat [`04-kontrak-kerja.md`](./04-kontrak-kerja.md) | Selalu |
+| **Career History** | Timeline career path karyawan — lihat [Career History](#career-history) | Selalu |
 | **Work Policy** | Penugasan **OT Type** & **Working Time (shift)** — lihat [`07-work-policy.md`](./07-work-policy.md) | Selalu *(rencana — belum tersedia di aplikasi)* |
 | **Others** | Sub-tab riwayat & data lainnya + Custom Fields | Selalu |
 | **Account Settings** | Status akun login, role, permission | Karyawan sudah punya akun login |
 
-> **Catatan:** Tab *Career History*, *Documents Vault*, dan *Direct Reports*
-> masih ada di kode tetapi **tidak** ditampilkan di bar tab saat ini. Riwayat
-> perubahan penempatan tetap tercatat oleh sistem.
+> **Catatan:** Tab *Documents Vault* dan *Direct Reports* masih ada di kode
+> tetapi **tidak** ditampilkan di bar tab saat ini.
 
 ### Profile — Ringkasan (read-only)
 
@@ -127,7 +128,8 @@ nama, badge status, *Posisi · Unit*, dan 7 data kunci: **Employee No.**,
 **Employment Type** (dari kontrak aktif), **Branch**, **Login Account**.
 
 Penempatan (unit/posisi/cabang) **tidak** bisa diubah di sini — gunakan
-**Actions → Transfer or promotion** atau **Mutasi**.
+**Actions → Transfer or promotion** atau menu **Career Mutation**
+([`05-mutasi.md`](./05-mutasi.md)).
 
 ### Profile — Form edit
 
@@ -147,6 +149,68 @@ Bar aksi bawah (menempel, butuh `employees:write`):
 - **Save Changes** — aktif hanya bila ada perubahan.
 
 > **Catatan:** Field **Direct Manager** untuk sementara disembunyikan.
+
+### Career History
+
+Menampilkan **career path** karyawan: setiap entri adalah potret lengkap
+penempatan karyawan pada satu periode — cabang, unit, posisi, jadwal kerja, dan
+status. Entri terbaru di paling atas. Entri baru tercipta saat karyawan
+didaftarkan, saat **Actions → Transfer or promotion** disimpan, atau saat
+pengajuan **Career Mutation** disetujui.
+
+Isi tiap entri:
+
+| Elemen | Isi |
+|---|---|
+| Judul | Jenis career path (mis. *Promotion*, *Transfer* — mengikuti master common code `career_path_type` tenant) |
+| Badge | `Current` (hijau) untuk entri yang sedang berlaku, `Past` untuk entri lama |
+| Periode | *tanggal mulai — tanggal selesai*, atau *— Present* untuk entri yang sedang berlaku |
+| **Branch:** | Cabang kerja |
+| **Department:** | Unit organisasi |
+| **Position:** | Posisi/jabatan |
+| **Schedule:** | Badge `Fixed` / `Rotation` + nama working pattern |
+| **Status:** | Status karyawan pada periode itu |
+| Alasan | Teks miring di bawah bila alasan diisi |
+
+Saat memuat muncul *Loading career path...*; bila belum ada entri muncul
+*No career path recorded yet.* Gagal memuat menampilkan toast **"Failed to
+Load Career Path"**.
+
+<!-- ui-mock: employees-detail-career-history -->
+```html
+<div aria-label="Mockup Career History" style="font-family:Inter,system-ui,sans-serif;width:720px;background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:18px 20px;color:#18181b;font-size:13px">
+  <div style="display:flex;gap:16px">
+    <div style="width:12px;display:flex;flex-direction:column;align-items:center"><span style="width:10px;height:10px;border-radius:999px;border:2px solid #2563eb;margin-top:5px"></span><span style="flex:1;width:1px;background:#e4e4e7"></span></div>
+    <div style="flex:1;padding-bottom:18px">
+      <div style="display:flex;gap:8px;align-items:center"><span style="font-weight:600">Promotion</span><span style="background:#dcfce7;color:#15803d;border-radius:6px;padding:1px 8px;font-size:11px">Current</span></div>
+      <div style="font-family:monospace;font-size:11px;color:#a1a1aa;margin-top:4px">2026-07-01 — Present</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;margin-top:6px">
+        <div><span style="color:#71717a">Branch:</span> Jakarta HQ</div>
+        <div><span style="color:#71717a">Department:</span> Engineering</div>
+        <div><span style="color:#71717a">Position:</span> Senior Software Engineer</div>
+        <div><span style="color:#71717a">Schedule:</span> <span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:1px 6px;font-size:10px">🕑 Fixed</span> Office Mon–Fri</div>
+        <div><span style="color:#71717a">Status:</span> Active</div>
+      </div>
+      <div style="font-size:12px;font-style:italic;color:#71717a;margin-top:6px">Kinerja tahunan sangat baik.</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px">
+    <div style="width:12px;display:flex;flex-direction:column;align-items:center"><span style="width:10px;height:10px;border-radius:999px;border:2px solid #a1a1aa;margin-top:5px"></span></div>
+    <div style="flex:1">
+      <div style="display:flex;gap:8px;align-items:center"><span style="font-weight:600">New Hire</span><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:1px 8px;font-size:11px">Past</span></div>
+      <div style="font-family:monospace;font-size:11px;color:#a1a1aa;margin-top:4px">2024-02-01 — 2026-06-30</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;margin-top:6px">
+        <div><span style="color:#71717a">Branch:</span> Jakarta HQ</div>
+        <div><span style="color:#71717a">Department:</span> Engineering</div>
+        <div><span style="color:#71717a">Position:</span> Software Engineer</div>
+        <div><span style="color:#71717a">Schedule:</span> <span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:1px 6px;font-size:10px">🕑 Fixed</span> Office Mon–Fri</div>
+        <div><span style="color:#71717a">Status:</span> Probation</div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+<!-- /ui-mock -->
 
 ### Others
 
@@ -183,15 +247,29 @@ appended to the career timeline."*
 
 ### Transfer or promotion — "Assignment Movement / Promotion"
 
-| Field | Wajib | Catatan |
-|---|---|---|
-| **Org unit** | Ya | Unit tujuan |
-| **Position** | Ya | Posisi dibatasi unit terpilih |
-| **Movement type** | Ya | Promotion / Transfer / Demotion |
-| **Effective date** | Ya | — |
+Modal menampilkan *Target employee:* (nama karyawan). **Org unit** dan
+**Position** otomatis terisi penempatan saat ini.
+
+| Field | Tipe | Wajib | Catatan | Contoh |
+|---|---|---|---|---|
+| **Org unit** | pilihan | Ya | Unit tujuan | Engineering |
+| **Position** | pilihan | Ya | Posisi dibatasi unit terpilih; dikosongkan bila tidak cocok dengan unit baru | Senior Software Engineer |
+| **Career path type** | pilihan (common code `career_path_type`) | Ya | Placeholder *Select type...*; daftar mengikuti master common code tenant | Promotion |
+| **Effective date** | tanggal | Ya | Default: hari ini | 2026-07-01 |
+| **Reason** | teks panjang | Tidak | *Explanation for this movement...* | Kinerja tahunan sangat baik. |
 
 Tombol: **Cancel** / **Save Movement**. Perubahan **langsung diterapkan**
-(tanpa approval).
+(tanpa approval) dan muncul sebagai entri baru di tab **Career History**.
+Berhasil → toast **"New Assignment Saved"** (*Employee career history has been
+updated.*); gagal → toast **"Failed to Save Assignment"**.
+
+> **Penting:** Modal ini hanya mengubah unit dan posisi. Untuk mengubah cabang
+> atau jadwal kerja (schedule type & pattern), gunakan **Career Mutation**
+> ([`05-mutasi.md`](./05-mutasi.md)).
+
+> **Catatan:** Bila **Career path type** belum dipilih, tombol **Save
+> Movement** tidak melakukan apa-apa (tanpa pesan). Pastikan tipe sudah
+> dipilih.
 
 ### Change Lifecycle Status
 
@@ -229,9 +307,10 @@ Tombol: **Cancel** / **Link**.
 ## Langkah — Ubah Penempatan (contoh promosi)
 
 1. Klik **Actions → Transfer or promotion**.
-2. Pilih **Org unit** dan **Position** tujuan, pilih **Movement type**
-   (**Promotion**), isi **Effective date**.
-3. Klik **Save Movement**. Subjudul header ikut berubah ke posisi baru.
+2. Pilih **Org unit** dan **Position** tujuan, pilih **Career path type**
+   (mis. **Promotion**), isi **Effective date**, dan (opsional) **Reason**.
+3. Klik **Save Movement**. Subjudul header ikut berubah ke posisi baru, dan
+   entri baru muncul di tab **Career History**.
 
 ## Langkah — Buat/Tautkan Akun
 
@@ -248,7 +327,8 @@ Tombol: **Cancel** / **Link**.
 | Halaman | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/employee/[id].vue` |
 | Foto profil | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrEmployeeAvatar.vue` |
 | Bagian form | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrFormSection.vue`, `CoreHrEmployeePersonalSections.vue`, `CoreHrAddressFields.vue` |
-| Modal gerakan | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrMovementModal.vue` |
+| Modal gerakan | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrMovementModal.vue`, `HR-SYSTEM-BACKOFFICE/app/components/CommonCodeSelect.vue` |
+| Career History | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CareerPathTimeline.vue`, `ScheduleTypeBadge.vue` |
 | Riwayat | `HR-SYSTEM-BACKOFFICE/app/components/core-hr/CoreHrRecordListEditor.vue` |
-| Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useEmployees.ts`, `useEmployeeMovement.ts`, `useEmployeeRecordSections.ts`, `useEmployeeFields.ts`, `useAccessUsers.ts` |
+| Composable | `HR-SYSTEM-BACKOFFICE/app/composables/useEmployees.ts`, `useEmployeeMovement.ts`, `useEmployeeRecordSections.ts`, `useEmployeeFields.ts`, `useAccessUsers.ts`, `useCareerPathLookups.ts` |
 | Endpoint | `modules/core-hr/04-api-contract.md` |
