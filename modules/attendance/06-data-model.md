@@ -108,12 +108,16 @@ Pola penugasan shift per **grup** (dept/posisi/custom/individual) — sumber gen
 | `id` | string (PK) | |
 | `record_id` | string (FK) | |
 | `employee_id` | string (FK) | |
-| `hours` | number | Diminta |
-| `approved_hours` | number (nullable) | Disetujui |
-| `multiplier` | number | 1.5 / 2 / dst |
-| `is_holiday` | boolean | Lembur hari libur |
-| `status` | enum | `pending`, `approved`, `rejected` |
-| `approved_by` | string (nullable) | |
+| `date` | date | Tanggal kerja lembur |
+| `planned_start_at` / `planned_end_at` | timestamptz | Window rencana (boleh lewat tengah malam; null untuk data lama) |
+| `approved_end_at` | timestamptz (nullable) | Akhir window yang disetujui (≤ rencana) |
+| `requested_minutes` | int | Durasi rencana |
+| `approved_minutes` | int (nullable) | Durasi disetujui |
+| `reason` / `task_description` | string | |
+| `status` | enum | `pending`, `approved`, `rejected`, `cancelled` |
+| `approved_by`, `reviewed_at`, `review_note`, `cancelled_at` | | |
+
+> Kolom lama `requested_hours`, `approved_hours`, `multiplier`, `is_holiday` tidak lagi ditulis (akan dihapus). Tabel overtime rule & transaksi: [13 §10](./13-overtime-management.md#10-data-model).
 
 ### 2.6 `holidays`
 | Field | Tipe | Keterangan |
@@ -125,7 +129,6 @@ Pola penugasan shift per **grup** (dept/posisi/custom/individual) — sumber gen
 | `name` | string | "Idul Fitri" |
 | `type` | enum | `national`, `collective_leave`, `company` |
 | `is_observed` | boolean | Untuk `collective_leave`: apakah tenant ikut libur (opt-out untuk swasta) |
-| `overtime_multiplier` | number (nullable) | Multiplier bila ada yang bekerja di hari ini |
 
 ### 2.7 `attendance_rules` (config per tenant)
 | Field | Tipe | Keterangan |
@@ -136,8 +139,10 @@ Pola penugasan shift per **grup** (dept/posisi/custom/individual) — sumber gen
 | `working_days` | json | Hari kerja, mis. `["mon","tue","wed","thu","fri","sat"]` |
 | `default_shift_id` | string (FK, nullable) | **Regular shift** default bila tanpa jadwal eksplisit (aturan dasar) |
 | `late_tolerance_min` | int | Toleransi telat |
-| `ot_threshold_min` | int | Ambang mulai lembur |
-| `ot_rounding_min` | int | Pembulatan lembur |
+| `ot_threshold_min` | int | OT mulai setelah (menit lewat jam pulang yang dibuang) |
+| `ot_rounding_min` | int | Satuan pembulatan lembur |
+| `ot_tolerance_min` | int | Toleransi subsidi pembulatan (< satuan pembulatan) |
+| `overtime_rule_id` | string (FK, nullable) | Overtime Rule yang dipakai cabang/tenant ini |
 | `ot_requires_approval` | boolean | |
 | `geofence_enabled` | boolean | |
 | `geofence_radius_m` | int | |

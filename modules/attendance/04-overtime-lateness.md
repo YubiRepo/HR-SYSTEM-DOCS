@@ -14,19 +14,19 @@ aktual  : 08:00–18:30
 lembur  : 1,5 jam
 ```
 
-**Aturan konfigurabel:**
-- **Ambang mulai** — lembur dihitung setelah X menit lewat jadwal (mis. min. 30').
-- **Pembulatan** — per 30'/60' (mis. 1 jam 20' → 1 jam).
-- **Perlu persetujuan** — lembur hanya dihitung bila disetujui manajer (mencegah lembur liar).
-- **Multiplier** — sesuai aturan (jam pertama 1,5×, berikutnya 2×; hari libur beda).
+**Pengukuran (Attendance Rule):**
+- **OT mulai setelah** (`ot_threshold_min`) — menit sebelum `jam pulang + ambang` dibuang. Contoh: pulang 17:00, ambang 30, clock out 17:45 → 15 menit.
+- **Pembulatan** (`ot_rounding_min`) — satuan pembulatan.
+- **Toleransi** (`ot_tolerance_min`) — sisa ≥ `pembulatan − toleransi` dinaikkan menjadi satu satuan penuh. Contoh: satuan 30, toleransi 5 → 55' jadi 60', 54' jadi 30'.
+- **Perlu persetujuan** — lembur hanya dihitung bila ada request yang disetujui (kebijakan lembur tanpa request diatur per Overtime Rule).
 
-> Multiplier & jam dikirim ke Payroll; perhitungan uang lembur memakai formula di Payroll (`(BASIC/173) × jam × multiplier`).
+Pembagian ke komponen (OT1, OT2, …) dan multiplier diatur di **Overtime Rule** per *day type* (hari kerja / rest day / libur), bukan di request atau holiday. Selengkapnya: [13-overtime-management.md](./13-overtime-management.md).
 
 ---
 
 ## 2. Lembur Hari Libur / Nasional
 
-Kerja di hari libur mingguan atau libur nasional dihitung dengan multiplier khusus (biasanya lebih tinggi), mengikuti aturan ketenagakerjaan. Ditandai terpisah agar Payroll menerapkan multiplier yang benar.
+Kerja di rest day atau hari libur: seluruh durasi kerja adalah lembur (pembulatan & toleransi berlaku, ambang tidak). Jenis hari ditentukan klasifikasi modul sumber (`REST_DAY` dari jadwal, `PUBLIC_HOLIDAY` dari kalender libur) dan dicocokkan ke day type Overtime Rule — lihat [13 §3](./13-overtime-management.md#3-klasifikasi-hari).
 
 ---
 
@@ -72,7 +72,7 @@ Rekap Budi · 2026-01
   cuti         : 1 hari (dari Leave)
 ```
 
-Rekap ini yang ditarik Payroll saat `calculate` run → jadi variabel formula (`overtime_hours`, `late_days`, `unpaid_days`, `present_days`).
+Rekap ini yang ditarik Payroll saat `calculate` run → jadi variabel formula (`overtime_hours`, `late_days`, `unpaid_days`, `present_days`). Rekap juga memuat blok `overtime` berisi total menit **per komponen OT** dari transaksi lembur yang tervalidasi ([13 §8](./13-overtime-management.md#8-rekap-untuk-payroll)).
 
 ---
 

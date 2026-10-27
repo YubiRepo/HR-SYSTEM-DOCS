@@ -5,10 +5,12 @@ yang melekat ke satu karyawan: **OT Type** (jenis lembur yang berlaku) dan
 **Working Time** (shift/jam kerja default). Setiap perubahan dicatat dengan
 tanggal efektif sehingga riwayatnya bisa ditelusuri.
 
-> **Penting — status: rencana.** Tab ini **belum tersedia** di aplikasi
-> backoffice maupun API. Dokumen ini adalah spesifikasi UI & alur yang disepakati
-> untuk dibangun. Saat fitur dirilis, perbarui dokumen ini mengikuti label dan
-> perilaku aktual (lihat [RULES §4](../RULES.md)) lalu hapus catatan ini.
+> **Penting — status: digantikan, tidak akan dibangun.** Aturan lembur kini
+> dipilih per cabang lewat **Attendance Rules → Overtime Rule** (lihat
+> [`../hr-setting/11-overtime-rules.md`](../hr-setting/11-overtime-rules.md) dan
+> `modules/attendance/13-overtime-management.md`), dan jam kerja karyawan
+> berasal dari Working Pattern di career path. Dokumen ini disimpan sebagai
+> arsip keputusan.
 
 **Akses:** tab di `/tenants/employee/:id` · **Permission (usulan):**
 `employees:read` (lihat), `employees:write` (ubah)

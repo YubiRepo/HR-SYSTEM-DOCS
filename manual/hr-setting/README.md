@@ -26,6 +26,7 @@ diatur sekali di awal lalu disesuaikan bila kebijakan perusahaan berubah.
 | 8 | Salary Component | [`08-salary-component.md`](./08-salary-component.md) | `/tenants/hr-setting/salary-component` | Komponen pendapatan & potongan gaji |
 | 9 | Tax and BPJS | [`09-tax-bpjs.md`](./09-tax-bpjs.md) | `/tenants/hr-setting/tax-bpjs` | Pengaturan PPh 21 dan BPJS |
 | 10 | Custom Fields | [`10-custom-fields.md`](./10-custom-fields.md) | `/tenants/hr-setting/custom-fields` | Field tambahan pada data karyawan |
+| 11 | Overtime Rules | [`11-overtime-rules.md`](./11-overtime-rules.md) | `/tenants/hr-setting/overtime-rules` | Day type & tier lembur (OT1, OT2, …) per aturan |
 | — | FAQ & Troubleshooting | [`99-faq.md`](./99-faq.md) | — | Pertanyaan umum |
 
 ## Syarat Tampil Sub-Halaman

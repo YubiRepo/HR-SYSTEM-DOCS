@@ -39,7 +39,10 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 |---|---|---|---|
 | POST | `/attendance/overtime` | Ajukan lembur (self hanya untuk dirinya sendiri) | `attendance:self` / `attendance:write` |
 | GET | `/attendance/me/overtime` | Status pengajuan lembur milik sendiri | `attendance:self` |
-| POST | `/attendance/overtime/{id}/approve` | Setujui lembur | `attendance:approve` |
+| POST | `/attendance/overtime/{id}/approve` | Setujui lembur (boleh mempersingkat window) | `attendance:approve` |
+| POST | `/attendance/overtime/{id}/reject` | Tolak lembur | `attendance:approve` |
+| POST | `/attendance/overtime/{id}/cancel` | Batalkan (pending, atau approved sebelum mulai) | `attendance:self` / `attendance:write` |
+| — | `/attendance/overtime-rules…`, `/attendance/overtime/transactions…` | Overtime rule & transaksi — lihat [13 §9](./13-overtime-management.md#9-api) | |
 | GET | `/attendance/summary` | Rekap periode (untuk Payroll) | `attendance:read` |
 
 ---
@@ -174,11 +177,25 @@ Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
 
 ---
 
-## 4. POST /attendance/overtime/{id}/approve
+## 4. POST /attendance/overtime
+
 ```json
-{ "approved_hours": 1.5, "note": "Lembur closing" }
+{
+  "employee_id": "emp_123",
+  "date": "2026-10-26",
+  "planned_start_at": "2026-10-26T17:00:00+07:00",
+  "planned_end_at": "2026-10-26T20:00:00+07:00",
+  "reason": "Closing akhir bulan",
+  "task_description": "Rekonsiliasi stok"
+}
 ```
-**Response `200 OK`** — lembur disetujui & masuk rekap. Hanya lembur disetujui yang dikirim ke Payroll (bila aturan `perlu persetujuan` aktif).
+`requested_minutes` diturunkan dari window (180). Window boleh melewati tengah malam. Maksimal satu request pending/approved per karyawan per tanggal (`OVERTIME_REQUEST_EXISTS`).
+
+### POST /attendance/overtime/{id}/approve
+```json
+{ "approved_end_at": "2026-10-26T19:00:00+07:00", "note": "Sampai 19:00 saja" }
+```
+`approved_end_at` opsional; tanpa field ini seluruh window disetujui. Nilai di luar window ditolak. Reviewer tidak boleh menyetujui request miliknya sendiri (`OVERTIME_SELF_APPROVAL`). Request adalah otorisasi — durasi aktual dihitung dari absensi (lihat [13](./13-overtime-management.md)).
 
 ---
 

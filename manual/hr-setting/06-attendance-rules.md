@@ -118,8 +118,10 @@ Working Time** untuk pindah ke halaman shift. Hari kerja kini diatur pada pola
 | Field | Tipe | Wajib | Catatan | Contoh |
 |---|---|---|---|---|
 | **Lateness Tolerance (Min)** | angka | Ya | *"Still On-Time within this many minutes."* Batas isian 0–60 | 15 |
-| **OT Start Threshold (Min)** | angka | Ya | *"Minimum duration after shift end"*. Batas isian 0–120 | 30 |
-| **OT Rounding (Min)** | angka | Ya | *"e.g. 30 or 60 minutes"*. Batas isian 1–60 | 30 |
+| **OT Starts After (Min)** | angka | Ya | *"Minutes after shift end that are not counted."* Batas isian 0–120 | 30 |
+| **Rounding Unit (Min)** | angka | Ya | *"e.g. 30 or 60; 0 = no rounding."* Batas isian 0–60 | 30 |
+| **Rounding Tolerance (Min)** | angka | Tidak | *"A leftover this close to a full unit counts as one unit."* Harus lebih kecil dari Rounding Unit. Di bawah field tampil contoh hasil, mis. *"85 min after shift end → 60 min OT"* | 5 |
+| **Overtime Rule** | pilihan | Tidak | Overtime Rule aktif (HR Setting → Overtime Rules); *None* = lembur cabang ini tidak diproses | OT-5D |
 | **Requires Direct Manager Approval** | sakelar | — | *"Only approved overtime is forwarded to the Payroll component."* Default aktif | Aktif |
 
 ### Office Geofence
@@ -150,8 +152,10 @@ Updated**; gagal → **Failed to Update Attendance Rule**. Bila memuat gagal mun
 | Pengaturan | Dampak |
 |---|---|
 | **Lateness Tolerance** | Karyawan yang clock-in masih dalam toleransi tetap dihitung tepat waktu. Contoh: shift 08:00, toleransi 15 → clock-in 08:12 tepat waktu; 08:20 dicatat telat |
-| **OT Start Threshold** | Kelebihan jam setelah shift selesai baru dihitung lembur bila mencapai ambang ini. Contoh: ambang 30 → pulang 17:20 (lebih 20 menit) bukan lembur |
-| **OT Rounding** | Durasi lembur dibulatkan per kelipatan menit ini. Contoh: pembulatan 30 → lembur 1 jam 20 menit dihitung 1 jam |
+| **OT Starts After** | Lembur dihitung mulai `jam pulang + nilai ini`; menit sebelumnya dibuang. Contoh: 30 → pulang 17:00, clock out 17:45 = lembur 15 menit |
+| **Rounding Unit** | Durasi lembur dibulatkan ke bawah per kelipatan menit ini. Contoh: 30 → 1 jam 20 menit dihitung 1 jam |
+| **Rounding Tolerance** | Sisa yang kurang dari toleransi untuk genap satu satuan disubsidi jadi satu satuan. Contoh: satuan 30, toleransi 5 → 55 menit dihitung 60, 54 menit dihitung 30 |
+| **Overtime Rule** | Day type & tier (OT1, OT2, …) untuk memecah lembur cabang ini — lihat [`11-overtime-rules.md`](./11-overtime-rules.md) |
 | **Requires Direct Manager Approval** | Bila aktif, hanya lembur yang disetujui atasan langsung yang masuk ke komponen gaji |
 | **Office Geofence** | Bila aktif, clock-in/out dari aplikasi hanya diterima dalam radius dari titik kantor; di luar radius ditolak |
 | **Auto Clock-Out** | Bila karyawan lupa clock-out, sesi yang terbuka lebih lama dari **Forgot Cap** ditutup otomatis oleh sistem dan ditandai otomatis agar HR bisa mengoreksinya. Karyawan menerima pengingat **Reminder** menit sebelum cap tercapai |
