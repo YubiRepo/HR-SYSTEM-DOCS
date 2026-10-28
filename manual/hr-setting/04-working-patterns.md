@@ -48,7 +48,7 @@ dan sejenisnya ([`06-attendance-rules.md`](./06-attendance-rules.md)).
     <div style="padding:14px 20px;border-bottom:1px solid #e4e4e7;font-weight:700;font-size:15px;background:#fff">Working Patterns</div>
     <div style="padding:18px 20px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid #e4e4e7;padding-bottom:12px">
-        <div><div style="font-weight:800;font-size:15px">Working Patterns</div><div style="color:#71717a;font-size:11px;margin-top:3px">What employees are assigned to. A fixed pattern runs one shift on set weekdays; a rotation cycles through shifts and days off and needs Generate to create schedule rows.</div></div>
+        <div><div style="font-weight:800;font-size:15px">Working Patterns</div><div style="color:#71717a;font-size:11px;margin-top:3px">What employees are assigned to. A fixed pattern picks a shift per weekday (days left on Off are days off); a rotation cycles through shifts and days off and needs Generate to create schedule rows.</div></div>
         <div style="display:flex;gap:8px;white-space:nowrap">
           <span style="border:1px solid #d4d4d8;background:#fff;border-radius:8px;padding:5px 10px;font-size:11px">⟳ Refresh</span>
           <span style="background:#2563eb;color:#fff;border-radius:8px;padding:5px 10px;font-weight:600;font-size:11px">+ Add Pattern</span>
@@ -127,7 +127,7 @@ dan sejenisnya ([`06-attendance-rules.md`](./06-attendance-rules.md)).
         <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
           <div><div style="font-weight:600;margin-bottom:4px">Mode *</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div style="border:1px solid #e4e4e7;background:#fafafa;border-radius:10px;padding:8px"><div style="font-weight:600">📅 Fixed</div><div style="color:#71717a;font-size:11px">One shift on set weekdays</div></div>
+              <div style="border:1px solid #e4e4e7;background:#fafafa;border-radius:10px;padding:8px"><div style="font-weight:600">📅 Fixed</div><div style="color:#71717a;font-size:11px">A shift per weekday</div></div>
               <div style="border:1px solid #2563eb;background:#eff6ff;border-radius:10px;padding:8px"><div style="font-weight:600">🔁 Rotation</div><div style="color:#71717a;font-size:11px">Cycle of shifts and days off</div></div>
             </div>
           </div>
@@ -205,7 +205,7 @@ menampilkan *No working patterns yet.*
 |---|---|
 | **Name** | Titik warna pola, nama pola, dan deskripsi (bila ada) |
 | **Mode** | **Fixed** (biru) atau **Rotation** (biru muda, ikon putar) |
-| **Schedule** | **Fixed:** nama shift + jamnya, lalu tujuh kotak hari **Mon**–**Sun** (hari kerja berwarna biru, hari libur abu-abu). **Rotation:** deretan *leg* berwarna sesuai shift, mis. *3× Shift Pagi Gudang*, *1× Off*, lalu baris *(n)-day cycle • anchor (tanggal) • offset (n)* |
+| **Schedule** | **Fixed:** tujuh kotak hari **Mon**–**Sun** berwarna sesuai shift hari itu (Off = abu-abu), lalu baris nama shift unik yang dipakai (mis. *Reguler / Jumat Pendek / Setengah Hari*). **Rotation:** deretan *leg* berwarna sesuai shift, mis. *3× Shift Pagi Gudang*, *1× Off*, lalu baris *(n)-day cycle • anchor (tanggal) • offset (n)* |
 | **Employees** | Jumlah karyawan yang saat ini memakai pola ini; `-` bila jumlahnya gagal dimuat |
 | **Status** | **Active** (hijau) atau **Inactive** (abu-abu) |
 
@@ -213,8 +213,8 @@ menampilkan *No working patterns yet.*
 
 Deskripsi modal berubah sesuai mode:
 
-- Fixed: *"One shift on the chosen weekdays. Resolved live — no generation
-  needed."*
+- Fixed: *"A shift per weekday (days left on Off are days off). Resolved live —
+  no generation needed."*
 - Rotation: *"Cycles through shifts and days off from an anchor date. Schedule
   rows exist only after Generate."*
 
@@ -222,7 +222,7 @@ Deskripsi modal berubah sesuai mode:
 
 | Field | Tipe | Wajib | Catatan | Contoh |
 |---|---|---|---|---|
-| **Mode \*** | pilihan kartu | Ya | **Fixed** — *One shift on set weekdays*; **Rotation** — *Cycle of shifts and days off*. Default **Fixed**. Saat edit tidak bisa diubah: *"Mode is set at creation and can't be changed."* | Rotation |
+| **Mode \*** | pilihan kartu | Ya | **Fixed** — *A shift per weekday*; **Rotation** — *Cycle of shifts and days off*. Default **Fixed**. Saat edit tidak bisa diubah: *"Mode is set at creation and can't be changed."* | Rotation |
 | **Pattern Name \*** | teks | Ya | Placeholder *e.g. Office Mon–Fri* (Fixed) atau *e.g. Security 3-3-1 Rotation* (Rotation) | Rotasi Gudang Regu A |
 | **Color** | pemilih warna | Tidak | Default biru `#3b82f6`; saat edit terisi warna pola (atau warna shift untuk pola Fixed tanpa warna sendiri) | Merah muda |
 | **Description** | teks | Tidak | Placeholder *e.g. Warehouse security crew A* | Kantor Cabang Makassar |
@@ -231,8 +231,10 @@ Deskripsi modal berubah sesuai mode:
 
 | Field | Tipe | Wajib | Catatan | Contoh |
 |---|---|---|---|---|
-| **Shift \*** | pilihan + cari | Ya | Placeholder *Select an active shift*. Tiap opsi tampil sebagai *(nama) ((kode)) · (mulai)–(selesai)*. Hanya shift aktif; shift pola lama yang sudah nonaktif tetap tampil dengan akhiran *(inactive)*. Bila belum ada shift aktif muncul peringatan *"No active shift — create one under HR Setting → Working Time."* | Shift Kantor Reguler (REG-0817) · 08:00–17:00 |
-| **Working Days \*** | tombol hari | Ya | Tombol **Mon**, **Tue**, **Wed**, **Thu**, **Fri**, **Sat**, **Sun**; klik untuk menyalakan/mematikan. Default Senin–Jumat. Keterangan: *"Other days are days off for employees on this pattern."* | Mon–Fri |
+| **Weekly Shift Grid \*** | 7 baris hari | Ya | Satu baris per hari **Mon**–**Sun**, masing-masing berisi pilihan **Off (day off)** atau shift aktif. Keterangan: *"Pick the shift for each weekday. Days left on Off are days off for employees on this pattern."* Minimal satu hari harus berisi shift. | Mon–Thu Reguler, Fri Jumat Pendek, Sat Setengah Hari, Sun Off |
+| **Quick-fill shift** | pilihan + cari | Tidak | Shift yang dipakai tombol preset. Opsi sama dengan pilihan harian (hanya shift aktif; shift nonaktif yang sedang dipakai tetap tampil dengan akhiran *(inactive)*). | Shift Kantor Reguler (REG-0817) · 08:00–17:00 |
+| Tombol preset | tombol | — | **Mon–Fri**, **Mon–Sat**, **Every day**, **Clear**. Mengisi hari yang sesuai dengan **Quick-fill shift** (**Clear** mengosongkan semua hari). Tombol selain **Clear** nonaktif bila belum ada shift dipilih. | Mon–Sat |
+| Pilihan tiap hari | pilihan + cari | Ya (≥1 hari) | Opsi pertama **Off (day off)**, lalu shift aktif. Hari berisi Off dianggap libur. Bila belum ada shift aktif muncul peringatan *"No active shift — create one under HR Setting → Working Time."* | Fri: Shift Jumat Pendek · 08:00–11:30 |
 
 ### Field mode Rotation
 
@@ -264,8 +266,7 @@ Semua validasi muncul sebagai toast **Validation Failed**:
 | Kondisi | Pesan |
 |---|---|
 | Nama kosong | *Pattern name is required.* |
-| Fixed tanpa shift | *Pick a shift.* |
-| Fixed tanpa hari kerja | *Pick at least one working day.* |
+| Fixed dengan semua hari Off | *Pick a shift for at least one working day.* |
 | Rotation tanpa leg | *Add at least one leg to the rotation sequence.* |
 | Leg dengan hari kurang dari 1 | *Every rotation leg needs at least 1 day.* |
 | Leg kerja tanpa shift | *Pick a shift (or Off) for every rotation leg.* |
@@ -320,15 +321,23 @@ Pattern Activated** (gagal → **Failed to Activate Working Pattern**).
 ## Langkah — Membuat Pola Fixed
 
 1. Pastikan shift yang dibutuhkan sudah ada dan aktif di **HR Setting →
-   Working Time**.
+   Working Time** (mis. *Reguler*, *Jumat Pendek*, *Setengah Hari*).
 2. Buka **HR Setting → Working Patterns**, klik **Add Pattern**.
 3. Biarkan **Mode** pada **Fixed**.
-4. Isi **Pattern Name**, mis. *Kantor Senin–Jumat*, dan pilih **Color** bila
-   perlu.
-5. Pilih **Shift**, mis. *Shift Kantor Reguler (REG-0817) · 08:00–17:00*.
-6. Atur **Working Days**: nyalakan hari kerja, matikan hari libur.
-7. Klik **Save Pattern**. Jadwal karyawan yang memakai pola ini langsung
-   berlaku tanpa perlu Generate.
+4. Isi **Pattern Name**, mis. *Kantor Senin–Sabtu (Jumat pendek)*, dan pilih
+   **Color** bila perlu.
+5. Pada **Weekly Shift Grid**, isi shift untuk tiap hari:
+   - cara cepat: pilih **Quick-fill shift**, klik **Mon–Sat** (atau **Mon–Fri** /
+     **Every day**), lalu sesuaikan hari yang berbeda;
+   - atau pilih langsung tiap baris hari.
+   Set hari libur ke **Off (day off)**. Default pola baru: Sen–Jum memakai shift
+   aktif pertama, Sabtu–Minggu Off.
+6. Pastikan minimal satu hari berisi shift, lalu klik **Save Pattern**.
+   Karyawan yang memakai pola ini langsung mengikuti jadwal per hari tanpa
+   perlu Generate.
+
+Contoh kasus "Senin–Sabtu, Jumat istirahat lebih panjang, Sabtu setengah hari":
+Mon–Thu = *Reguler*, Fri = *Jumat Pendek*, Sat = *Setengah Hari*, Sun = *Off*.
 
 ## Langkah — Membuat Pola Rotation
 
@@ -373,6 +382,9 @@ Pola tidak dipasang dari halaman ini, melainkan pada data karyawan:
 - Pola berlaku untuk seluruh perusahaan (tidak per cabang).
 - **Mode** tidak bisa diubah setelah pola dibuat; buat pola baru bila perlu
   mode lain.
+- Pola **Fixed** menyimpan satu shift untuk tiap hari kerja, jadi satu pola
+  boleh memakai beberapa shift berbeda (mis. Jumat pendek dan Sabtu setengah
+  hari). Hari yang diisi **Off** dianggap libur.
 - Pola **Fixed** tidak perlu (dan tidak bisa) di-Generate. Pola **Rotation**
   harus di-Generate ulang untuk periode berikutnya sebelum jadwalnya habis.
 - Generate **tidak pernah menimpa** hari yang sudah diubah manual; hari itu

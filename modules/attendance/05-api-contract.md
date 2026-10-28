@@ -26,6 +26,12 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 |---|---|---|---|
 | GET | `/attendance/shifts` | Katalog shift | `attendance:read` / `attendance:self` |
 | POST | `/attendance/shifts` | Buat shift | `attendance:config` |
+| GET | `/attendance/schedule-patterns` | Daftar pola kerja | `attendance:read` / `attendance:self` |
+| POST | `/attendance/schedule-patterns` | Buat pola kerja | `attendance:config` |
+| PATCH | `/attendance/schedule-patterns/{id}` | Ubah pola kerja | `attendance:config` |
+| DELETE | `/attendance/schedule-patterns/{id}` | Nonaktifkan pola | `attendance:config` |
+| POST | `/attendance/schedule-patterns/{id}/activate` | Aktifkan kembali pola | `attendance:config` |
+| POST | `/attendance/schedule-patterns/{id}/generate` | Materialisasi pola rotation ke `schedules` | `attendance:write` |
 | GET | `/attendance/schedules` | Jadwal (filter tanggal/karyawan) | `attendance:read` |
 | POST | `/attendance/schedules` | Tugaskan shift (single/pola/rotasi) | `attendance:write` |
 | POST | `/attendance/schedules/generate` | Generate baris dari pola (rentang tertentu) | `attendance:write` |
@@ -138,6 +144,92 @@ Ringkasan hari ini untuk layar utama karyawan (mobile): jadwal hari ini + apakah
   }
 }
 ```
+
+---
+
+## 2d. `/attendance/schedule-patterns` (CRUD + activate + generate)
+
+Pola kerja tenant-wide. Karyawan menempel ke pola lewat career path (`pattern_id`). Mode `fixed` memakai `weekly_shifts` (map hari → shift) dan di-resolve live; mode `rotation` memakai `rotation_sequence` + `anchor_date` dan baru menulis baris `schedules` setelah Generate.
+
+`GET /attendance/schedule-patterns?search=&mode=fixed&active=true&page=1&per_page=20`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "tenant_id": "uuid",
+      "name": "Senin–Sabtu (Jumat pendek)",
+      "mode": "fixed",
+      "color": "#0ea5e9",
+      "description": "Sabtu setengah hari",
+      "active": true,
+      "weekly_shifts": [
+        { "day": "mon", "shift_id": "uuid", "shift_name": "Reguler", "shift_code": "REG", "shift_color": "#22c55e" },
+        { "day": "fri", "shift_id": "uuid", "shift_name": "Jumat Pendek", "shift_code": "JMT", "shift_color": "#f59e0b" },
+        { "day": "sat", "shift_id": "uuid", "shift_name": "Setengah Hari", "shift_code": "STG", "shift_color": "#a855f7" }
+      ],
+      "working_days": ["mon", "tue", "wed", "thu", "fri", "sat"],
+      "employee_count": 12,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "meta": {
+    "pagination": { "page": 1, "per_page": 20, "total_items": 1, "total_pages": 1, "next": null, "prev": null }
+  }
+}
+```
+- `weekly_shifts` (fixed) berurutan `mon`..`sun`, hanya hari yang punya shift; hari yang tidak ada = libur. `working_days` adalah turunan untuk pembaca lama.
+- `shift_name`/`shift_code`/`shift_color` opsional (bisa absen bila shift tidak ditemukan).
+- List filter: `search`, `mode` (`fixed`/`rotation`), `active` (`true`/`false`).
+
+`POST /attendance/schedule-patterns`
+```json
+{
+  "name": "Senin–Sabtu (Jumat pendek)",
+  "mode": "fixed",
+  "weekly_shifts": {
+    "mon": "shift-uuid-reguler",
+    "tue": "shift-uuid-reguler",
+    "wed": "shift-uuid-reguler",
+    "thu": "shift-uuid-reguler",
+    "fri": "shift-uuid-jumat",
+    "sat": "shift-uuid-setengah-hari"
+  },
+  "color": "#0ea5e9",
+  "description": "Sabtu setengah hari"
+}
+```
+Mode rotation:
+```json
+{
+  "name": "Regu A",
+  "mode": "rotation",
+  "rotation_sequence": [
+    { "shift_id": "shift-uuid-pagi", "days": 3 },
+    { "shift_id": "shift-uuid-malam", "days": 3 },
+    { "is_off": true, "days": 1 }
+  ],
+  "anchor_date": "2026-01-01",
+  "phase_offset": 0
+}
+```
+- Fixed: `weekly_shifts` wajib ≥1 entri; key harus `mon`..`sun`; value tidak boleh kosong; semua shift harus aktif. Field rotation diabaikan/dibersihkan.
+- Rotation: `rotation_sequence` wajib; `cycle_length` boleh 0 (diturunkan); `anchor_date` wajib.
+
+`PATCH /attendance/schedule-patterns/{id}` — field yang dikirim menggantikan nilai lama; `mode` tidak bisa diubah. `weekly_shifts` non-null **mengganti seluruh map** (map kosong ditolak karena fixed wajib ≥1 entri). Response = objek pola (sama seperti item list).
+
+`DELETE /attendance/schedule-patterns/{id}` → `204`. Ditolak bila masih ada karyawan memakai pola. `POST /{id}/activate` → objek pola.
+
+`POST /attendance/schedule-patterns/{id}/generate`
+```json
+{ "date_from": "2026-02-01", "date_to": "2026-02-28" }
+```
+```json
+{ "success": true, "data": { "employees": 12, "generated": 336, "skipped_manual": 0 } }
+```
+Hanya untuk rotation (maks 366 hari). Baris `source: manual` tidak ditimpa; fixed tidak perlu generate.
 
 ---
 

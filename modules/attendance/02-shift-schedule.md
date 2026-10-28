@@ -179,7 +179,7 @@ Meski berasal dari pola, jadwal tetap disimpan sebagai **baris per hari** (bukan
 
 ## 3. Hari Kerja (Working Days) — Configurable
 
-Hari kerja **tidak di-hardcode** "Senin–Jumat". Tiap tenant/cabang menentukan hari apa saja yang kerja, dan tiap hari bisa memakai shift berbeda. Ini menampung beragam pola perusahaan Indonesia.
+Hari kerja **tidak di-hardcode** "Senin–Jumat". Tiap tenant menentukan hari apa saja yang kerja, dan tiap hari bisa memakai shift berbeda. Pola fixed menyimpan ini sebagai `weekly_shifts` — map hari → shift; hari yang tidak ada di map = libur. Ini menampung beragam pola perusahaan Indonesia.
 
 | Pola | Working days | Contoh penerapan |
 |---|---|---|
@@ -195,7 +195,24 @@ Shift "Reguler"       : 08:00–17:00  → Senin–Jumat
 Shift "Setengah Hari" : 08:00–12:00  → Sabtu
 Minggu                : libur
 ```
+Sebagai `weekly_shifts` pada satu pola fixed:
+```json
+{
+  "mon": "shift-reguler", "tue": "shift-reguler", "wed": "shift-reguler",
+  "thu": "shift-reguler", "fri": "shift-reguler", "sat": "shift-setengah-hari"
+}
+```
 Ini menunjukkan kenapa shift dipisah dari schedule: satu karyawan bisa punya jam berbeda tergantung harinya, cukup diatur di pola penugasan.
+
+### Contoh: Jumat istirahat lebih panjang
+Shift Jumat lebih pendek (mis. 08:00–11:30) cukup menjadi shift ketiga di pola yang sama:
+```json
+{
+  "mon": "shift-reguler", "tue": "shift-reguler", "wed": "shift-reguler",
+  "thu": "shift-reguler", "fri": "shift-jumat-pendek", "sat": "shift-setengah-hari"
+}
+```
+Resep resmi "Senin–Sabtu, Jumat istirahat panjang, Sabtu setengah hari" = tiga shift (Reguler, Jumat Pendek, Setengah Hari) dalam satu pola fixed.
 
 > Untuk kantor yang sama sekali tak ingin mengurus shift, sistem memakai **jam kerja default tenant** (mis. 08:00–17:00, Sen–Jum) tanpa perlu membuat shift eksplisit. Konsep shift tetap ada di belakang layar, tetapi tidak terasa rumit.
 

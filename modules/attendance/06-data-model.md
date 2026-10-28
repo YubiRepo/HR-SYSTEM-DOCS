@@ -50,23 +50,23 @@ Entitas milik modul Attendance. `employees` & `branches` dirujuk dari Core HR.
 **Indeks:** `(employee_id, date)` unik.
 
 ### 2.2a `schedule_patterns`
-Pola penugasan shift per **grup** (dept/posisi/custom/individual) — sumber generate `schedules`.
+Pola penugasan shift **tenant-wide**; karyawan menempel ke pola lewat `pattern_id` di career path (lihat `02-shift-schedule.md` §3).
 | Field | Tipe | Keterangan |
 |---|---|---|
-| `id` | string (PK) | `patt_...` |
-| `tenant_id` / `branch_id` | string (FK) | |
-| `scope_type` | enum | `department` / `position` / `custom` / `employee` |
-| `scope_ref` | string | org_unit_id / position_id / grup / employee_id |
-| `mode` | enum | `fixed` (pola tetap) / `rotation` |
-| `working_days` | json | Untuk mode fixed (mis. Sen–Jum) |
-| `shift_id` | string (FK, nullable) | Untuk mode fixed |
+| `id` | string (PK) | |
+| `tenant_id` | string (FK) | |
+| `name` | string | Nama pola (unik per tenant) |
+| `mode` | enum | `fixed` (shift per hari) / `rotation` |
+| `weekly_shifts` | json (nullable) | Untuk mode fixed: map hari → shift id, mis. `{"mon":"<shift>","tue":"<shift>","fri":"<shift-jumat>","sat":"<shift-setengah-hari>"}`. Hari yang tidak ada = libur |
 | `rotation_sequence` | json (nullable) | Untuk rotation, mis. `[{shift:pagi,days:3},{shift:malam,days:3},{off:1}]` |
 | `cycle_length` | int (nullable) | Panjang siklus rotasi (hari) |
 | `anchor_date` | date (nullable) | Titik mulai siklus rotasi |
 | `phase_offset` | int (nullable) | Geser fase (untuk regu berbeda) |
-| `priority` | int | Resolusi tumpang tindih (individual > posisi > dept) |
+| `color` | string (nullable) | Warna tampilan pola |
+| `description` | text (nullable) | |
+| `active` | boolean | Pola nonaktif tidak bisa dipakai |
 
-> Job generate membaca pattern berlaku per karyawan (priority tertinggi) → menghasilkan baris `schedules`. Baris `source: manual` tidak ditimpa.
+> Mode fixed di-resolve langsung saat pembacaan hari (tidak menghasilkan baris `schedules`). Mode rotation baru menghasilkan baris `schedules` lewat aksi Generate; baris `source: manual` tidak ditimpa.
 
 ### 2.3 `attendance_records`
 | Field | Tipe | Keterangan |

@@ -26,7 +26,7 @@ butuh `attendance:config`
     <div style="padding:14px 20px;border-bottom:1px solid #e4e4e7;font-weight:700;font-size:15px;background:#fff">Attendance Rules</div>
     <div style="padding:18px 20px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid #e4e4e7;padding-bottom:10px">
-        <div><div style="font-weight:800;font-size:15px">Attendance Rules</div><div style="color:#71717a;font-size:11px;margin-top:3px">Configure lateness tolerance, overtime rounding, geofence, and auto clock-out per branch or tenant-wide. Working days are set on each fixed shift in <span style="color:#2563eb">Working Time</span>.</div></div>
+        <div><div style="font-weight:800;font-size:15px">Attendance Rules</div><div style="color:#71717a;font-size:11px;margin-top:3px">Configure lateness tolerance, overtime rounding, geofence, and auto clock-out per branch or tenant-wide. Working days are set on each working pattern in <span style="color:#2563eb">Working Patterns</span>.</div></div>
         <span style="border:1px solid #e4e4e7;background:#fff;border-radius:8px;padding:5px 10px;font-weight:600;font-size:11px;white-space:nowrap">&#8635; Refresh</span>
       </div>
       <div style="margin-top:12px;border:1px solid #e4e4e7;background:#fff;border-radius:14px;padding:12px 14px">
@@ -76,7 +76,7 @@ butuh `attendance:config`
 
 | Elemen | Fungsi |
 |---|---|
-| Teks pengantar | *"Working days are set on each fixed shift in Working Time."* dengan tautan ke **Working Time**. Catatan: saat ini hari kerja sebenarnya diatur pada pola **Fixed** di **Working Patterns** |
+| Teks pengantar | *"Working days are set on each working pattern in Working Patterns."* dengan tautan ke **Working Patterns**. Hari kerja diatur per hari pada pola **Fixed** di halaman tersebut |
 | **Refresh** | Muat ulang kebijakan Default Tenant dan semua cabang |
 | Daftar kebijakan (accordion) | Baris pertama **Default Tenant** (terbuka otomatis), lalu satu baris per cabang. Klik baris untuk membuka/menutup rinciannya; beberapa baris boleh terbuka bersamaan |
 | Ringkasan baris | `Late (menit)m · OT (ambang)m/(pembulatan)m · Geofence (radius)m` atau `Geofence Off`; *No policy configured* bila belum ada kebijakan |
@@ -108,10 +108,10 @@ overtime rounding rules."* Bila kebijakan sudah ada, form terisi nilainya; saat
 Tenant sebagai titik awal.
 
 Di bagian atas modal ada kotak info: *"Working days and shifts are no longer set
-here: working days live on each fixed shift, and every employee's schedule comes
-from the schedule type + shift on their career path."* dengan tombol **Open
-Working Time** untuk pindah ke halaman shift. Hari kerja kini diatur pada pola
-**Fixed** di **Working Patterns**, bukan pada shift.
+here: working days live on each working pattern, and every employee's schedule
+comes from the schedule type + working pattern on their career path."* dengan
+tombol **Open Working Patterns** untuk pindah ke halaman pola. Hari kerja kini
+diatur per hari pada pola **Fixed** di **Working Patterns**, bukan pada shift.
 
 ### Telat & Lembur
 
