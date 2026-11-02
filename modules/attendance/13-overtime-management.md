@@ -9,9 +9,8 @@ Semua durasi dalam **menit**.
 ## 1. Alur
 
 ```
-HR Setting → Overtime Rules        : rule + day types + tiers (OT1, OT2, …)
-HR Setting → Attendance Rules      : pilih Overtime Rule per cabang (fallback: default tenant)
-                                     + pengukuran OT: mulai setelah / pembulatan / toleransi
+HR Setting → Overtime Rules        : rule + day types + tiers (OT1, OT2, …); maks 1 rule aktif per tenant
+HR Setting → Working Time (shift)  : pengukuran OT: mulai setelah / pembulatan / toleransi
 Karyawan / HR → Overtime Request   : window rencana (mulai–selesai) → approve (boleh dipersingkat) / reject / cancel
 Attendance                         : clock in/out, mesin, koreksi → attendance_records
 Overtime processing                : fakta attendance + request approved + rule → overtime transaction + breakdown
@@ -54,7 +53,10 @@ Contoh pembagian, `WORKING_DAY`: OT1 0–60 ×1.5, OT2 60+ ×2 dengan 180 menit 
 | `not_eligible` | Menit dicatat, tidak pernah eligible |
 | `needs_review` | Transaksi menunggu HR menentukan menit eligible |
 
-Rule yang masih dipakai attendance rule tidak bisa dinonaktifkan.
+**Rule aktif** — Overtime rule berdiri sendiri (tidak dipilih lewat attendance rule). Maks **1 rule aktif per tenant**, dan itulah rule yang dipakai saat processing:
+- create rule baru → langsung aktif, rule aktif lain otomatis dinonaktifkan;
+- activate rule → rule aktif lain otomatis dinonaktifkan;
+- deactivate rule aktif diperbolehkan → tidak ada rule aktif, overtime tidak diproses (*skipped*) sampai ada rule yang diaktifkan.
 
 ---
 
@@ -128,7 +130,7 @@ Kondisi yang tidak menghasilkan transaksi (dilaporkan sebagai *skipped*):
 - request masih pending;
 - karyawan belum clock out;
 - hari cuti approved;
-- tidak ada overtime rule pada attendance rule;
+- tidak ada overtime rule aktif di tenant;
 - day type tidak cocok.
 
 **Transaksi** menyimpan hasil final per karyawan per tanggal beserta snapshot:
@@ -209,7 +211,7 @@ Seluruh route di atas berada di balik entitlement `attendance.overtime`.
 | `overtime_rules` | Header rule + kebijakan |
 | `overtime_rule_day_types` | Day type milik rule (`code`, `sequence` unik per rule) |
 | `overtime_rule_details` | Tier per day type |
-| `attendance_rules` | + `overtime_rule_id`, `ot_tolerance_min` |
+| `overtime_rules` (index) | unique partial `(tenant_id) WHERE active` — maks 1 rule aktif per tenant |
 | `overtime_requests` | + window rencana/approved, menit, `reason`, `review_note`, `cancelled_at`; status + `cancelled` |
 | `overtime_transactions` | Hasil final + snapshot (`source_classifications`, `rule_snapshot`, `facts_snapshot`, `input_hash`) |
 | `overtime_breakdowns` | Menit per komponen (snapshot tier) |

@@ -142,7 +142,6 @@ Pola penugasan shift **tenant-wide**; karyawan menempel ke pola lewat `pattern_i
 | `ot_threshold_min` | int | OT mulai setelah (menit lewat jam pulang yang dibuang) |
 | `ot_rounding_min` | int | Satuan pembulatan lembur |
 | `ot_tolerance_min` | int | Toleransi subsidi pembulatan (< satuan pembulatan) |
-| `overtime_rule_id` | string (FK, nullable) | Overtime Rule yang dipakai cabang/tenant ini |
 | `ot_requires_approval` | boolean | |
 | `geofence_enabled` | boolean | |
 | `geofence_radius_m` | int | |
