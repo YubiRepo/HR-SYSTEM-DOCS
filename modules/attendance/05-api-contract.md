@@ -234,9 +234,10 @@ Hanya untuk rotation (maks 366 hari). Baris `source: manual` tidak ditimpa; fixe
 ---
 
 ## 3. GET /attendance/summary
-Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
+Rekap per karyawan untuk satu rentang tanggal — data yang sama dikonsumsi Payroll (lewat `attendance.Contract.GetSummary`) sebagai variabel formula.
 
-`GET /attendance/summary?period=2026-01&employee_id=emp_01H8...`
+`GET /attendance/summary?date_from=2026-01-01&date_to=2026-01-31&employee_id=emp_01H8...`
+(`period=2026-01` = singkatan untuk bulan kalender; Attendance tidak mengenal periode payroll — Payroll yang menerjemahkan periode menjadi rentang.)
 
 **Filter (termasuk Working Time Filter):**
 | Param | Fungsi |
@@ -255,17 +256,46 @@ Rekap periode per karyawan — endpoint utama yang dikonsumsi Payroll.
   "success": true,
   "data": {
     "employee_id": "emp_01H8...",
-    "period": "2026-01",
     "work_days": 22,
     "present_days": 20,
     "late_count": 3,
     "late_minutes": 40,
-    "overtime_hours": 6,
     "absent_days": 1,
-    "leave_days": 1
+    "leave_days": 1,
+    "scheduled_days": 22,
+    "incomplete_days": 0,
+    "early_leave_count": 1,
+    "early_leave_minutes": 30,
+    "auto_clock_out_count": 0,
+    "holiday_count": 1,
+    "day_off_count": 8,
+    "holiday_worked_days": 0,
+    "day_off_worked_days": 0,
+    "actual_work_minutes": 9600,
+    "duty_call_days": 0,
+    "shift_days": [{ "shift_id": "...", "shift_code": "DAY", "shift_name": "Day", "days": 22 }],
+    "overtime_hours": 6,
+    "overtime_weighted_hours": 10.5,
+    "overtime": {
+      "total_eligible_minutes": 360,
+      "total_weighted_minutes": 630,
+      "components": [
+        { "component_code": "OT1", "component_name": "Jam pertama", "minutes": 60, "weighted_minutes": 90 },
+        { "component_code": "OT2", "component_name": "Jam berikutnya", "minutes": 300, "weighted_minutes": 540 }
+      ],
+      "pending_review_count": 0
+    }
   }
 }
 ```
+
+Catatan perhitungan:
+- `overtime_*` berasal dari **OT transaction `validated`** dengan `effective_date` di dalam rentang (bukan lagi dari `overtime_requests` yang approved). Blok `overtime` muncul bila `date_from` & `date_to` sama-sama terisi.
+- `scheduled_days` / `shift_days` memakai snapshot `scheduled_shift_id` di record — shift dari pola **fixed** ikut terhitung walau tidak di-generate ke tabel `schedules`. `duty_call_days` hanya dari baris `schedules` dengan `duty_call`.
+- Counter jenis hari (`holiday_count`, `day_off_count`, `scheduled_days`) mengandalkan setiap hari punya record — dijamin oleh evaluasi periode (`POST /attendance/records/evaluate`, sampai kemarin).
+- `actual_work_minutes` tidak menghitung hari dengan auto clock-out.
+
+`GET /attendance/overtime/transactions/summary` menerima `period=YYYY-MM` atau `date_from`/`date_to` dan kini juga mengembalikan `weighted_minutes`.
 
 ---
 

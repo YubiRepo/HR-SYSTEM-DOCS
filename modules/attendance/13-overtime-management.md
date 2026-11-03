@@ -164,20 +164,22 @@ Status: `pending_review`, `validated`, `void`.
 ```json
 "overtime": {
   "total_eligible_minutes": 300,
+  "total_weighted_minutes": 510,
   "components": [
-    { "component_code": "OT1", "component_name": "Overtime 1", "minutes": 120 },
-    { "component_code": "OT2", "component_name": "Overtime 2", "minutes": 180 }
+    { "component_code": "OT1", "component_name": "Overtime 1", "minutes": 120, "weighted_minutes": 180 },
+    { "component_code": "OT2", "component_name": "Overtime 2", "minutes": 180, "weighted_minutes": 330 }
   ],
   "pending_review_count": 0
 }
 ```
 
 Rincian blok ini:
-- Isinya hanya transaksi `validated` dengan `payroll_period` = periode tersebut, termasuk adjustment.
+- Isinya hanya transaksi `validated` dengan `effective_date` di dalam rentang `date_from..date_to`, termasuk adjustment. `effective_date` = tanggal kerja untuk transaksi biasa; tanggal booking untuk transaksi/adjustment yang dibukukan ke periode terbuka karena periode asalnya sudah terkunci. (`payroll_period` tetap disimpan untuk listing, tapi tidak lagi dipakai rekap.)
+- `weighted_minutes` = Σ durasi × multiplier tier.
 - Kode komponen dinamis, mengikuti konfigurasi rule.
-- `pending_review_count > 0` berarti periode belum final.
+- `pending_review_count > 0` berarti rentang belum final — payroll menolak calculate run selama masih ada (lihat payroll `07` §1.3).
 
-`overtime_hours` yang lama tetap ada dan tidak berubah (jumlah menit approved request / 60). Cara Payroll mengonsumsi variabel per komponen dibahas terpisah.
+`overtime_hours` sekarang = `total_eligible_minutes / 60` dari transaksi ini (bukan lagi menit approved request), dan `overtime_weighted_hours` = `total_weighted_minutes / 60`. Payroll mengonsumsi variabel per komponen sebagai `ot_min_<KODE>` / `ot_wmin_<KODE>` (payroll `08` §2).
 
 ---
 

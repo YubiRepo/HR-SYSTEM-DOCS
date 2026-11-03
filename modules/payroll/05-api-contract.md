@@ -10,6 +10,7 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
 | GET | `/payroll/components` | Katalog komponen tenant | `payroll:read` |
+| GET | `/payroll/components/variables` | Variabel formula selain kode komponen: konstanta sistem, variabel Attendance/Leave, dan variabel per kode tenant (`ot_min_/ot_wmin_<KODE>`, `leave_days_<KODE>`, `shift_days_<KODE>`) — `[{name, group, code?}]` | `payroll:read` |
 | POST | `/payroll/components` | Buat komponen | `payroll:config` |
 | PATCH | `/payroll/components/{id}` | Ubah komponen | `payroll:config` |
 | GET | `/payroll/employees/{id}/components` | Komponen milik karyawan | `payroll:read` |
@@ -144,5 +145,7 @@ Menghasilkan instruksi/berkas transfer & memicu pengiriman slip (Notification).
 | `SELF_APPROVAL_FORBIDDEN` | 409 | Pembuat run tak boleh menyetujui |
 | `RUN_LOCKED` | 409 | Run sudah closed (read-only) |
 | `MISSING_PTKP` | 422 | Status PTKP karyawan belum diisi |
+| `ATTENDANCE_PENDING_ITEMS` | 409 | Masih ada OT `pending_review` / koreksi absensi `pending` di rentang periode (lihat `07` §1.3) |
+| `ATTENDANCE_NOT_READY` | 422 | Evaluasi attendance gagal untuk sebagian hari, atau data Attendance/Leave gagal dibaca |
 | `CONFIG_NOT_FOUND` | 422 | Tabel TER/BPJS untuk periode tak tersedia |
 | `VALIDATION_ERROR` | 400/422 | Input tidak valid |
