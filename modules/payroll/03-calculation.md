@@ -67,7 +67,7 @@ PPh 21 bulan ini = Penghasilan bruto bulan ini × tarif TER
 ```
 - **Penghasilan bruto** = Σ komponen taxable bulan itu.
 - **Tarif TER** diambil dari tabel resmi, berdasar **kategori PTKP** (A/B/C) & rentang penghasilan.
-- Tabel TER disimpan sebagai data konfigurasi.
+- Tabel TER disimpan sebagai data konfigurasi. Default per tenant di-seed dari Lampiran PP 58/2023 (berlaku 2024-01-01; A=44, B=40, C=41 baris). Batas atas bracket **inklusif** ("di atas X s.d. Y"), sehingga bruto tepat Rp5.400.000 di kategori A kena 0%.
 
 ### 4.2 Desember (Pasal 17, rekonsiliasi tahunan)
 Di masa pajak terakhir, hitung pajak setahun yang sebenarnya lalu kurangi yang sudah dipotong Jan–Nov:
