@@ -284,6 +284,14 @@ Rekap per karyawan untuk satu rentang tanggal — data yang sama dikonsumsi Payr
         { "component_code": "OT2", "component_name": "Jam berikutnya", "minutes": 300, "weighted_minutes": 540 }
       ],
       "pending_review_count": 0
+    },
+    "leave": {
+      "paid_days": 1,
+      "unpaid_days": 0.5,
+      "by_type": [
+        { "type_code": "ANNUAL", "type_name": "Cuti Tahunan", "paid": true, "days": 1 },
+        { "type_code": "UNPAID", "type_name": "Cuti Tanpa Gaji", "paid": false, "days": 0.5 }
+      ]
     }
   }
 }
@@ -294,6 +302,8 @@ Catatan perhitungan:
 - `scheduled_days` / `shift_days` memakai snapshot `scheduled_shift_id` di record — shift dari pola **fixed** ikut terhitung walau tidak di-generate ke tabel `schedules`. `duty_call_days` hanya dari baris `schedules` dengan `duty_call`.
 - Counter jenis hari (`holiday_count`, `day_off_count`, `scheduled_days`) mengandalkan setiap hari punya record — dijamin oleh evaluasi periode (`POST /attendance/records/evaluate`, sampai kemarin).
 - `actual_work_minutes` tidak menghitung hari dengan auto clock-out.
+- Blok `leave` diambil dari modul Leave (cuti approved, hanya hari di dalam rentang, pro-rata per hari kerja) — angka yang sama dengan `paid_leave_days` / `unpaid_days` / `leave_days_<KODE>` di payroll. Muncul bila `date_from` & `date_to` terisi.
+- Rekap ini adalah data **mentah** yang disediakan Attendance; Payroll mengadaptasinya menjadi variabel formula (payroll `07` §1.1). UI-nya: Attendance → **Payroll Rekap Summary** (filter periode/cabang, satu kolom per variabel, pilihan display, export CSV).
 
 `GET /attendance/overtime/transactions/summary` menerima `period=YYYY-MM` atau `date_from`/`date_to` dan kini juga mengembalikan `weighted_minutes`.
 
