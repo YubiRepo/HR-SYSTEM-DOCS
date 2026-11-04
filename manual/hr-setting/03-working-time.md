@@ -130,13 +130,13 @@ rotations are set on Working Patterns."*
 | **Shift Code \*** | teks | Ya | Placeholder *OPS-AM*; kode singkat yang tampil di jadwal dan preview pola rotasi. **Tidak bisa diubah** saat edit | OPS-AM |
 | **Color** | pemilih warna | Tidak | Default biru `#3b82f6`; dipakai sebagai titik warna di tabel, di Working Patterns, dan kalender jadwal | Oranye |
 | **Hours Type** | pilihan | Ya (default) | **Fixed Hours (Set Time)** = jam masuk/pulang pasti; **Flexible (Target Hours)** = karyawan cukup memenuhi target jam | Fixed Hours (Set Time) |
-| **Effective Hours** | angka | Ya | Jam kerja efektif per hari; default 8. Diisi manual (tidak dihitung otomatis dari jam & istirahat); bila kosong/0 tersimpan sebagai 8 | 7.5 |
-| **Start Time** | jam | Ya | Default 08:00 | 06:00 |
-| **End Time** | jam | Ya | Default 17:00 | 14:00 |
+| **Effective Hours** / **Target Hours** | angka | Ya | Jam kerja efektif per hari (label berubah jadi *Target Hours* untuk Flexible). Harus sama dengan rentang Start–End dikurangi istirahat unpaid — bila tidak cocok, form menampilkan nilai yang seharusnya | 8 |
+| **Start Time** / **Reference Start** | jam | Ya | Default 08:00. Untuk Flexible hanya menjadi patokan target jam; jam datang tidak dinilai | 06:00 |
+| **End Time** / **Reference End** | jam | Ya | Default 17:00. Bila lebih awal dari Start Time (mis. 22:00–06:00), shift otomatis dianggap selesai keesokan hari (*cross midnight*) | 14:00 |
+| **Late Tolerance (Min)** | angka | Tidak | Hanya untuk Fixed: menit keterlambatan yang masih dianggap tepat waktu. Disembunyikan untuk Flexible karena Flexible tidak pernah dihitung terlambat | 15 |
 | **Breaks** | daftar | Tidak | Lihat tabel di bawah. Shift baru langsung berisi satu istirahat 12:00–13:00. Ringkasan *(n) break(s) • (m) min unpaid* tampil di atas daftar | — |
-| **Clock-in window** | centang + 2 jam | Tidak | Bila dicentang, isi jam *dari* dan *sampai* (default 06:00–10:00); bila tidak, tertulis *Any time* | 05:30 – 07:00 |
+| **Clock-in window** | centang + 2 jam | Tidak | Bila dicentang, isi jam *dari* dan *sampai* (default 06:00–10:00); bila tidak, tertulis *Any time*. Tetap berlaku untuk Flexible | 05:30 – 07:00 |
 | **Clock-out window** | centang + 2 jam | Tidak | Default 15:00–23:00 saat dicentang | 13:30 – 16:00 |
-| **Night shift crosses midnight (Cross-Midnight, e.g. 22:00 - 06:00)** | centang | Tidak | Centang untuk shift malam yang selesai keesokan hari | ✔ untuk 22:00–06:00 |
 | **Description / Purpose** | teks | Tidak | Placeholder *e.g. Operations & warehouse division only...* | Khusus divisi gudang Makassar |
 
 Teks penjelasan **Clock Windows**: *"Self clock-in/out outside these times is
@@ -198,9 +198,11 @@ Activated** (gagal → **Failed to Activate Shift**).
 1. Buka **HR Setting → Working Time**.
 2. Klik **Add New Shift**.
 3. Isi **Shift Name** dan **Shift Code**, lalu pilih **Color** bila perlu.
-4. Pilih **Hours Type** dan isi **Effective Hours**.
-5. Atur **Start Time** dan **End Time**. Untuk shift malam, centang **Night
-   shift crosses midnight**.
+4. Pilih **Hours Type**, lalu atur **Start Time** dan **End Time**. Untuk
+   shift malam cukup isi jam selesai yang lebih awal (mis. 22:00–06:00) —
+   form otomatis menandainya *Ends the next day (cross midnight)*.
+5. Isi **Effective Hours** (atau **Target Hours** untuk Flexible) sesuai
+   rentang jam dikurangi istirahat unpaid.
 6. Sesuaikan istirahat: ubah jenis dan jamnya, atau klik **Add break** untuk
    menambah (mis. istirahat sholat). Centang **Paid** bila istirahat dibayar.
 7. Bila perlu, aktifkan **Clock-in window** / **Clock-out window** untuk
