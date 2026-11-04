@@ -189,7 +189,7 @@ Diputuskan **11 Agustus 2026** untuk HRMS lintas segmen:
 ### Konsekuensi ke data model
 - Setiap entitas ber-tenant membawa **`tenant_id`** (batas isolasi utama) dan, bila relevan, **`branch_id`** (sub-unit).
 - Query wajib selalu discope minimal ke `tenant_id`. Penyaringan per cabang lewat `branch_id`.
-- Keunikan (mis. identifier user, NIK karyawan) diterapkan **per tenant**.
+- Identifier login user (email, phone, username) unik **global**: satu orang = satu akun, yang bisa menjadi anggota beberapa tenant lewat `tenant_members`. Keunikan data bisnis lain (mis. NIK karyawan) tetap **per tenant**. Lihat [plans/2026-11-04-tenant-member-email-global.md](../plans/2026-11-04-tenant-member-email-global.md).
 
 ### Jalur ekspansi (bila dibutuhkan nanti)
 - **B3 (isolated DB)** — untuk klien enterprise yang menuntut isolasi data penuh; ditawarkan sebagai opsi premium tanpa mengubah model dasar.

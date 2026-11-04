@@ -11,7 +11,7 @@ Model data RBAC. Entitas `users` & `tenants` dimiliki modul Auth; di sini hanya 
     │ 1
     │
     │ N
-  user_roles >───── users        (users milik modul Auth)
+  role_assignments >── users     (users milik modul Auth; per tenant + scope)
     (join user ↔ role)
 ```
 
@@ -45,15 +45,18 @@ Model data RBAC. Entitas `users` & `tenants` dimiliki modul Auth; di sini hanya 
 | `permission_id` | string (FK) |
 > PK gabungan `(role_id, permission_id)`.
 
-### 2.4 `user_roles` (join)
+### 2.4 `role_assignments`
 | Field | Tipe | Keterangan |
 |---|---|---|
-| `user_id` | string (FK) | Referensi ke `users` (modul Auth) |
-| `role_id` | string (FK) | |
-| `branch_scope` | json (nullable) | Daftar `branch_id` tempat peran berlaku; null = sesuai cakupan default peran |
+| `id` | string (PK) | |
+| `tenant_id` | string | Tenant tempat assignment berlaku (company = tenant); null hanya untuk peran platform |
+| `user_id` | string | Referensi ke `users` (modul Auth); wajib member tenant tersebut |
+| `role_id` | string (FK) | Role milik tenant yang sama |
+| `scope_type` | enum | `tenant` (seluruh tenant), `branch` (satu cabang), `platform` (staf platform) |
+| `scope_id` | string | `tenant` → = `tenant_id`; `branch` → id cabang; `platform` → null |
 | `assigned_at` | timestamp | |
 | `assigned_by` | string | Aktor yang menetapkan |
-> PK gabungan `(user_id, role_id)`. `branch_scope` membatasi peran ke cabang tertentu (lihat `02-roles.md` §3.1).
+> Unik per `(user_id, role_id, scope_type, scope_id)`: satu role bisa dipegang di beberapa cabang (satu baris per cabang). Scope `team` tidak ada lagi. Batas data sebuah grant = irisan scope permission dan scope assignment: permission `self` tetap data sendiri; `tenant`/`branch` dibatasi ke seluruh tenant atau cabang assignment. Lihat [plans/2026-11-04-tenant-member-email-global.md](../../plans/2026-11-04-tenant-member-email-global.md) §3.3.
 
 ---
 
@@ -63,7 +66,7 @@ Model data RBAC. Entitas `users` & `tenants` dimiliki modul Auth; di sini hanya 
 |---|---|---|
 | `roles` | `(tenant_id, name)` unik | Keunikan & lookup |
 | `role_permissions` | `role_id` | Expand permission per role |
-| `user_roles` | `user_id`, `role_id` | Resolusi izin user |
+| `role_assignments` | `(user_id, tenant_id)`, `role_id` | Resolusi izin user per tenant |
 | `permissions` | `key` unik | Lookup permission |
 
 ---
