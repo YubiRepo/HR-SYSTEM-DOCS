@@ -8,7 +8,7 @@
 |---|---|---|
 | **platform_super_admin** | Platform (global, `tenant_id` NULL) | Tertinggi tingkat platform (strict keys): `platform_tenants:read/write`, `platform_billing:read/write`, `platform_entitlement:read/write`, `platform_support:read/write`, `roles:read/write/assign`, `users:write`, `platform_audit:read` |
 | **tenant_admin** | Tenant (di-replikasi per tenant) | Tertinggi tingkat tenant (strict keys): `users:read/write`, `roles:read/write/assign`, `settings:write`, `branch:read/write`, `billing:read` + `billing:write` (kirim bukti bayar), `entitlement:read/manage` |
-| **employee** | Tenant (di-replikasi per tenant) | Peran dasar self-service (scope `self`): `profile:read`, `profile:write`, `attendance:self` — diberikan otomatis ke akun baru hasil onboarding karyawan |
+| **employee** | Tenant (di-replikasi per tenant) | Peran dasar self-service (scope `self`): `profile:read`, `profile:write`, `employees:self`, `attendance:self`, `leave:self`, `payslip:self` (+ `employees:directory` scope `tenant`) — diberikan otomatis ke akun baru hasil onboarding karyawan |
 
 Peran bawaan ditandai `is_system = true` dan tidak dapat dihapus, hanya dilihat/dirujuk.
 

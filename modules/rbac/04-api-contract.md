@@ -131,11 +131,13 @@ Katalog permission yang tersedia (global). Mendukung `?search=` dan `filter[reso
 {
   "success": true,
   "data": [
-    { "key": "employees:read", "resource": "employees", "action": "read", "description": "Melihat data karyawan" },
-    { "key": "payroll:run", "resource": "payroll", "action": "run", "description": "Menjalankan payroll" }
+    { "key": "employees:read", "resource": "employees", "action": "read", "description": "Melihat data karyawan", "allowed_scopes": ["branch", "tenant"] },
+    { "key": "payslip:self", "resource": "payslip", "action": "self", "description": "Melihat slip gaji sendiri", "allowed_scopes": ["self"] }
   ]
 }
 ```
+
+`allowed_scopes` — scope yang boleh dipakai saat permission ini diberikan ke role/template: `["self"]` untuk permission self-service, `["branch", "tenant"]` untuk lainnya. Scope lain ditolak `INVALID_PERMISSION` (lihat `03-evaluation.md` §3). Klien (role editor) memakai field ini, bukan daftar sendiri.
 
 > Katalog permission dikelola di level sistem (di-seed), bukan dibuat bebas per tenant, agar konsisten lintas modul.
 

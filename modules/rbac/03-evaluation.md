@@ -38,18 +38,23 @@ Selain izin fungsional, akses sering dibatasi pada cakupan data:
 
 | Scope data | Arti |
 |---|---|
-| `self` | Hanya data milik pengguna sendiri |
-| `team` | Data anggota tim yang dipimpin |
+| `self` | Hanya data milik pengguna sendiri — **khusus permission self-service** (lihat di bawah) |
 | `branch` | Seluruh data dalam satu cabang (untuk branch admin) |
 | `tenant` | Seluruh data dalam tenant (semua cabang + katalog) |
 
-Contoh: `employee` punya `payslip:read` tetapi terbatas `self`; `payroll_officer` punya `payslip:read` dengan cakupan `tenant`. Seorang **branch admin** punya izin luas tetapi dibatasi `branch` — hanya cabang yang ia kelola; **tenant admin** memakai cakupan `tenant` (lintas semua cabang).
+Contoh: `employee` punya `payslip:self` (scope `self`, endpoint `/me/payslips`); `payroll_officer` punya `payroll:read` dengan cakupan `tenant`. Seorang **branch admin** punya izin luas tetapi dibatasi `branch` — hanya cabang yang ia kelola; **tenant admin** memakai cakupan `tenant` (lintas semua cabang).
 
 **Penegakan branch scope:** untuk aktor bercakupan `branch`, query difilter `WHERE branch_id IN (cabang yang dikelola)`. Cakupan `tenant` tidak difilter per cabang (lihat semua). Katalog tenant (job grade, template, jenis divisi) hanya dapat diubah oleh cakupan `tenant`.
 
 **Cabang mana yang "dikelola" ditentukan oleh assignment:** bila penetapan peran punya `branch_scope` (lihat `02-roles.md` §3.1), daftar itulah yang dipakai untuk filter. Contoh: Budi `payroll_officer @ [Jakarta]` → walau peran payroll_officer bercakupan luas, datanya disaring `WHERE branch_id = Jakarta`. Bila `branch_scope` kosong, dipakai cakupan default peran.
 
-Data-scope dievaluasi **setelah** izin fungsional lolos, dengan menyaring query data (mis. `WHERE owner_id = :sub` untuk `self`).
+Data-scope dievaluasi **setelah** izin fungsional lolos, dengan menyaring query data per cabang untuk `branch`.
+
+**Aturan scope `self` (ditegakkan API):** akses "data milik sendiri" diwujudkan lewat **permission self-service** khusus — `profile:read`, `profile:write`, `employees:self`, `attendance:self`, `leave:self`, `payslip:self` — yang endpoint-nya (`/me/...`, `/auth/me`) mengambil subjek dari token, bukan dari parameter. Bukan dengan mempersempit `:read`/`:write` ke scope `self`.
+
+- Permission self-service **wajib** ber-scope `self`.
+- Scope `self` **hanya boleh** dipakai pada permission self-service. `payslip:read` / `attendance:read` / `*:approve` dengan scope `self` **ditolak** saat membuat/mengubah role atau template (`INVALID_PERMISSION`).
+- Saat evaluasi, permission self-service selalu dihitung `self`; baris lama berisi permission non-self-service dengan scope `self` diabaikan (fail-safe deny) — gate route hanya mencocokkan key, dan handler `:read`/`:write` tidak menyaring ke data sendiri, sehingga grant semacam itu justru akan membuka data seluruh tenant/cabang.
 
 ---
 
