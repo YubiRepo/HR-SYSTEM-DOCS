@@ -21,10 +21,11 @@ fitur `attendance.overtime` aktif dan punya `attendance:config`
 | Bagian | Isi |
 |---|---|
 | **Rule Code / Name / Description** | Identitas aturan; kode unik per tenant |
-| **Overtime without an approved request** | *Not eligible* (dicatat, tidak dihitung) atau *Needs review* (HR menentukan menit eligible) |
-| **Overtime past the approved time** | Sama, untuk kelebihan dari waktu yang disetujui |
+| **Unapproved overtime** | Lembur tanpa request/SPL: *Not eligible* (dicatat, tidak dihitung), *Needs review* (HR menentukan menit eligible), atau *Auto-approved* (dibayar s.d. **Auto quota** day type) |
+| **Excess overtime** | Kelebihan dari waktu yang disetujui: pilihan sama; *Auto-approved* = dibayar s.d. **Excess quota** day type |
 | **Day Types & Details** | Satu list klasifikasi hari dari sistem (`WORKING_DAY`, `REST_DAY`, `PUBLIC_HOLIDAY`) — **tidak bisa ditambah, dihapus, atau diubah kodenya**. Urutan list = **prioritas**: bila satu tanggal cocok dengan beberapa, yang paling atas menang; ubah dengan panah naik/turun (`#1`, `#2`, …). **Active** menandai apakah rule ini mencakup hari tersebut; day type otomatis aktif saat detail pertamanya ditambahkan |
 | Buka/tutup day type | Klik baris (atau ikon panah di kiri) untuk membuka **detail** milik day type itu: tabel Component, Name, Hours (*from – to*), Multiplier, Status, aksi edit/hapus. Masalah urutan jam (celah/tumpang tindih) tampil di baris day type |
+| **Auto quota (h)** / **Excess quota (h)** (per day type) | Tampil hanya bila policy terkait *Auto-approved*, dan **wajib** untuk day type aktif. *Auto quota*: lembur tanpa request/SPL yang otomatis dibayar. *Excess quota*: tambahan di atas waktu yang disetujui (request/SPL atau Auto quota). Di atas kuota hangus. Request/SPL **menggantikan** Auto quota |
 | **Add Detail** / edit | Form muncul di dalam day type yang dibuka: **Component Code** (mis. OT1), **Component Name**, **From/To (hour)** — batas jam dari lembur hari itu (mis. 0–1 jam, lalu 1 jam ke atas; To kosong = terbuka; dikonversi ke menit dengan jam × 60), **Multiplier**, **Active**. Kode & jam awal disarankan otomatis; detail terakhir yang masih terbuka ditutup tepat di awal detail baru |
 
 ## Aturan
@@ -37,6 +38,8 @@ fitur `attendance.overtime` aktif dan punya `attendance:config`
 - Tanggal yang klasifikasinya tidak punya day type ditolak saat diproses (tidak
   ditebak).
 - Aturan yang masih dipakai Attendance Rules tidak bisa dinonaktifkan.
+- Kuota auto-approve tidak membuat transaksi bila karyawan tidak lembur; yang
+  dihitung tetap durasi aktual dari absensi, paling banyak sebesar kuota.
 - Mengubah aturan tidak mengubah transaksi lembur yang sudah ada (tersimpan
   sebagai snapshot); berlaku saat tanggal diproses berikutnya.
 
