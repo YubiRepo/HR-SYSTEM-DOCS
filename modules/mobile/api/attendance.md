@@ -1,82 +1,75 @@
 <!-- 📁 modules/mobile/api/attendance.md -->
 # Mobile API · Attendance
 
-Endpoint Attendance yang dipakai aplikasi mobile. Semua memakai envelope standar HRMS & header auth (Bearer token). Dijaga Entitlement + RBAC.
+Endpoint Attendance untuk aplikasi mobile. Prefix `/api/v1/attendance`, envelope standar, Bearer token. Akses dijaga entitlement `attendance` (lembur juga butuh `attendance.overtime`) dan RBAC.
 
-> Referensi lengkap: [`../../attendance/05-api-contract.md`](../../attendance/05-api-contract.md). Dokumen ini hanya subset yang relevan untuk mobile + contoh.
-
----
-
-## 1. Clock In / Out — `POST /attendance/clock`
-**Role:** karyawan. Fitur inti harian.
-
-**Request**
-```json
-{
-  "type": "in",
-  "method": "mobile_gps",
-  "timestamp": "2026-09-01T08:03:00+07:00",
-  "location": { "lat": -6.2088, "lng": 106.8456, "accuracy_m": 12, "is_mock": false },
-  "selfie_ref": "tmp_upload_abc",
-  "device_id": "dev_budi_hp"
-}
-```
-- `type`: `in` / `out`
-- `method`: `mobile_gps` / `mobile_face` / `nfc`
-- `location`: wajib bila geofence aktif; `accuracy_m` & `is_mock` untuk validasi (lihat `../../attendance/11-geofence.md`)
-- `selfie_ref`: bila `require_photo`/`mobile_face`
-
-**Response `201`**
-```json
-{
-  "success": true,
-  "data": {
-    "record_id": "att_01H...",
-    "type": "in",
-    "clock_in": "08:03",
-    "status": ["workday", "incomplete", "on_time"],
-    "late_minutes": 3,
-    "within_geofence": true
-  }
-}
-```
-**Error:** `422 OUTSIDE_GEOFENCE`, `422 MOCK_LOCATION_DETECTED`, `422 OUTSIDE_CLOCK_WINDOW`, `409 ALREADY_CLOCKED_IN`, `403 METHOD_NOT_ALLOWED`.
+> Referensi lengkap: [`../../attendance/05-api-contract.md`](../../attendance/05-api-contract.md).
 
 ---
 
-## 1a. Config Geofence (untuk preview di HP) — `GET /attendance/me/geofence`
-**Role:** karyawan. **Di-load sekali** saat buka app / masuk layar absen, agar HP bisa menghitung "di dalam/luar zona" secara **real-time lokal** tanpa memanggil server tiap detik.
+## 1. Config Geofence — `GET /attendance/me/geofence`
+**Permission:** `attendance:self`. Dimuat sekali saat layar absen dibuka. App memakainya untuk menghitung "di dalam/luar zona" secara lokal (Haversine).
 
-**Response `200`**
 ```json
 {
   "success": true,
   "data": {
     "geofence_enabled": true,
-    "branch": { "id": "branch_jkt", "name": "Jakarta", "lat": -6.2088, "lng": 106.8456 },
+    "branch_id": "…",
+    "branch_name": "Jakarta",
+    "office": { "lat": -6.2088, "lng": 106.8456 },
     "radius_m": 100,
     "accuracy_threshold_m": 50
   }
 }
 ```
-- `geofence_enabled: false` → app tak perlu cek lokasi (mis. WFH/flexible).
-- HP memakai `branch.lat/lng` + `radius_m` untuk menghitung jarak lokal (Haversine) dan memperbarui UI saat GPS bergerak.
-- `accuracy_threshold_m` → bila akurasi GPS lebih buruk dari ini, app minta user tunggu sinyal lebih baik.
+- Nilainya diambil dari **attendance rule** efektif untuk cabang karyawan: rule cabang bila ada, kalau tidak rule default tenant. Titik kantor adalah `office_lat`/`office_lng` milik rule, bukan dari data cabang.
+- `geofence_enabled: false` berarti tidak perlu cek lokasi. Ini terjadi bila rule belum ada, geofence nonaktif, atau titik kantor belum diisi.
+- `accuracy_threshold_m` bisa tidak ada (= akurasi tidak dicek). Bila akurasi GPS lebih buruk dari nilai ini, minta user menunggu sinyal.
+- Endpoint ini **hanya untuk preview**. Keputusan akhir tetap di server saat clock-in/out.
 
-> Ini **hanya untuk preview UX**. Keputusan akhir tetap di server saat `POST /attendance/clock` (§1) — server menghitung ulang & cek anti-fake. Lihat pola preview vs final di `../../attendance/11-geofence.md`.
+## 2. Clock In / Clock Out — `POST /attendance/clock-in` · `POST /attendance/clock-out`
+**Permission:** `attendance:self`. Response clock-in `201`, clock-out `200`.
 
----
+```json
+{
+  "source": "mobile",
+  "timestamp": "2026-09-01T08:03:00+07:00",
+  "lat": -6.2088,
+  "lng": 106.8456,
+  "accuracy_m": 12,
+  "is_mock": false,
+  "photo_ref": "…"
+}
+```
+- `source` (wajib): `mobile` / `web` / `machine` / `kiosk` / `manual`. Dari app selalu `mobile`.
+- `timestamp` (opsional, RFC3339): kosong berarti waktu server.
+- `lat`/`lng`/`accuracy_m`: kirim bila geofence aktif.
+- `is_mock`: flag mock-location dari OS. Bila `true`, request ditolak.
+- `photo_ref`: referensi foto (opsional).
 
-## 2. Ringkasan Hari Ini — `GET /attendance/me/today`
-**Role:** karyawan. Untuk layar utama app.
+Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`, `late_minutes`, `in_within_geofence`, `in_distance_m`, dll.
 
-**Response `200`**
+| Error | Arti |
+|---|---|
+| `409 ALREADY_CLOCKED_IN` / `409 NOT_CLOCKED_IN` | Sudah clock-in / belum clock-in |
+| `422 NO_SCHEDULE` | Tidak ada shift hari ini |
+| `422 OUTSIDE_CLOCK_WINDOW` | Di luar jendela clock-in/out shift |
+| `422 OUTSIDE_GEOFENCE` | Di luar radius kantor |
+| `422 MOCK_LOCATION_DETECTED` | `is_mock: true` |
+| `422 GPS_ACCURACY_TOO_LOW` | `accuracy_m` lebih besar dari `geofence_accuracy_threshold_m` |
+| `422 OVERTIME_NOT_APPROVED` / `422 OUTSIDE_OVERTIME_WINDOW` | Hari libur tanpa dokumen lembur / terlalu awal |
+
+## 3. Ringkasan Hari Ini — `GET /attendance/me/today`
+**Permission:** `attendance:self`.
 ```json
 {
   "success": true,
   "data": {
     "date": "2026-09-01",
     "shift": { "name": "Pagi", "start": "08:00", "end": "17:00" },
+    "day_kind": "workday",
+    "overtime_required": false,
     "clock_in": "08:03",
     "clock_out": null,
     "status": ["workday", "incomplete", "on_time"],
@@ -84,75 +77,45 @@ Endpoint Attendance yang dipakai aplikasi mobile. Semua memakai envelope standar
   }
 }
 ```
+- `day_kind`: `workday` / `day_off` / `holiday` / `on_leave`.
+- Di hari libur, `overtime_required: true` dan `overtime_access` berisi dokumen lembur yang membuka hari itu (`source`, `label`, `start`, `end`). Bila `overtime_access` tidak ada, clock-in akan ditolak.
 
----
+## 4. Jadwal Saya — `GET /attendance/me/schedule?date_from=2026-09-01&date_to=2026-09-07`
+**Permission:** `attendance:self`. Mengembalikan satu baris per hari: `date`, `shift_id`, `duty_call`, `source`.
 
-## 3. Jadwal Saya — `GET /attendance/me/schedule`
-**Role:** karyawan.
+## 5. Riwayat Absen Saya — `GET /attendance/me?date_from=…&date_to=…`
+**Permission:** `attendance:self`.
 
-`GET /attendance/me/schedule?date_from=2026-09-01&date_to=2026-09-07`
+## 6. Koreksi (Lupa Absen) — `POST /attendance/records/{record_id}/correction`
+**Permission:** `attendance:self`. Koreksi selalu menempel pada record hari itu.
 ```json
-{
-  "success": true,
-  "data": [
-    { "date": "2026-09-01", "shift": "Pagi", "start": "08:00", "end": "17:00" },
-    { "date": "2026-09-02", "shift": "Pagi", "start": "08:00", "end": "17:00" },
-    { "date": "2026-09-03", "shift": null, "note": "Libur" }
-  ]
-}
+{ "field": "clock_out", "new_value": "2026-08-31T17:00:00+07:00", "reason": "lupa absen pulang" }
 ```
+- `field`: `clock_in` / `clock_out` (`new_value` RFC3339) atau `status`.
+- Daftar koreksi sendiri: `GET /attendance/me/corrections`.
+- Error: `409 CORRECTION_ALREADY_PENDING`, `409 CORRECTION_NOT_ALLOWED`, dan error periode payroll terkunci.
 
----
+## 7. Lembur Saya
+| Endpoint | Fungsi |
+|---|---|
+| `POST /attendance/overtime` | Ajukan lembur: `date`, `planned_start_at`, `planned_end_at`, `reason`, `task_description` |
+| `GET /attendance/me/overtime` | Ajuan lembur saya |
+| `POST /attendance/overtime/{id}/cancel` | Batalkan ajuan (yang sudah approved hanya bisa dibatalkan sebelum mulai) |
+| `GET /attendance/me/overtime-orders` · `/{id}/pdf` | Surat Perintah Lembur yang menyebut saya |
+| `GET /attendance/me/overtime/transactions` | Realisasi lembur |
 
-## 4. Ajukan Koreksi (Lupa Absen) — `POST /attendance/corrections`
-**Role:** karyawan.
+> `employee_id` saat ini wajib ada di body `POST /attendance/overtime`. Untuk caller self-service, nilainya selalu ditimpa server dengan employee milik caller.
 
-**Request**
-```json
-{
-  "date": "2026-08-31",
-  "field": "clock_out",
-  "proposed_time": "17:00",
-  "reason": "lupa absen pulang"
-}
-```
-**Response `201`** → status `pending` (menunggu approval manajer/HR).
-**Error:** `409 PERIOD_LOCKED` (periode payroll sudah closed).
+## 8. Approval (Manajer/HR)
+**Permission:** `attendance:approve`.
+- Koreksi: `GET /attendance/corrections`, `POST /attendance/corrections/{id}/approve` · `/reject`, body `{ "notes": "…" }`.
+- Lembur: `GET /attendance/overtime`, `POST /attendance/overtime/{id}/approve` · `/reject`, body `{ "approved_end_at": null, "note": "…" }`. Approver tidak boleh menyetujui ajuannya sendiri (`403 OVERTIME_SELF_APPROVAL`).
 
----
-
-## 5. Approval Koreksi/Lembur — `POST /attendance/corrections/{id}/approve`
-**Role:** manajer/HR.
-
-**Request**
-```json
-{ "decision": "approve", "note": "ok" }
-```
-`decision`: `approve` / `reject`. **Response `200`** → record diperbarui.
-**Error:** `409 NOT_APPROVER`.
-
----
-
-## 6. Kehadiran Tim (Hari Ini) — `GET /attendance/team/today`
-**Role:** manajer/HR. Pantau tim.
-
-`GET /attendance/team/today?team=div_it`
-```json
-{
-  "success": true,
-  "data": {
-    "summary": { "present": 8, "late": 1, "absent": 1, "on_leave": 2 },
-    "members": [
-      { "employee_id": "emp_budi", "name": "Budi", "status": ["workday", "incomplete", "on_time"], "clock_in": "08:03" },
-      { "employee_id": "emp_sari", "name": "Sari", "status": ["on_leave"] }
-    ]
-  }
-}
-```
+> **Menyusul:** kehadiran tim hari ini, inbox "menunggu saya", dan pembatasan approve hanya untuk bawahan langsung.
 
 ---
 
 ## Catatan Mobile
-- **Enrollment** (fingerprint/face/NFC) dilakukan saat onboarding, bukan lewat app harian — lihat `../../attendance/10-identity-enrollment.md`. App bisa memfasilitasi **self-enroll wajah** (opsional).
-- **Offline:** clock event sebaiknya bisa antre bila sinyal hilang, lalu sync (detail di spesifikasi teknis mobile — belum dibuat).
-- **Geofence & window** divalidasi server; app hanya mengirim lokasi/waktu.
+- **Enrollment** (fingerprint/face/NFC) dilakukan saat onboarding, bukan di app harian. Mesin absen tersambung lewat attendance-agent, bukan lewat app.
+- **Offline:** clock event bisa diantre lalu dikirim dengan `timestamp` asli. Server tetap memvalidasi window dan geofence terhadap timestamp tersebut.
+- **Config admin:** `geofence_accuracy_threshold_m` diatur di `POST /attendance/rules` (web). Bila field tidak dikirim, nilai lama dipertahankan; kirim `0` untuk menghapusnya.

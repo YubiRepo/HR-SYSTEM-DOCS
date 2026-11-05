@@ -1,6 +1,9 @@
 <!-- 📁 modules/mobile/api/performance.md -->
 # Mobile API · Performance
 
+> ⚠️ **Belum tersedia di API.** Modul ini belum diimplementasikan di backend; endpoint di bawah adalah rancangan dan bisa berubah.
+
+
 Endpoint Performance yang dipakai mobile — self-assessment & review tim. Setup framework/kalibrasi tetap di web.
 
 > Referensi lengkap: [`../../performance/04-api-contract.md`](../../performance/04-api-contract.md).

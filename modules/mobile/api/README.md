@@ -1,50 +1,49 @@
-<!-- 📁 modules/mobile/README.md -->
-# Mobile App
+<!-- 📁 modules/mobile/api/README.md -->
+# Mobile API — Indeks
 
-Dokumentasi aplikasi mobile HRMS. Mobile adalah **klien** dari modul-modul yang sudah ada (Attendance, Payroll, Leave, dll) — bukan modul dengan logika bisnis sendiri. Dokumen di sini memetakan bagaimana fitur modul disajikan di aplikasi HP, per peran.
+Subset endpoint HRMS yang dipakai aplikasi mobile. Mobile adalah **klien** dari modul yang sudah ada. Tidak ada route group `/mobile` terpisah: app memakai route modul yang sama dengan web ESS, terutama sub-path `/me/...` (self-service).
 
 | | |
 |---|---|
-| **Modul** | Mobile (klien) |
-| **Sifat** | Presentation layer — konsumen API modul lain |
-| **Peran** | Multi-role: karyawan, manajer, HR/admin |
+| **Base URL** | `/api/v1` |
+| **Auth** | `Authorization: Bearer <access_token>`. Tenant diambil dari token, tidak ada header tenant. |
+| **Envelope** | `{ success, data, pagination?, meta: { request_id, timestamp } }`. Error: `{ success: false, error: { code, message, details? } }` |
+| **Gate** | Entitlement paket tenant (per modul) + permission RBAC (`resource:action`) |
 
 ---
 
-## Struktur File
+## File
 
-| File | Isi |
+| File | Isi | Status |
+|---|---|---|
+| [`auth.md`](./auth.md) | Login, pilih/ganti tenant, refresh, profil akun, permission untuk menu | Tersedia |
+| [`attendance.md`](./attendance.md) | Clock in/out, geofence, hari ini, jadwal, koreksi, lembur | Tersedia |
+| [`leave.md`](./leave.md) | Saldo, ajuan, lampiran, riwayat, batal, approval | Tersedia |
+| [`payroll.md`](./payroll.md) | Slip gaji (list, detail, PDF), approve run | Tersedia (pinjaman belum) |
+| [`core-hr.md`](./core-hr.md) | Profil, update kontak, dokumen, wilayah, direktori | Tersedia |
+| [`performance.md`](./performance.md) | Goal, review, 360 | **Belum tersedia di API** |
+| [`recruitment.md`](./recruitment.md) | Kandidat, evaluasi, offer | **Belum tersedia di API** |
+
+---
+
+## Permission self-service (role `employee`)
+
+| Permission | Dipakai untuk |
 |---|---|
-| [`README.md`](./README.md) | Indeks (dokumen ini) |
-| [`01-feature-breakdown.md`](./01-feature-breakdown.md) | Fitur mobile per peran; mana yang tetap di web |
-| [`api/attendance.md`](./api/attendance.md) | Endpoint mobile Attendance (absen, jadwal, koreksi) |
-| [`api/leave.md`](./api/leave.md) | Endpoint mobile Leave (saldo, ajuan, approval) |
-| [`api/payroll.md`](./api/payroll.md) | Endpoint mobile Payroll (slip, pinjaman, approve run) |
-| [`api/performance.md`](./api/performance.md) | Endpoint mobile Performance (goal, review, 360) |
-| [`api/recruitment.md`](./api/recruitment.md) | Endpoint mobile Recruitment (kandidat, evaluasi, offer) |
-| [`api/core-hr.md`](./api/core-hr.md) | Endpoint mobile Core HR (profil, dokumen, wilayah) |
+| `profile:read` / `profile:write` | Akun login sendiri (`/auth/me`) |
+| `employees:self` | Data karyawan sendiri, update kontak, dokumen sendiri |
+| `employees:directory` | Direktori rekan kerja |
+| `attendance:self` | Absen, jadwal, koreksi, lembur sendiri |
+| `leave:self` | Saldo & ajuan cuti sendiri |
+| `payslip:self` | Slip gaji sendiri |
+
+Approval memakai permission yang sudah ada (`attendance:approve`, `leave:approve`, `payroll:approve`).
 
 ---
 
-## Prinsip
+## Belum tersedia (menyusul)
 
-- **Mobile = cepat & di lapangan** — fitur harian, aksi singkat, approval on-the-go.
-- **Setup berat tetap di web** — konfigurasi, master data, billing.
-- **Multi-role** — satu app, tampilan menyesuaikan peran (dari RBAC).
-- **Klien, bukan sumber** — mobile memakai API & data model modul yang ada; tak ada logika bisnis baru.
-
----
-
-## Lanjutan (Belum Dibuat)
-
-- Navigasi & struktur layar per peran.
-- Spesifikasi teknis (offline, sync, push, GPS/kamera).
-- Mockup / prototype visual.
-
----
-
-## Referensi
-- Absensi: [`../attendance`](../attendance/README.md)
-- Gaji: [`../payroll`](../payroll/README.md)
-- Cuti: [`../leave`](../leave/README.md)
-- Peran & izin: [`../rbac`](../rbac/README.md)
+- **Fitur tim untuk manajer:** kehadiran tim hari ini, inbox approval, filter tim di kalender cuti, dan pembatasan approve hanya untuk bawahan langsung.
+- **Notifikasi push** (registrasi device token / FCM).
+- **Pinjaman & cicilan** (Payroll).
+- Modul **Performance** dan **Recruitment**.

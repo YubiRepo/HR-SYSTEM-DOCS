@@ -1,85 +1,53 @@
 <!-- 📁 modules/mobile/api/payroll.md -->
 # Mobile API · Payroll
 
-Endpoint Payroll yang dipakai aplikasi mobile — terbatas pada **lihat slip & pinjaman sendiri**, dan **approval run** untuk manajer. Setup payroll tetap di web.
+Endpoint Payroll untuk aplikasi mobile: **slip gaji sendiri** dan **approval run** untuk approver. Prefix `/api/v1/payroll`, dijaga entitlement `payroll` dan RBAC. Setup payroll tetap di web.
 
-> Referensi lengkap: [`../../payroll/05-api-contract.md`](../../payroll/05-api-contract.md). Data gaji sensitif — akses ketat sesuai RBAC.
+> Referensi lengkap: [`../../payroll/05-api-contract.md`](../../payroll/05-api-contract.md). Data gaji sensitif.
 
 ---
 
-## 1. Daftar Slip Gaji Saya — `GET /payroll/me/payslips`
-**Role:** karyawan.
-
+## 1. Daftar Slip Saya — `GET /payroll/me/payslips`
+**Permission:** `payslip:self`. Hanya slip dari run berstatus `approved` / `paid` / `closed`. Run yang masih `draft` / `calculated` / `in_review` tidak tampil karena angkanya masih bisa berubah.
 ```json
 {
   "success": true,
   "data": [
-    { "period": "2026-08", "net_pay": 9137000, "status": "paid", "pay_date": "2026-08-25" },
-    { "period": "2026-07", "net_pay": 9137000, "status": "paid", "pay_date": "2026-07-25" }
+    {
+      "id": "…", "run_id": "…", "employee_id": "…",
+      "period": "2026-08", "pay_date": "2026-08-25", "run_status": "paid",
+      "gross": 8916000, "bpjs_employee": 320000, "bpjs_employer": 0,
+      "pph21": 259000, "other_deductions": 500000, "net": 7837000
+    }
   ]
 }
 ```
+Nominal dalam rupiah penuh (integer).
 
----
+## 2. Detail Slip — `GET /payroll/me/payslips/{id}`
+**Permission:** `payslip:self`. Bentuknya sama dengan satu item §1. Slip milik orang lain atau slip yang belum rilis mengembalikan `404`.
 
-## 2. Detail Slip — `GET /payroll/me/payslips/{period}`
-**Role:** karyawan.
-
-`GET /payroll/me/payslips/2026-08`
-```json
-{
-  "success": true,
-  "data": {
-    "period": "2026-08",
-    "earnings": [
-      { "name": "Gaji Pokok", "amount": 8000000 },
-      { "name": "Tunjangan Transport", "amount": 500000 },
-      { "name": "Uang Lembur", "amount": 416000 }
-    ],
-    "deductions": [
-      { "name": "BPJS (karyawan)", "amount": -320000 },
-      { "name": "PPh 21", "amount": -259000 },
-      { "name": "Cicilan Pinjaman", "amount": -500000 }
-    ],
-    "gross": 8916000,
-    "net_pay": 9137000,
-    "status": "paid"
-  }
-}
-```
-> Slip hanya untuk diri sendiri (`payslip:self`). Angka dalam minor unit / rupiah penuh sesuai konvensi API.
-
----
-
-## 3. Pinjaman & Sisa Saya — `GET /payroll/me/loans`
-**Role:** karyawan.
-
+## 3. Rincian Komponen — `GET /payroll/me/payslips/{id}/lines`
+**Permission:** `payslip:self`.
 ```json
 {
   "success": true,
   "data": [
-    { "id": "loan_...", "type": "loan", "principal": 3000000, "outstanding": 2000000, "installment": 500000, "status": "active" }
+    { "component_code": "BASIC", "name": "Gaji Pokok", "type": "earning", "amount": 8000000 },
+    { "component_code": "LOAN", "name": "Cicilan Pinjaman", "type": "deduction", "amount": 500000 }
   ]
 }
 ```
+BPJS karyawan dan PPh 21 tidak muncul sebagai baris; nilainya ada di field `bpjs_employee` / `pph21` pada §2.
 
----
+## 4. Unduh PDF — `GET /payroll/me/payslips/{id}/pdf`
+**Permission:** `payslip:self`. Response `application/pdf` (`Content-Disposition: inline`). Isinya kop perusahaan, identitas karyawan, pendapatan, potongan (termasuk BPJS & PPh 21), dan take home pay.
 
-## 4. Approval Payroll Run — `POST /payroll/runs/{id}/approve`
-**Role:** manajer/approver (maker-checker). Aksi ringkas dari mobile.
-
-**Request**
-```json
-{ "decision": "approve", "note": "sesuai" }
-```
-**Response `200`** → run status `approved`.
-**Error:** `409 NOT_APPROVER`, `409 INVALID_STATE` (run belum `in_review`).
-
-> Menjalankan/menghitung run (`calculate`) tetap di web; mobile hanya untuk **menyetujui** run yang sudah siap.
+## 5. Approve Payroll Run — `POST /payroll/runs/{id}/approve`
+**Permission:** `payroll:approve` (maker-checker). Body kosong. Run harus berstatus `in_review`. Menghitung dan submit run tetap dilakukan di web.
 
 ---
 
 ## Catatan Mobile
-- **Tidak ada** setup komponen/grade/tarif di mobile — itu web.
-- Slip bisa diunduh sebagai PDF (link dari detail slip).
-- Semua akses gaji dijaga RBAC; manajer tanpa izin payroll tidak melihat rupiah, hanya jam (lihat Attendance).
+- **Pinjaman & cicilan belum tersedia di API.** Potongan cicilan saat ini hanya terlihat sebagai baris `deduction` di §3.
+- Endpoint `GET /payroll/payslips/{id}` (tanpa `/me`) adalah untuk HR (`payslip:read`), bukan untuk karyawan.

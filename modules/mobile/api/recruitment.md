@@ -1,6 +1,9 @@
 <!-- 📁 modules/mobile/api/recruitment.md -->
 # Mobile API · Recruitment
 
+> ⚠️ **Belum tersedia di API.** Modul ini belum diimplementasikan di backend; endpoint di bawah adalah rancangan dan bisa berubah.
+
+
 Endpoint Recruitment yang dipakai mobile — terbatas untuk manajer/pewawancara: lihat kandidat, beri evaluasi, approve offer. Bikin lowongan & kelola pipeline tetap di web.
 
 > Referensi lengkap: [`../../recruitment/05-api-contract.md`](../../recruitment/05-api-contract.md).
