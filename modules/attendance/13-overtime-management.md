@@ -181,6 +181,23 @@ Tabel `overtime_approval_claims`, unik per `(tenant_id, employee_id, work_date)`
 
 Dokumen kedua untuk hari yang sama ditolak (`OVERTIME_DAY_ALREADY_CLAIMED` untuk request, `OVERTIME_ORDER_CONFLICT` untuk SPL) sampai dokumen pertama dalam status negatif. Karena pembatalan hanya bisa sebelum jam mulai, setelah lembur terjadi sumber approval transaksi stabil.
 
+### 5.5 Clock in di day off & hari libur
+
+Day off (tanpa shift) dan hari libur (`holiday`, termasuk yang punya shift terjadwal) adalah hari lembur. Clock in lewat aplikasi di hari itu **hanya** boleh dengan dokumen:
+
+| Kondisi | Clock in |
+|---|---|
+| SPL issued (baris aktif) atau request **approved** untuk tanggal itu | Boleh, mulai `start − ot_clock_in_lead_min` (attendance rule, default 60 menit) |
+| Request **pending**, Auto quota saja, atau tanpa dokumen | Ditolak `OVERTIME_NOT_APPROVED` |
+| Terlalu awal | Ditolak `OUTSIDE_OVERTIME_WINDOW` (pesan berisi jam buka) |
+| Cuti | Perilaku lama (tanpa cek dokumen) |
+
+- Window dokumen **menggantikan** clock window shift. Clock out bebas setelah clock in.
+- Auto clock-out menutup sesi di **jam selesai dokumen**.
+- `GET /attendance/me/today` menambahkan `day_kind`, `overtime_required`, dan `overtime_access {source, label, start, end}`. ESS menonaktifkan tombol Clock In bila `overtime_required` tanpa `overtime_access`.
+- **Mesin absensi dan input manual HR tidak diblokir.** Data mesin di hari libur tanpa dokumen tetap tercatat; lemburnya mengikuti `unauthorized_policy` (atau Auto quota bila day type punya).
+- Menit lembur tercatat juga di attendance record (`overtime_minutes`, lihat `03` §4).
+
 ---
 
 ## 6. Realisasi & Transaksi

@@ -12,6 +12,8 @@ Budi · 2026-01-15
 
 Satu hari bisa punya beberapa pasang (mis. keluar-masuk saat istirahat) — tergantung kebijakan tenant.
 
+**Day off & hari libur** (tanpa shift, atau hari libur nasional walau ada shift) adalah hari lembur. Clock in lewat aplikasi (ESS/mobile/web) di hari itu **wajib** punya SPL issued atau overtime request approved untuk tanggal tersebut. Detailnya ada di `13-overtime-management.md` §5.5.
+
 ---
 
 ## 2. Sumber Absensi (Multi-channel)
@@ -62,11 +64,13 @@ Contoh:
 ["workday", "present", "late", "overtime"]   telat, tapi lembur
 ["workday", "incomplete", "on_time"]         sedang bekerja
 ["workday", "absent"]                        alpha
-["holiday", "present"]                       masuk di hari libur (lembur via overtime request)
+["holiday", "present", "overtime"]           masuk di hari libur dengan SPL / request approved
+["day_off", "present", "overtime"]           masuk di day off dengan SPL / request approved
 ["on_leave"]                                 cuti
 ```
 
 - Menit telat/pulang awal/lembur tetap disimpan terpisah (`late_minutes`, `early_leave_minutes`, `overtime_minutes`).
+- `overtime_minutes` di hari `holiday`/`day_off` = **seluruh** durasi clock in–out, dibulatkan dengan rounding & toleransi shift tanpa threshold (tanpa shift: menit mentah). Ini rumus yang sama dengan overtime processing, jadi angka di record = aktual di transaksi lembur.
 - Koreksi `field=status` berisi **satu nilai**, yang mengganti nilai di dimensi yang sama (mis. `on_leave` mengganti `workday`). `old_value` adalah nilai lama di dimensi itu.
 - Shift `flexible`: `arrival` selalu `on_time`; `departure` dihitung dari total jam kerja vs target.
 

@@ -5,6 +5,15 @@ auto clock-out bila karyawan lupa absen pulang.
 Kebijakan dibuat sekali untuk seluruh perusahaan (**Default Tenant**) dan bisa
 ditimpa per cabang.
 
+> **Yang aktif saat ini:** hanya **Office Geofence** (aktif/nonaktif, radius
+> meter, latitude & longitude kantor — wajib diisi bila geofence aktif) dan
+> **OT early clock-in (min)** (berapa menit sebelum jam mulai SPL/request
+> karyawan boleh clock in di day off / hari libur, default 60).
+> *Requires approval* dan *Auto clock-out* (cap & reminder) **disembunyikan
+> dan dinonaktifkan di API**: semua overtime request menunggu review, dan
+> sweep auto clock-out tidak berjalan. Tampilan di bawah adalah rancangan
+> lengkap.
+
 **Akses:** `/tenants/hr-setting/attendance-rules` · **Permission:** menu tampil
 bila fitur `attendance` aktif dan punya `attendance:read`; menyimpan kebijakan
 butuh `attendance:config`
