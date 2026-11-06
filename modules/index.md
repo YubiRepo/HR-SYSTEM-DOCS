@@ -15,6 +15,7 @@
 - [10 identity enrollment](/modules/attendance/10-identity-enrollment)
 - [11 geofence](/modules/attendance/11-geofence)
 - [12 agent ingestion](/modules/attendance/12-agent-ingestion)
+- [13 overtime management](/modules/attendance/13-overtime-management)
 - [README](/modules/attendance/README)
 
 ### auth
@@ -57,6 +58,7 @@
 - [README](/modules/mobile/README)
 - [README](/modules/mobile/api/README)
 - [attendance](/modules/mobile/api/attendance)
+- [auth](/modules/mobile/api/auth)
 - [core hr](/modules/mobile/api/core-hr)
 - [leave](/modules/mobile/api/leave)
 - [payroll](/modules/mobile/api/payroll)

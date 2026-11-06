@@ -62,6 +62,7 @@ Tarif & batas yang dipakai modul (PPh 21 TER, PTKP, persentase & plafon BPJS) me
 ---
 
 ## Referensi
+- Rencana adaptasi ERD payroll v2 (belum dikerjakan): [`../../plans/2026-11-06-payroll-erd-adaptation.md`](../../plans/2026-11-06-payroll-erd-adaptation.md)
 - Data karyawan: [`../core-hr`](../core-hr/README.md)
 - Gerbang fitur & limit: [`../entitlement`](../entitlement/README.md)
 - Peran & izin: [`../rbac`](../rbac/README.md)
