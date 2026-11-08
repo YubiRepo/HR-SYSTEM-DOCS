@@ -38,3 +38,5 @@ Arsitektur upload dokumen (avatar, bukti pembayaran) — pola **presign → uplo
 
 - Avatar disimpan dengan prefix **`s3:`** (objek MinIO) atau **`ext:`** (URL eksternal); resolusi ke URL publik dilakukan di layer response (GetMe/ListUsers). Menghapus avatar: `MarkDeleted` (hapus dari kedua bucket) hanya untuk objek `s3:`/legacy, bukan `ext:`.
 - Payment `proof_key` menyimpan key final bucket private; `proof_url` dihitung ulang (presigned GET) tiap list/detail.
+
+> **Rencana:** migrasi ke SeaweedFS (MinIO deprecated), belum dikerjakan. Lihat [`../plans/2026-11-08-migrasi-object-storage-seaweedfs.md`](../plans/2026-11-08-migrasi-object-storage-seaweedfs.md).
