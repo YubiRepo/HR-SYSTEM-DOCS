@@ -11,7 +11,9 @@ Payroll bergantung pada beberapa modul & menyediakan data ke beberapa modul lain
 | **Core HR** | Karyawan aktif, gaji pokok, cabang, `user_id` | Menentukan peserta run & nilai dasar |
 | **Core HR** | Status karyawan (aktif/probation) | Hanya karyawan aktif ikut run |
 | **Attendance & Leave** | Jam lembur, potongan absen, cuti tak berbayar | Komponen variabel (uang lembur, potongan) |
-| **employee_tax_profile** | PTKP, NPWP | Perhitungan PPh 21 |
+| **employee_tax_profile** | PTKP, perlakuan pajak | Perhitungan PPh 21 |
+| **Core HR** (`FindEmployeeTaxIdentity`) | NPWP, NIK, tanggal masuk | `has_npwp` & snapshot NPWP di slip; tanggal mulai kepesertaan BPJS awal (P11) |
+| **employee_bpjs_enrollments** | Program yang diikuti, nomor kepesertaan, kelas risiko JKK | Iuran BPJS per karyawan (P11) |
 | **Config (TER, BPJS)** | Tarif & plafon berlaku | Perhitungan pajak & iuran |
 
 > Bila modul Attendance tidak aktif (plan lebih rendah), komponen lembur/absen dapat diinput manual atau diabaikan.

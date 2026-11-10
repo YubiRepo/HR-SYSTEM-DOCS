@@ -19,8 +19,8 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 ### Konfigurasi Pajak & BPJS
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| GET / PUT | `/payroll/config` | Konfigurasi umum (cap potongan) | `payroll:read` / `payroll:config` |
-| GET / POST | `/payroll/config/bpjs` | Tarif & plafon BPJS (POST = baris versi baru) | `payroll:read` / `payroll:config` |
+| GET / PUT | `/payroll/config` | Konfigurasi umum: cap potongan, `default_bpjs_programs` (null = semua), `default_jkk_risk_class`. PUT mengganti seluruh baris — kirim ulang field yang tidak diubah | `payroll:read` / `payroll:config` |
+| GET / POST | `/payroll/config/bpjs` | Tarif & plafon BPJS (POST = baris versi baru). JKK boleh satu baris per `risk_class`; duplikat dicek per (program, risk_class, effective_from) | `payroll:read` / `payroll:config` |
 | GET / POST | `/payroll/config/pph21-ter-rates` | Tabel TER A/B/C | `payroll:read` / `payroll:config` |
 | GET / POST | `/payroll/config/pph21-brackets` | Tarif progresif Pasal 17 (rekonsiliasi Desember) | `payroll:read` / `payroll:config` |
 | GET / POST | `/payroll/config/pph21-ptkp-rates` | Master PTKP: status, PTKP tahunan, kategori TER. `GET ?as_of=YYYY-MM-DD` = hanya versi yang berlaku pada tanggal itu (dipakai dropdown PTKP tax profile). POST duplikat `(ptkp_status, effective_from)` → `409 CONFLICT` | `payroll:read` / `payroll:config` |
@@ -29,6 +29,17 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 Semua tabel konfigurasi pajak/BPJS **append-only**: perubahan = baris baru dengan `effective_from` baru, tidak ada edit/hapus, sehingga run lama tetap bisa direproduksi.
 
 `PUT /payroll/employees/{id}/tax-profile`: `ptkp_status` divalidasi terhadap master PTKP yang berlaku hari ini dan `ter_category` diisi dari master. Status tidak ada di master → `INVALID_TAX_PROFILE_ARGUMENT`; tenant belum punya master → `CONFIG_NOT_FOUND`.
+- `tax_treatment`: `subject` (default) / `dtp` / `exempt` (P11). `dtp_eligible: true` masih diterima bila `tax_treatment` kosong (→ `dtp`); response tetap mengirim `dtp_eligible` turunan.
+- `has_npwp` di request diabaikan: nilainya diturunkan dari NPWP karyawan di Core HR. Response menambah `npwp` (read-only).
+- Simpan pertama membuat kepesertaan BPJS awal dari default tenant bila karyawan belum punya.
+
+### Kepesertaan BPJS (P11)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/payroll/employees/{id}/bpjs-enrollments` | Semua baris kepesertaan karyawan. Kosong = masih dikenakan semua program | `payroll:read` |
+| PUT | `/payroll/employees/{id}/bpjs-enrollments` | Body `{ "enrollments": [ { program, is_enrolled, membership_number, risk_class, wage_base_override, exclusion_reason, effective_from, effective_to } ] }` — mengganti seluruh baris dalam satu transaksi. Overlap per program / `risk_class` di luar JKK → `INVALID_BPJS_ENROLLMENT_ARGUMENT` (422) | `payroll:config` |
+
+Payslip (`GET /payroll/payslips/{id}`, `/runs/{id}/payslips`) menambah snapshot P11: `taxable_gross`, `pph21_dtp`, `tax_treatment`, `ptkp_status`, `ter_category`, `ter_rate`, `has_npwp`, `npwp`, `bpjs_details[]`.
 
 ### Payroll Run
 | Method | Endpoint | Deskripsi | Izin |
@@ -81,6 +92,8 @@ Menghitung semua karyawan dalam scope (async untuk jumlah besar).
 { "success": true, "data": { "job_id": "job_...", "status_url": "/api/v1/jobs/job_..." } }
 ```
 Selesai → run status `calculated`; webhook `payroll.run.calculated`.
+
+Response juga membawa `warnings` (array string, tidak memblokir) — mis. karyawan yang belum punya kepesertaan BPJS dan masih dikenakan semua program (P11). JKK tanpa kelas risiko yang bisa ditentukan (beberapa tarif JKK, tanpa kelas di kepesertaan maupun `default_jkk_risk_class`) → `422 CONFIG_NOT_FOUND`.
 
 ---
 

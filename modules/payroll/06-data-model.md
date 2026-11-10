@@ -53,9 +53,24 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `employee_id` | string (PK, FK) | |
 | `ptkp_status` | enum | `TK/0`, `K/0`, `K/1`, `K/2`, `K/3`, ... |
 | `ter_category` | enum | `A` / `B` / `C` — cache tampilan, diisi dari master `pph21_ptkp_rates` saat simpan. Calculate selalu membaca ulang dari master tahun pajak run |
-| `has_npwp` | boolean | Memengaruhi tarif |
+| `has_npwp` | boolean | Cache dari NPWP Core HR saat simpan (P11); calculate membaca Core HR langsung |
 | `pph21_method` | enum | `nett` / `gross` / `gross_up` |
-| `dtp_eligible` | boolean | PPh 21 ditanggung pemerintah |
+| `tax_treatment` | enum | `subject` / `dtp` / `exempt` (P11), default `subject` |
+| `dtp_eligible` | boolean | **Deprecated** — disinkronkan dengan `tax_treatment = dtp`, tidak dibaca lagi |
+
+### 2.3a `employee_bpjs_enrollments` (P11)
+Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per (karyawan, program) — divalidasi aplikasi; `PUT` mengganti seluruh baris karyawan dalam satu transaksi.
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | uuid (PK) | |
+| `tenant_id` / `employee_id` | uuid | |
+| `program` | enum | `kesehatan`, `jht`, `jp`, `jkk`, `jkm` |
+| `is_enrolled` | boolean | `false` = tidak dipotong dan tidak dibebankan ke perusahaan |
+| `membership_number` | string (nullable) | No. KPJ / JKN |
+| `risk_class` | string (nullable) | Hanya `jkk`; memilih baris `bpjs_config` dengan kelas sama |
+| `wage_base_override` | int (nullable) | Mengganti Σ komponen `bpjs_base`; plafon tetap berlaku |
+| `exclusion_reason` | enum (nullable) | `retirement_age` / `spouse_coverage` / `foreign_worker` / `other`, hanya bila tidak ikut |
+| `effective_from` / `effective_to` | date | `effective_to` null = berlaku terus |
 
 ### 2.4 `payroll_runs`
 | Field | Tipe | Keterangan |
@@ -81,9 +96,13 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `gross` | int | |
 | `bpjs_employee` | int | |
 | `bpjs_employer` | int | |
-| `pph21` | int | |
+| `pph21` | int | PPh 21 yang **dipotong** dari karyawan (0 untuk `dtp` / `exempt`) |
 | `other_deductions` | int | |
 | `net` | int | |
+| `taxable_gross` / `bpjs_employee_pph21_base` | int | Dasar rekonsiliasi Desember |
+| `pph21_dtp` | int | PPh 21 ditanggung pemerintah — dilaporkan, tidak dipotong (P11) |
+| `tax_treatment`, `ptkp_status`, `ter_category`, `ter_rate`, `has_npwp`, `npwp` | snapshot (nullable) | Nilai saat calculate (P11). Null pada slip sebelum P11. `ter_*` null di Desember dan untuk `exempt` |
+| `bpjs_details` | json (nullable) | Per program: `program`, `institution` (`kesehatan`/`ketenagakerjaan`), `membership_number`, `risk_class`, `base`, `employee_rate`, `employer_rate`, `employee_amount`, `employer_amount` (P11) |
 
 ### 2.6 `payslip_lines`
 Rincian tiap komponen pada slip (untuk transparansi & audit).
@@ -133,8 +152,8 @@ Parameter skalar PPh 21, satu baris per versi (UNIQUE `(tenant_id, effective_fro
 | `program` | enum | `kesehatan`, `jht`, `jp`, `jkk`, `jkm` |
 | `employee_pct` / `employer_pct` | number | Porsi masing-masing |
 | `wage_cap` | int (nullable) | Plafon upah (null = tanpa plafon) |
-| `risk_class` | string (nullable) | Untuk JKK (tarif per risiko) |
-| `effective_from` | date | Versi berlaku |
+| `risk_class` | string (nullable) | Untuk JKK: satu baris per kelas risiko. Duplikat dicek per (program, risk_class, effective_from) |
+| `effective_from` | date | Versi berlaku — calculate memakai baris terbaru per (program, risk_class) |
 
 ### 2.9 `employee_loans`
 Hutang karyawan (kasbon/pinjaman/cicilan/denda) — lihat `10-loan-deduction.md`.
@@ -171,6 +190,8 @@ Jejak potong pinjaman per periode.
 | `max_deduction_percent` | number (nullable) | **Cap potongan** (mis. 30% gaji bersih) — configurable |
 | `deduction_cap_base` | enum | `net`/`basic` — basis perhitungan cap |
 | `on_cap_exceed` | enum | `reduce_installment` / `force` — perilaku bila cicilan lewat cap |
+| `default_bpjs_programs` | json array (nullable) | Program yang diikuti karyawan baru (null = semua) — P11 |
+| `default_jkk_risk_class` | string (nullable) | Kelas risiko JKK bila kepesertaan karyawan tidak mengisinya — P11 |
 
 ---
 

@@ -45,9 +45,15 @@ Lima program, tiap program beda tarif & pihak penanggung. Yang **memotong gaji k
 
 **Aturan penting:**
 - **Plafon (cap):** iuran dihitung `min(dasar, plafon)`. Mis. gaji Rp20 jt, iuran JP tetap dari Rp10.547.400.
-- **JKK bervariasi** menurut tingkat risiko pekerjaan (data per tenant/jabatan).
-- **Dasar BPJS** = komponen ber-flag `bpjs_base` (umumnya pokok + tunjangan tetap).
-- Iuran karyawan (JHT+JP) menjadi **pengurang** PPh 21.
+- **JKK bervariasi** menurut tingkat risiko pekerjaan: `bpjs_config` boleh punya satu baris JKK per `risk_class`. Kelas karyawan diambil dari kepesertaannya, lalu `payroll_config.default_jkk_risk_class`; tanpa kelas, tenant dengan satu tarif JKK (atau satu tarif tanpa kelas) tetap memakai tarif itu. Selain itu → `CONFIG_NOT_FOUND`.
+- **Dasar BPJS** = komponen ber-flag `bpjs_base` (umumnya pokok + tunjangan tetap), atau `wage_base_override` kepesertaan bila diisi. Plafon tetap berlaku.
+- Iuran karyawan (JHT+JP) menjadi **pengurang neto** pada rekonsiliasi tahunan PPh 21 (§4.2).
+
+**Kepesertaan per karyawan (`employee_bpjs_enrollments`, P11):**
+- Hanya program yang `is_enrolled = true` dan berlaku pada **hari terakhir periode run** yang dihitung — tidak dipotong dari karyawan dan tidak dibebankan ke perusahaan bila tidak ikut.
+- Karyawan **tanpa baris kepesertaan sama sekali** masih dikenakan semua program (perilaku sebelum P11); hasil calculate mencantumkan mereka di `warnings`.
+- Baris awal dibuat otomatis saat tax profile disimpan pertama kali: satu baris per program dari `payroll_config.default_bpjs_programs` (kosong = semua), mulai tanggal masuk.
+- Rincian per program (lembaga, nomor kepesertaan, kelas risiko, dasar, tarif, iuran karyawan & perusahaan) disimpan di `payslips.bpjs_details`; jumlahnya sama dengan `bpjs_employee` / `bpjs_employer`.
 
 **Contoh (gaji dasar BPJS Rp8 jt, risiko rendah JKK 0,24%):**
 ```
@@ -89,9 +95,13 @@ Menentukan kategori TER & besaran PTKP. Contoh kode: `TK/0` (tidak kawin, 0 tang
 - Master tidak ada, atau status karyawan tidak ada di master → calculate gagal `CONFIG_NOT_FOUND` (tidak ada fallback ke angka lama).
 
 ### 4.4 Hal lain (konfigurabel)
-- **Tanpa NPWP**: dapat dikenakan tarif lebih tinggi (aturan berlaku).
+- **Tanpa NPWP**: dapat dikenakan tarif lebih tinggi (aturan berlaku). `has_npwp` diturunkan dari NPWP di data karyawan Core HR, tidak diinput di tax profile (P11); tarif lebih tinggi belum diterapkan.
 - **Biaya jabatan**: 5% dari bruto, maks (mis.) Rp500.000/bulan atau Rp6 jt/tahun — pengurang di skema tahunan. Persentase dan batas tahunannya data master (`pph21_tax_parameters`, versi per 1 Januari tahun pajak), default seed 5% / Rp6 jt.
-- **PPh 21 DTP** (ditanggung pemerintah): untuk kriteria tertentu, pajak tidak memotong gaji — perlu ditandai agar pelaporan benar.
+- **Perlakuan pajak** (`employee_tax_profile.tax_treatment`, P11):
+  - `subject` — PPh 21 dihitung dan dipotong dari gaji.
+  - `dtp` (ditanggung pemerintah) — PPh 21 **tetap dihitung** dan disimpan di `payslips.pph21_dtp` untuk pelaporan; `pph21` (yang dipotong) = 0, net tidak berkurang. Di rekonsiliasi Desember, PPh Jan–Nov yang sudah "dibayar" = Σ `pph21` + Σ `pph21_dtp`.
+  - `exempt` — bukan subjek PPh 21, tidak dihitung.
+- **Snapshot pajak di slip** (P11): `tax_treatment`, `ptkp_status`, `ter_category` & `ter_rate` (Jan–Nov), `has_npwp`, `npwp` disalin ke `payslips` saat calculate, agar slip lama tetap bisa ditelusuri walau tax profile berubah.
 - **Metode**: nett / gross / gross-up (siapa menanggung pajak) — dapat dipilih per tenant/komponen.
 
 ---

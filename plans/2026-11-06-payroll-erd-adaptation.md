@@ -146,10 +146,11 @@ P4 Schedule & Period ──> P5 Run Snapshot ──┬──> P6 Adjustment Run
                                            └──> P8 Bank & Payment
 Engine approval (plan 2026-11-05 Fase 1) ──> P7 Approval Berjenjang
 P9 Policy Versioning (opsional, lepas)
-P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesertaan BPJS & Perlakuan Pajak
+P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesertaan BPJS & Perlakuan Pajak ──> P12 Metode PPh 21 ──> P13 Laporan Setoran BPJS & PPh 21
+                                                                    (P4, P6 memperbaiki pengelompokan periode P13)
 ```
 
-Urutan disarankan: **P10 → P11 → P1 → P2 → P4 → P5 → P3 → P8 → P6 → P7**. P10 kecil dan berdiri sendiri, jadi dikerjakan lebih dulu agar rekonsiliasi Desember 2026 sudah memakai master. P11 menyusul karena menyentuh tax profile yang sama. Jalur P1–P2 dan P4–P5 bisa dikerjakan paralel oleh orang berbeda.
+Urutan disarankan: **P10 → P11 → P12 → P13 → P1 → P2 → P4 → P5 → P3 → P8 → P6 → P7**. P10 kecil dan berdiri sendiri, jadi dikerjakan lebih dulu agar rekonsiliasi Desember 2026 sudah memakai master. P11 menyusul karena menyentuh tax profile yang sama, P12 menyusul karena menyentuh perhitungan PPh dan kolom payslip yang sama, lalu P13 agar laporan setoran sudah tersedia sebelum masa Desember 2026. Jalur P1–P2 dan P4–P5 bisa dikerjakan paralel oleh orang berbeda.
 
 ---
 
@@ -207,6 +208,8 @@ Urutan disarankan: **P10 → P11 → P1 → P2 → P4 → P5 → P3 → P8 → P
 ---
 
 ### P2 — Employee Compensation (berversi)
+
+> **Limpahan dari P11:** endpoint `POST /payroll/bpjs-enrollments/bulk` (mis. set kelas risiko JKK satu cabang), filter "BPJS belum lengkap" di menu Compensations, dan pemindahan form tax profile + kepesertaan BPJS dari `salary/employees.vue` ke sub-tab Payroll › Tax & BPJS (`PayrollEmployeePanel`). Enrollment awal juga dibuat saat karyawan pertama kali punya kompensasi.
 
 **Tujuan:** setiap perubahan gaji karyawan (promosi, kenaikan) tercatat sebagai versi dengan tanggal berlaku, dan nilai komponennya diambil dari structure.
 
@@ -511,6 +514,16 @@ Keduanya tenant-scoped dan berversi `effective_from`, sama seperti `bpjs_config`
 
 ### P11 — Kepesertaan BPJS & Perlakuan Pajak per Karyawan
 
+**Status:** selesai dikerjakan 2026-11-10, menunggu review. Migrasi `20261110000006_create_bpjs_enrollments_and_tax_treatment` dan backfill `backfill_bpjs_enrollments_for_tenant` (`20261110090002`) ditulis, **belum dijalankan**. Catatan implementasi:
+
+- Endpoint bulk (`POST /payroll/bpjs-enrollments/bulk`) dan filter "BPJS belum lengkap" di menu Compensations **belum dikerjakan**: menu Compensations baru ada di P2, dan bulk butuh daftar karyawan per cabang. Dipindah ke P2.
+- Sub-tab Employee Info › Payroll belum ada (P2). Form perlakuan pajak, NPWP read-only, dan tabel kepesertaan BPJS untuk sementara ditaruh di halaman **Employee Payrolls** (`salary/employees.vue`), lalu dipindah ke `PayrollEmployeePanel` di P2.
+- Update tax profile tetap `PUT` (bukan `PATCH`), menerima `tax_treatment`; `dtp_eligible` lama masih diterima.
+- `payslips.pph21` **tetap berarti "dipotong dari karyawan"**; DTP disimpan terpisah di `pph21_dtp`. YTD Desember memakai `pph21 + pph21_dtp`.
+- Kepesertaan berlaku bila menutupi **hari terakhir periode** run.
+- Backfill tidak mengisi `risk_class` JKK: calculator memakai `default_jkk_risk_class`, atau satu-satunya tarif JKK tenant, sehingga angka tidak berubah untuk tenant dengan satu tarif JKK. Tenant dengan beberapa kelas dicatat backfill sebagai warning.
+- Temuan #11: `bpjs_config` lama `FindApplicable` memakai `DISTINCT ON (program)`, jadi dengan beberapa baris JKK yang terpilih **satu baris sembarang** (bukan dijumlahkan). Diperbaiki: satu baris per (program, risk_class), dipilih per karyawan. Cek duplikat saat tambah tarif BPJS juga kini menyertakan `risk_class`.
+
 **Tujuan:** HR bisa mengatur per karyawan program BPJS mana yang diikuti dan bagaimana PPh 21-nya diperlakukan, dengan riwayat berlaku. Saat ini semua karyawan dalam run otomatis dikenakan semua program BPJS di `bpjs_config`.
 
 **Kondisi saat ini**
@@ -558,14 +571,28 @@ Constraint: tidak boleh overlap per `(employee_id, program)`.
   - JKK memakai baris `bpjs_config` sesuai `risk_class` enrollment; tanpa `risk_class` → `default_jkk_risk_class`; tidak ada baris yang cocok → `CONFIG_NOT_FOUND`.
   - `wage_base_override` menggantikan Σ `bpjs_base` bila terisi.
   - Karyawan tanpa enrollment sama sekali → perilaku lama (semua program) sampai backfill dijalankan.
-  - `tax_treatment = exempt` atau `dtp` → PPh 21 = 0; `pph21` slip tetap dicatat 0 dan perlakuannya disimpan di payslip agar laporan bisa membedakan.
-- Snapshot ke payslip (sejalan P5): `payslips` + `tax_treatment`, dan rincian iuran per program (`bpjs_details` JSONB: program, base, employee, employer), karena sekarang hanya total.
+  - `tax_treatment = exempt` → PPh 21 tidak dihitung (0).
+  - `tax_treatment = dtp` → PPh 21 **tetap dihitung** normal, lalu dicatat sebagai `pph21_dtp` (ditanggung pemerintah); `pph21` yang dipotong dari gaji = 0. Nilai DTP wajib ada karena tetap dilaporkan di bukti potong.
+- **Snapshot ke payslip** — dikerjakan di P11, tidak menunggu P5, karena dibutuhkan laporan setoran (P13). Tujuannya: slip bulan lalu bisa direkonstruksi walau tax profile atau enrollment karyawan sudah diubah.
+
+  | Kolom baru `payslips` | Isi |
+  |---|---|
+  | `tax_treatment` | `subject` / `dtp` / `exempt` saat dihitung |
+  | `ptkp_status` | Status PTKP yang dipakai |
+  | `ter_category`, `ter_rate` | Kategori dan tarif TER yang dipakai (bulan Januari–November) |
+  | `has_npwp`, `npwp` | Dari Core HR saat dihitung |
+  | `pph21_dtp` | PPh 21 yang ditanggung pemerintah (0 bila bukan `dtp`) |
+  | `bpjs_details` | JSONB, satu entri per program: `program`, `institution` (`kesehatan` / `ketenagakerjaan`), `membership_number`, `risk_class`, `base` (setelah plafon), `employee_rate`, `employer_rate`, `employee_amount`, `employer_amount`, `employer_taxable` (P12). Σ entri = `bpjs_employee` / `bpjs_employer` |
+
+  Payslip lama (sebelum P11) dibiarkan tanpa snapshot (kolom NULL); laporan P13 menandai periode itu sebagai "tanpa rincian".
+
+  P5 nanti menambah status payslip dan snapshot input, tidak memindahkan kolom ini.
 - Contract Core HR: `GetEmployeeNPWP` / ikut `ListEmployeesBasic`, untuk `has_npwp` turunan.
 - Endpoint (`payroll:config`):
   - `GET/PUT /payroll/employees/:employeeId/bpjs-enrollments` (replace-all per program, satu transaksi)
   - `POST /payroll/bpjs-enrollments/bulk` (mis. set kelas risiko JKK untuk satu cabang)
   - `PATCH /payroll/employees/:employeeId/tax-profile` menerima `tax_treatment`.
-- `pph21_method` belum diimplementasikan di fase ini: lihat §8 #10.
+- `pph21_method` belum diimplementasikan di fase ini: dikerjakan di P12.
 
 **Backoffice**
 
@@ -577,7 +604,121 @@ Constraint: tidak boleh overlap per `(employee_id, program)`.
 
 **Docs:** [03-calculation.md](../modules/payroll/03-calculation.md) §3 (kepesertaan & JKK per risiko) dan §4.4 (perlakuan pajak), [06-data-model.md](../modules/payroll/06-data-model.md) §2.3 + tabel baru, [07-integration.md](../modules/payroll/07-integration.md) (NPWP dari Core HR), [05-api-contract.md](../modules/payroll/05-api-contract.md).
 
-**Kriteria selesai:** karyawan dengan JP `is_enrolled = false` tidak dipotong dan tidak dibebani JP; dua karyawan dengan kelas risiko JKK berbeda mendapat tarif JKK berbeda; data hasil backfill menghasilkan angka identik dengan sebelum backfill (untuk tenant dengan satu kelas risiko); karyawan `exempt` PPh 21 = 0 dan terlihat di laporan.
+**Kriteria selesai:** karyawan dengan JP `is_enrolled = false` tidak dipotong dan tidak dibebani JP; dua karyawan dengan kelas risiko JKK berbeda mendapat tarif JKK berbeda; data hasil backfill menghasilkan angka identik dengan sebelum backfill (untuk tenant dengan satu kelas risiko); karyawan `exempt` PPh 21 = 0; karyawan `dtp` punya `pph21_dtp` > 0 dan `pph21` = 0; setiap payslip baru punya snapshot pajak dan `bpjs_details` yang jumlahnya sama dengan total.
+
+---
+
+### P12 — Penerapan Metode PPh 21 (gross / nett)
+
+**Tujuan:** `employee_tax_profile.pph21_method` benar-benar dipakai calculator. Saat ini kolom itu disimpan tetapi calculator selalu memotong PPh dari gaji (`gross`), dan default entity justru `nett` — jadi karyawan yang tampil "nett" di UI sebenarnya dipotong.
+
+**Cakupan (diputuskan user 2026-11-10):** hanya `gross` dan `nett`. **Gross-up belum disediakan** — `gross_up` ditolak saat simpan tax profile dan tidak ditawarkan di UI (§8 #10).
+
+**Dependensi:** P10 (master PTKP & biaya jabatan), P11 (`tax_treatment`, snapshot payslip). Dikerjakan sebelum P13 agar laporan bisa memisahkan PPh yang dipotong dari karyawan dan yang ditanggung perusahaan.
+
+**Perilaku per metode**
+
+| Metode | PPh 21 dihitung dari | Dipotong dari gaji | Ditanggung perusahaan | Di slip |
+|---|---|---|---|---|
+| `gross` | Bruto kena pajak | Ya, sebesar PPh | — | Baris potongan PPh 21 (perilaku sekarang) |
+| `nett` | Bruto kena pajak | Tidak | Ya, sebesar PPh | PPh 21 tampil sebagai "ditanggung perusahaan", net tidak berkurang |
+
+Aturan bersama:
+
+- `tax_treatment` (P11) lebih dulu: `exempt` → tidak dihitung, metode diabaikan.
+- `tax_treatment = dtp` (**diputuskan user 2026-11-10**): PPh tetap dihitung dan seluruhnya dicatat di `pph21_dtp`.
+  - `gross` + DTP: tidak dipotong dari gaji (P11).
+  - `nett` + DTP: perusahaan tidak menanggung apa pun (`pph21_employer_borne = 0`). Nilai DTP dibayarkan ke karyawan sebagai **earning** `PPH21_DTP` (tidak kena pajak, bukan `bpjs_base`), sehingga net karyawan naik sebesar DTP.
+- Rekonsiliasi Desember memakai metode yang sama: `nett` menghitung PPh Desember normal lalu dibebankan ke perusahaan.
+- Karyawan pindah metode di tengah tahun: tiap bulan memakai metode yang berlaku saat dihitung; Desember memakai metode yang berlaku di Desember.
+
+**Migrasi & data**
+
+- `payslips` + `pph21_method` (snapshot) dan `pph21_employer_borne BIGINT NOT NULL DEFAULT 0`.
+- Arti kolom pajak di payslip (mengikuti implementasi P11):
+  - `pph21` = PPh 21 yang **dipotong dari gaji** (tetap seperti sekarang); `net` memakai angka ini.
+  - `pph21_employer_borne` = bagian yang ditanggung perusahaan (`nett`).
+  - `pph21_dtp` = bagian yang ditanggung pemerintah (P11).
+  - PPh 21 terutang (dilaporkan) = `pph21 + pph21_employer_borne + pph21_dtp`. YTD Desember menjumlahkan ketiganya.
+- Earning DTP untuk `nett` + DTP disimpan sebagai `payslip_lines` dengan code `PPH21_DTP`, `type = earning`, tidak taxable, bukan `bpjs_base`. Dibuat calculator, bukan pay component tenant; seed menambahkannya sebagai system component agar namanya bisa diatur dan tidak bisa di-assign manual.
+- **Premi BPJS perusahaan sebagai bruto pajak** (**diputuskan user 2026-11-10**, menutup §8 #15): flag boolean di master `bpjs_config`, bukan konstanta.
+  - `bpjs_config` + `employer_contribution_taxable BOOLEAN NOT NULL DEFAULT false` — bila `true`, bagian perusahaan program ini ditambahkan ke `taxable_gross` (bruto PPh 21), tidak ke `gross` maupun `net`.
+  - Sekaligus `bpjs_config` + `employee_contribution_deductible BOOLEAN NOT NULL DEFAULT false` menggantikan konstanta `EmployeeContributionReducesPPh21` (bila `true`, iuran **karyawan** program ini mengurangi **neto** — dasar pajak — pada rekonsiliasi Desember: bruto − biaya jabatan − iuran JHT/JP karyawan = neto; bukan mengurangi angka PPh secara langsung, dan tidak berpengaruh pada bulan TER Januari–November), agar kedua aturan ada di master yang sama.
+  - Ringkasan flag default:
+
+    | Program | `employer_contribution_taxable` (iuran perusahaan menambah bruto) | `employee_contribution_deductible` (iuran karyawan mengurangi neto) |
+    |---|---|---|
+    | Kesehatan | true | false |
+    | JKK | true | — (tanpa iuran karyawan) |
+    | JKM | true | — (tanpa iuran karyawan) |
+    | JHT | false | true |
+    | JP | false | true |
+  - Seed & backfill: Kesehatan, JKK, JKM → `employer_contribution_taxable = true`; JHT, JP → `employee_contribution_deductible = true`; sisanya `false`.
+  - Diedit di HR Setting › Tax and BPJS (tab BPJS) sebagai dua kolom checkbox. Berlaku per versi `effective_from` seperti tarif.
+  - Snapshot: `bpjs_details` per program + `employer_taxable` (P11).
+  - **Hasil PPh berubah** untuk semua karyawan setelah backfill dijalankan; run yang sudah `approved` / `paid` / `closed` tidak dihitung ulang.
+- Default entity `NewEmployeeTaxProfile` diubah dari `nett` ke `gross`.
+- **Backfill** (**diputuskan user 2026-11-10**): semua profil existing di-set `gross`, karena itulah yang sebenarnya dihitung selama ini. Backfill mencetak daftar karyawan yang sebelumnya `nett` / `gross_up` agar HR mengubahnya manual bila memang dimaksudkan (`nett` bisa dipilih ulang; `gross_up` belum tersedia).
+
+**API**
+
+- Upsert tax profile menerima `pph21_method`; validasi hanya `gross` / `nett`. `gross_up` → `INVALID_TAX_PROFILE_ARGUMENT` ("gross-up belum didukung"). Konstanta `PPh21MethodGrossUp` tetap ada agar data lama terbaca.
+- Response payslip menambah `pph21_method`, `pph21_employer_borne`, `pph21_total` (turunan: terutang).
+
+**Backoffice**
+
+- Tax profile: dropdown metode hanya `Gross` dan `Nett` dengan penjelasan singkat; default `Gross`.
+- Payslip: baris "PPh 21 borne by company" untuk `nett`, baris earning DTP untuk `nett` + DTP.
+- Payroll Runs detail: total PPh dipisah antara withheld / borne by company / DTP.
+
+**Docs:** [03-calculation.md](../modules/payroll/03-calculation.md) §4 (metode PPh 21), [06-data-model.md](../modules/payroll/06-data-model.md) (kolom payslip), [05-api-contract.md](../modules/payroll/05-api-contract.md).
+
+**Kriteria selesai:**
+
+- `gross`: angka identik dengan sebelum P12 bila semua flag `employer_contribution_taxable = false`; dengan flag seed, `taxable_gross` bertambah tepat Σ premi perusahaan Kesehatan + JKK + JKM.
+- `nett` + DTP: `pph21_employer_borne = 0`, line `PPH21_DTP` = `pph21_dtp`, net naik sebesar DTP.
+- `nett`: net karyawan = net `gross` + PPh; `pph21_employer_borne = pph21`.
+- `gross_up` ditolak saat simpan tax profile.
+- Desember: kedua metode lolos test rekonsiliasi, termasuk karyawan yang pindah metode di tengah tahun.
+
+---
+
+### P13 — Laporan Setoran BPJS & PPh 21
+
+**Tujuan:** tim payroll/finance tahu per periode berapa yang harus disetor dan ke mana:
+
+- **BPJS Kesehatan**: Σ bagian karyawan + Σ bagian perusahaan program Kesehatan.
+- **BPJS Ketenagakerjaan**: Σ per program JHT, JP, JKK, JKM, masing-masing bagian karyawan + perusahaan.
+- **PPh 21**: Σ yang dipotong per masa pajak, plus Σ DTP, beserta daftar per karyawan untuk bukti potong (e-Bupot 21/26).
+
+Bagian karyawan sudah dipotong dari gaji, sehingga yang disetor perusahaan = bagian karyawan + bagian perusahaan.
+
+**Dependensi:** P11 (snapshot), P12 (pemisahan PPh dipotong / ditanggung perusahaan). Bisa dikerjakan sebelum P4/P6 dengan pengelompokan sementara memakai `payroll_runs.period` (`YYYY-MM`); setelah P4/P6 pengelompokan pindah ke `period_id` dan adjustment run ikut masuk.
+
+**Sumber data** — tidak ada tabel baru; semua dari `payslips` (+ snapshot P11) dan `payroll_runs`.
+
+| Laporan | Sumber | Aturan |
+|---|---|---|
+| Rekap BPJS per lembaga & program | `payslips.bpjs_details` | Hanya run berstatus `approved` / `paid` / `closed`. Run `draft` / `calculated` ditampilkan terpisah sebagai "belum final". |
+| Daftar peserta BPJS | `bpjs_details` per karyawan | Nomor kepesertaan, dasar upah, iuran karyawan & perusahaan; karyawan tanpa nomor kepesertaan ditandai. |
+| Rekap PPh 21 per masa | `payslips.pph21`, `pph21_employer_borne`, `pph21_dtp`, `taxable_gross` | Masa pajak = bulan periode run (lihat §8 #12). |
+| Daftar bukti potong | `payslips` + snapshot pajak + Core HR (NIK, nama) | Satu baris per karyawan per masa: NIK/NPWP, PTKP, kategori & tarif TER, bruto, PPh terutang, dipotong / ditanggung perusahaan / DTP, metode, `tax_treatment`. Masa Desember memakai hasil rekonsiliasi tahunan. |
+
+**API** (`payroll:read`):
+
+- `GET /payroll/reports/bpjs?period=YYYY-MM` — rekap per lembaga & program + total setor.
+- `GET /payroll/reports/bpjs/participants?period=&institution=` — daftar per karyawan.
+- `GET /payroll/reports/pph21?period=YYYY-MM` — rekap masa.
+- `GET /payroll/reports/pph21/withholdings?period=` — daftar bukti potong.
+- Semua mendukung `format=csv` untuk diunduh. Format impor e-Bupot / SIPP / e-Dabu belum di fase ini (§8 #13).
+
+**Backoffice**
+
+- Menu baru **Statutory Reports** di grup Salary (§5.2), tab **BPJS** dan **PPh 21**, filter periode, tombol export CSV. Tanpa stat card; total setor tampil sebagai baris ringkasan di atas tabel.
+
+**Docs:** [04-payroll-run.md](../modules/payroll/04-payroll-run.md) (laporan setelah run final), [05-api-contract.md](../modules/payroll/05-api-contract.md), README payroll (cakupan: laporan rekap masuk, integrasi DJP/BPJS tetap di luar).
+
+**Kriteria selesai:** untuk satu periode, total rekap BPJS = Σ `bpjs_employee` + Σ `bpjs_employer` payslip final; rekap per program = Σ `bpjs_details`; total PPh 21 = Σ `pph21` payslip final; karyawan DTP muncul dengan nilai DTP; run belum final tidak ikut total.
 
 ---
 
@@ -612,7 +753,8 @@ Formula belum diberi menu sendiri. Menu **Formulas** terpisah baru diperlukan bi
 | **Payroll Runs** | Ada (`salary/runs.vue`) | P4–P8 | Form create memilih **period** [P4]. Detail run: tab **Employees** (status ok/error/excluded, exclude/include) [P5], **Inputs** (snapshot absensi/cuti, input manual, refresh) [P5], **Approval** timeline [P7], **Payments** (batch, split, bank file, bukti bayar) [P8]. |
 | **Adjustments** | Baru (`salary/adjustments.vue`) | P6 | Daftar adjustment (pending/applied/cancelled), create & cancel. Menggantikan mock `payroll/adjustments.vue`. |
 | **Payments** | Baru, opsional (`salary/payments.vue`) | P8 | Semua payment batch lintas run untuk tim Finance. Alur utama tetap dari tab Payments di detail run. |
-| **Payslips** | Ada (`salary/payslips.vue`) | P5 | + sumber nilai per line dan versi formula. |
+| **Payslips** | Ada (`salary/payslips.vue`) | P5, P11, P12 | + sumber nilai per line dan versi formula [P5]. Rincian iuran BPJS per program dan snapshot pajak (PTKP, TER, perlakuan, DTP) [P11]. PPh ditanggung perusahaan dan earning DTP [P12]. |
+| **Statutory Reports** | Baru (`salary/statutory-reports.vue`) | P13 | Tab **BPJS** (rekap per lembaga & program, daftar peserta) dan **PPh 21** (rekap masa, daftar bukti potong), filter periode, export CSV. |
 
 ### 5.3 Employee Info › tab Payroll
 
@@ -622,7 +764,7 @@ Data payroll yang melekat pada satu karyawan ditampilkan di detail karyawan (`em
 |---|---|---|
 | **Compensation** | P2, P4 | Riwayat versi kompensasi (structure, cabang, effective from/to, status, reason), aksi buat versi baru & activate. Field **Payroll Schedule** (assignment + effective date) di sini, tidak dibuat tab sendiri [P4]. |
 | **Pay Components** | P2 | Komponen manual / one-time (`employee_components.compensation_id` NULL). Komponen recurring tampil read-only di Compensation. Menggantikan section "Assigned Pay Components" halaman Employee Payrolls. |
-| **Tax & BPJS** | ada, P11 | Tax profile (PTKP, metode PPh 21, perlakuan pajak `subject` / `dtp` / `exempt`), NPWP read-only dari Core HR, dan kepesertaan BPJS per program (ikut, nomor kepesertaan, kelas risiko JKK, dasar upah, berlaku) [P11]. Dipindah dari section "Tax Profile" halaman Employee Payrolls (dihapus) ke komponen bersama. |
+| **Tax & BPJS** | ada, P11, P12 | Tax profile (PTKP, metode PPh 21 yang benar-benar dipakai calculator [P12], perlakuan pajak `subject` / `dtp` / `exempt`), NPWP read-only dari Core HR, dan kepesertaan BPJS per program (ikut, nomor kepesertaan, kelas risiko JKK, dasar upah, berlaku) [P11]. Dipindah dari section "Tax Profile" halaman Employee Payrolls (dihapus) ke komponen bersama. |
 | **Payslips** | P5 | Riwayat slip per periode (read-only, link ke slip). Adjustment karyawan ditampilkan read-only di sini [P6]; pembuatan adjustment tetap dari menu Adjustments. |
 
 Aturan akses:
@@ -670,7 +812,9 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | `module.go`, `seed_defaults.go`, `contract.go` | semua fase |
 | `infrastructure/corehrgateway`, `internal/modules/core-hr/contract.go` | P8 |
 | `domain/payrollrun/service/pph21_constants.go` (dihapus), `calculator.go`, `domain/taxprofile/*`, `domain/payrollconfig/*`, `seed_defaults.go`, `interfaces/http/payrollconfig/*` | P10 |
-| `domain/bpjsenrollment` (baru), `domain/taxprofile/*`, `calculator.go` (filter program, JKK per risiko, rincian iuran), `calculate_run.go`, `domain/payrollconfig/entity/payroll_config.go`, `core-hr/contract.go` (NPWP) | P11 |
+| `domain/bpjsenrollment` (baru), `domain/taxprofile/*`, `calculator.go` (filter program, JKK per risiko, rincian iuran), `calculate_run.go`, `domain/payrollconfig/entity/payroll_config.go`, `core-hr/contract.go` (NPWP), `domain/payslip/entity/*` + migrasi kolom snapshot | P11 |
+| `calculator.go` (metode PPh 21 gross / nett), `calculate_run.go`, `domain/taxprofile/entity` (default `gross`), `domain/payslip/entity/*` + migrasi, `seed_defaults.go` (system component `PPH21_DTP`, flag BPJS), `domain/payrollconfig/entity/bpjs_config.go` + `constant.EmployeeContributionReducesPPh21` (dihapus), Backoffice `hr-setting/tax-bpjs.vue` (checkbox flag) | P12 |
+| `application/payrollreport` (baru, query-only), `interfaces/http/payrollreport` (baru), Backoffice `salary/statutory-reports.vue` | P13 |
 | Backoffice `app/pages/tenants/payroll/*`, composable `usePayroll`, `types/payroll` | P1, P2, P4–P8 |
 | Backoffice `app/pages/tenants/employee/[id].vue` (tab Payroll), `salary/compensations.vue` (baru, `salary/employees.vue` dihapus), komponen bersama `PayrollEmployeePanel`, `composables/useEmployeeRecordSections.ts` (flag rekening utama) | P2, P4, P5, P8 |
 
@@ -686,6 +830,8 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | [08-formula-engine.md](../modules/payroll/08-formula-engine.md) | P3 |
 | [03-calculation.md](../modules/payroll/03-calculation.md) §4 (PTKP & biaya jabatan dari master) | P10 |
 | [03-calculation.md](../modules/payroll/03-calculation.md) §3, §4.4; [07-integration.md](../modules/payroll/07-integration.md) (NPWP) | P11 |
+| [03-calculation.md](../modules/payroll/03-calculation.md) §4 (metode PPh 21 gross / nett) | P12 |
+| [04-payroll-run.md](../modules/payroll/04-payroll-run.md) (laporan), [README.md](../modules/payroll/README.md) (cakupan) | P13 |
 | [04-payroll-run.md](../modules/payroll/04-payroll-run.md) | P4–P8 |
 | [03-calculation.md](../modules/payroll/03-calculation.md) | P2, P5, P6 |
 | [07-integration.md](../modules/payroll/07-integration.md) | P4, P7, P8 |
@@ -705,8 +851,13 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | 7 | Ketergantungan P7 pada engine approval | Bila engine tertunda, P7 ikut tertunda; maker-checker satu langkah tetap berlaku. |
 | 8 | Career Mutation mengubah cabang/jabatan tanpa versi kompensasi baru | `employee_compensations.branch_id` menentukan override cabang, jadi karyawan yang pindah Bandung → Jakarta tetap memakai BASIC Bandung. Mutasi yang mengubah cabang/jabatan sebaiknya mengingatkan (atau menawarkan) pembuatan versi kompensasi baru. Diputuskan di P2. |
 | 9 | Pajak tanpa NPWP | `HasNPWP` sudah dikirim ke calculator tetapi belum dipakai. Bila tarif lebih tinggi untuk karyawan tanpa NPWP diterapkan, persentasenya menjadi kolom baru di `pph21_tax_parameters`, bukan konstanta. Perlu konfirmasi apakah masih relevan setelah NIK = NPWP. |
-| 10 | `pph21_method` (`nett` / `gross` / `gross_up`) disimpan tetapi belum dipakai | Calculator selalu menghitung `gross`. Karyawan yang di-set `nett`/`gross_up` sekarang mendapat hasil yang tidak sesuai setting tanpa peringatan. Perlu fase sendiri (gross-up = iterasi tunjangan pajak) atau, sementara, UI hanya menawarkan `gross`. |
+| 10 | `pph21_method` gross-up | `gross` dan `nett` dikerjakan di P12. **Gross-up belum disediakan** (diputuskan user 2026-11-10): ditolak saat simpan dan tidak ada di UI. Bila nanti dibutuhkan, menjadi fase sendiri: tunjangan PPh 21 (`PPH21_ALLOWANCE`, taxable) dicari sebagai `T` terkecil dengan `PPh(G + T) ≤ T`, termasuk perlakuan di batas lapisan TER dan rekonsiliasi Desember. |
 | 11 | JKK dengan beberapa kelas risiko sebelum P11 | Bila tenant sudah membuat lebih dari satu baris JKK di `bpjs_config`, calculator sekarang kemungkinan menjumlahkan semuanya. Perlu dicek dengan test sebelum P11 dan, bila benar, diperbaiki lebih dulu sebagai bug. |
+| 12 | Masa pajak PPh 21 dan run adjustment | Secara aturan masa pajak = bulan penghasilan dibayarkan. Sebelum P4, P13 memakai `payroll_runs.period`; setelah P4 sebaiknya memakai `pay_date` periode. Adjustment (P6) yang membayar selisih bulan lalu masuk masa bulan dibayarnya, bukan bulan asalnya — perlu konfirmasi dengan tim pajak. |
+| 13 | Format impor resmi (e-Bupot 21/26, SIPP BPJS TK, e-Dabu BPJS Kes) | P13 hanya CSV rekap. Template impor resmi sering berubah; dibuat fase/ekspor sendiri bila dibutuhkan. Snapshot P11 sudah menyimpan semua kolom yang diperlukan. |
+| 14 | Payslip sebelum P11 tanpa snapshot | Laporan periode lama hanya bisa menampilkan total (tanpa rincian per program/PTKP). Backfill dari data saat ini **tidak** dilakukan karena bisa berbeda dengan kondisi saat dihitung. |
+| 15 | Premi BPJS yang dibayar perusahaan sebagai bruto pajak | **Diputuskan:** flag `employer_contribution_taxable` di `bpjs_config`, dikerjakan di P12. Default seed Kesehatan, JKK, JKM = `true`. |
+| 16 | DTP bersama metode `nett` | **Diputuskan:** DTP dibayarkan sebagai earning `PPH21_DTP`. Kombinasi dengan gross-up belum relevan karena gross-up belum disediakan. |
 
 ---
 
