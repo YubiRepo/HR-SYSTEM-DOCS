@@ -74,6 +74,8 @@ Entitas milik modul Leave. `employees` dirujuk dari Core HR.
 | `requested_by` | string | User id pengaju (karyawan sendiri, atau HR yang mengajukan atas nama karyawan) |
 
 ### 2.4 `approval_flows` & `approval_steps`
+
+> **Tidak dipakai lagi untuk routing (2026-11-10)** — diganti tabel modul [approval](../approval/02-data-model.md). Tabel tidak dihapus; `leave_types.approval_flow_id` masih wajib diisi (otomatis flow default) tetapi diabaikan.
 `approval_flows`
 | Field | Tipe | Keterangan |
 |---|---|---|
@@ -91,6 +93,8 @@ Entitas milik modul Leave. `employees` dirujuk dari Core HR.
 | `approver_ref` | string (nullable) | Nama role (mis. `hr_admin`) untuk step `role` |
 
 ### 2.5 `leave_request_approvals`
+
+> Masih diisi sebagai log lama setiap approve/reject; sumber kebenaran adalah `approval_actions` (modul approval).
 Jejak tiap keputusan approval (audit).
 | Field | Tipe | Keterangan |
 |---|---|---|

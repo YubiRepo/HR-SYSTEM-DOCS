@@ -29,6 +29,8 @@ Setelah valid → masuk alur approval, status `pending`, dan hari yang diajukan 
 
 ## 2. Alur Approval — Configurable per Jenis
 
+> **Diganti (2026-11-10):** routing approval cuti sekarang memakai modul generik [approval](../approval/README.md) — policy per jenis dokumen/jenis cuti, approver di-resolve saat submit dari reporting line Core HR. Isi bagian ini menjelaskan desain lama (`approval_flows`) dan dipertahankan sebagai catatan sejarah.
+
 > **Status implementasi (Okt 2026):** approval saat ini **satu step** (atasan langsung, fallback HR bila tak punya atasan) untuk semua jenis cuti. Tenant hanya di-seed flow "1 Level (Atasan Direct)", tenant lama dipindahkan ke flow itu oleh migrasi `20261016000002`, dan backoffice tidak menampilkan/mengatur flow. Skema & domain tetap mendukung multi-step (contoh di bawah) untuk diaktifkan nanti.
 
 Tiap jenis cuti menunjuk **approval flow**. Contoh:
@@ -51,6 +53,8 @@ step 3: role tertentu / jabatan tertentu
 ---
 
 ## 3. Approver dari Reporting Line
+
+> Lihat [approval/01-overview.md](../approval/01-overview.md) §2–§3: `direct_manager` dengan `manager_of = subject` (pemilik cuti, bukan pengaju), fallback `any_approver`.
 
 Langkah "atasan" memakai **reporting line Core HR** — sistem tahu manajer si karyawan tanpa hardcode. Bila atasan kosong (mis. level tertinggi), fallback ke HR (configurable).
 

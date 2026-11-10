@@ -31,9 +31,10 @@ Prefix `/api/v1/leave`. Envelope standar HRMS. Dijaga Entitlement (fitur `leave`
 | POST | `/leave/requests` | Ajukan cuti | `leave:self` |
 | GET | `/leave/me/requests` | Riwayat pengajuan sendiri | `leave:self` |
 | GET | `/leave/requests` | Daftar pengajuan (manajer/HR) | `leave:read` |
-| POST | `/leave/requests/{id}/approve` | Setujui (step berjalan) | `leave:approve` |
-| POST | `/leave/requests/{id}/reject` | Tolak | `leave:approve` |
+| POST | `/leave/requests/{id}/approve` | Setujui (step berjalan) | — (hanya approver step aktif; `leave:approve` untuk step *any approver*) |
+| POST | `/leave/requests/{id}/reject` | Tolak | — (sama dengan approve) |
 | POST | `/leave/requests/{id}/cancel` | Batalkan (karyawan) | `leave:self` |
+| GET | `/leave/requests/{id}/approval` | Timeline approval (step, approver, log) — lihat [approval/04-api-contract.md](../approval/04-api-contract.md) | `leave:read` / `leave:approve` / pemilik (`leave:self`) |
 | GET | `/leave/calendar` | Kalender cuti tim | `leave:read` |
 
 ---
@@ -79,6 +80,8 @@ Prefix `/api/v1/leave`. Envelope standar HRMS. Dijaga Entitlement (fitur `leave`
 ---
 
 ## 3. POST /leave/requests/{id}/approve
+
+> **Sejak 2026-11-10:** hanya approver step aktif di modul approval yang boleh memutuskan (atau siapa saja dengan `leave:approve` untuk step `any_approver`, kecuali pemilik cuti/pengaju). Field `current_step` di response tidak lagi diisi; pakai `GET /leave/requests/{id}/approval`. Item list membawa `approval_routed`, `current_approver_user_id`, `can_decide`.
 Menyetujui step yang sedang berjalan. Bila masih ada step berikutnya → lanjut; bila step terakhir → `approved`.
 ```json
 { "note": "disetujui" }

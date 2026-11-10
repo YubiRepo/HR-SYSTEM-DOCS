@@ -1,6 +1,14 @@
 # Modul
 
 
+### approval
+
+- [01 overview](/modules/approval/01-overview)
+- [02 data model](/modules/approval/02-data-model)
+- [03 runtime rules](/modules/approval/03-runtime-rules)
+- [04 api contract](/modules/approval/04-api-contract)
+- [README](/modules/approval/README)
+
 ### attendance
 
 - [01 overview](/modules/attendance/01-overview)

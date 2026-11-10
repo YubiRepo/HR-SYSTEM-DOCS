@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Fase 0 selesai (2026-11-10)** — kode API + Backoffice + docs Core HR; migrasi `20261110000001_job_grades` ditulis, belum dijalankan. Fase 1–3 belum dikerjakan. |
+| **Status** | **Fase 0, 1 & 1.5 selesai (2026-11-10)** — kode API + Backoffice + docs. Migrasi `20261110000001`–`20261110000004` dan backfill `20261110090000` ditulis, belum dijalankan. Fase 2–3 belum dikerjakan. Catatan implementasi: §11 (Fase 0), §12 (Fase 1), §13 (Fase 1.5). |
 | **Tanggal** | 2026-11-05 |
 | **Pemicu** | Admin perlu mengatur bahwa sebuah jenis dokumen (mulai dari pengajuan cuti) butuh persetujuan **beberapa orang secara berjenjang**, misalnya atasan langsung → user tertentu dari role HR → direktur. Saat ini approval leave dipaksa satu step, sedangkan dokumen lain hanya punya approve/reject satu langkah yang digate permission. |
 | **Keputusan user** | (1) Engine **generik lintas modul**, leave menjadi consumer pertama. (2) Approver konkret ditentukan **admin di konfigurasi**; sistem me-resolve otomatis saat submit. (3) Record per step menyimpan **`user_id` approver**, bukan role id atau kode entitas. (4) Sumber atasan: **`manager_id`, fallback kepala unit**. (5) **Grade jabatan** dimasukkan ke Fase 0. (6) Atasan dihitung dari **subject employee** (pemilik dokumen), bukan dari pengaju. Dokumen internal tanpa subject employee memakai pengaju sebagai titik awal. Lihat §3. |
@@ -316,8 +316,9 @@ Fase 0: migrasi `20261110000001_job_grades` (tabel + `positions.job_grade_id` FK
 | Fase | Isi |
 |---|---|
 | **0** ✅ | Validasi `manager_id`, reporting line resolver, master `job_grades` + grade di position (API & UI), UI Direct Manager & Effective manager, docs Core HR. Bisa di-merge sendiri. |
-| **1** | Modul approval (schema, domain, engine, policy CRUD API) + integrasi leave + UI policy + timeline leave + docs. |
-| **2** | Inbox lintas dokumen; migrasi overtime request & attendance correction ke engine. |
+| **1** ✅ | Modul approval (schema, domain, engine, policy CRUD API) + integrasi leave + UI policy + timeline leave + docs. |
+| **1.5** ✅ | *(fase antara, ditambahkan 2026-11-10)* Approval bisa dipraktikkan end-to-end: inbox lintas dokumen (API + halaman admin & ESS), approve/reject tanpa wajib `leave:approve` (engine yang menentukan), approver boleh membaca timeline. |
+| **2** | Migrasi overtime request & attendance correction ke engine. |
 | **3** | Mutation request, payroll run (opsional); tipe step tambahan (`position` → pemegang jabatan, grade, `role_pool` any/all) untuk dokumen internal (§4.6), delegasi, notifikasi via outbox messaging. |
 
 ---
@@ -345,3 +346,44 @@ Yang dikerjakan:
 - **Docs:** `core-hr/02-org-structure.md` §3.1 & §4, `04-api-contract.md`, `05-data-model.md`.
 
 Penyimpangan dari rencana awal: permission `org:read`/`org:write` (bukan `job_grade:*`), `rank` tidak unik, seed hanya untuk tenant yang sudah ada.
+
+---
+
+## 12. Catatan Implementasi Fase 1 (2026-11-10)
+
+**API**
+- Modul baru `internal/modules/approval/` (domain policy/request, engine, policy service, Postgres repo, gateway Core HR/Auth, HTTP `/api/v1/approval`), di-wire di `cmd/api/main.go`; `leave.Module.SetApproval(approvalModule)`.
+- Leave: submit/review/cancel lewat `ports.ApprovalRouter`; `GET /leave/requests/{id}/approval`; list membawa `approval_routed`, `current_approver_user_id`, `can_decide`. Logika `approvalflow/service.AuthorizeStep` tidak dipakai lagi.
+- Core HR contract: `EmployeeRef` + `FullName`/`UserID`, method baru `FindEmployeeRef`.
+- Permission `approval:config` (katalog, template `tenant_admin`, migrasi untuk role yang ada).
+- Migrasi: `20261110000003_create_approval_tables`, `20261110000004_approval_config_permission`. Backfill: `20261110090000_route_leave_approvals_for_tenant` (policy default + rutekan cuti pending lama).
+- Test: domain (aturan skip, keputusan, any_approver, cancel, validasi policy), engine (subject vs submitter, unresolved, subtype, pemilik tidak bisa approve sendiri), review cuti dengan fake router.
+
+**Backoffice**
+- Halaman **HR Setting → Approval Policies** (`hr-setting/approval-policies.vue`, gate `approval:config`) dengan editor step.
+- Modal review cuti: komponen `ApprovalTimeline`, tombol Approve/Reject hanya bila `can_decide`, petunjuk siapa yang ditunggu.
+
+**Penyimpangan dari rencana**
+- Opsi `on_unresolved` ketiga: **`any_approver`** (step tidak di-assign; siapa saja dengan permission approve modul, kecuali pemilik dokumen & pengaju). Menjadi default dan dipakai policy default, menggantikan rencana backfill "user pertama pemegang role sebagai fallback".
+- `approver_user_id` di `approval_request_steps` nullable (untuk `any_approver`).
+- Halaman policy di HR Setting, bukan `settings/approval-policies.vue`.
+- Endpoint `GET /approval/requests/by-document/...` tidak dibuat; timeline disajikan modul pemilik (leave) agar aturan aksesnya ikut modul itu.
+- Approver tetap harus punya `leave:approve` (route lama tidak diubah).
+- Inbox tersedia di API (`GET /approval/inbox`), halaman "My Approvals" belum dibuat.
+
+---
+
+## 13. Catatan Implementasi Fase 1.5 (2026-11-10)
+
+Alasan: setelah Fase 1, policy & pengajuan bisa dibuat tetapi approval tidak bisa dipraktikkan — tidak ada inbox dan approver (mis. manajer di ESS) terhalang `leave:approve`.
+
+**API**
+- Route `POST /leave/requests/{id}/approve|reject` tanpa permission gate; engine hanya menerima approver step aktif. `leave:approve` tetap syarat untuk step `any_approver` (`Decide(..., anyApproverAllowed)`).
+- `GET /leave/requests/{id}/approval` juga terbuka untuk approver request tsb. (`IsParticipant`).
+- Inbox: step yang di-assign + step `any_approver` untuk pemegang `ApprovePermission` document type (registry), kecuali dokumen milik/ajuan sendiri. Item membawa `summary` dari modul pemilik (`RegisterSummarizer`; leave: jenis, tanggal, hari, alasan, cabang, lampiran, path approve/reject/timeline).
+- Filter `IDs` di list leave request (untuk summary batch).
+
+**Backoffice**
+- Komponen `ApprovalInbox` + `useApprovalInbox`; halaman `/ess/approvals` (menu ESS "Approvals") dan `/tenants/approvals` (menu admin "My Approvals"). Detail: ringkasan, lampiran, timeline, catatan (wajib untuk reject), Approve/Reject.
+
+**Belum**: badge jumlah pending di menu, notifikasi (Fase 3).
