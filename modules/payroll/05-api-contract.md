@@ -11,7 +11,7 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 |---|---|---|---|
 | GET | `/payroll/components` | Katalog komponen tenant | `payroll:read` |
 | GET | `/payroll/components/variables` | Variabel formula selain kode komponen: konstanta sistem, variabel Attendance/Leave, dan variabel per kode tenant (`ot_min_/ot_wmin_<KODE>`, `leave_days_<KODE>`, `shift_days_<KODE>`) — `[{name, group, code?}]` | `payroll:read` |
-| POST | `/payroll/components` | Buat komponen. Body menerima `sequence` (P1); PATCH menerima `sequence` dan `is_active` (komponen sistem tidak bisa dinonaktifkan). List menerima filter `is_active` | `payroll:config` |
+| POST | `/payroll/components` | Buat komponen. Body menerima `sequence` (P1) dan `type` `earning` / `deduction` / `rate` (`rate`: tidak dibayar, dipakai formula; wajib `fixed`, tidak taxable/BPJS/one-time); PATCH menerima `sequence` dan `is_active` (komponen sistem tidak bisa dinonaktifkan). List menerima filter `is_active` | `payroll:config` |
 | PATCH | `/payroll/components/{id}` | Ubah komponen | `payroll:config` |
 | GET | `/payroll/employees/{id}/components` | Komponen milik karyawan | `payroll:read` |
 | PUT | `/payroll/employees/{id}/components` | Set komponen & nilai karyawan | `payroll:config` |
@@ -20,7 +20,7 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
 | GET | `/payroll/structures` | Daftar structure (`?is_active=&search=`), dengan `job_grade_name` dan `component_count` | `payroll:read` |
-| POST | `/payroll/structures` | Buat structure (`code`, `name`, `salary_type`, `pay_cycle`, `job_grade_id`, `description`). Code dobel → `409 CONFLICT` | `payroll:config` |
+| POST | `/payroll/structures` | Buat structure (`code`, `name`, `salary_type`, `job_grade_id`, `description`). Siklus bayar tidak di structure — ikut schedule (P4). Code dobel → `409 CONFLICT` | `payroll:config` |
 | GET | `/payroll/structures/{id}` | Detail + komponen + override cabang | `payroll:read` |
 | PATCH | `/payroll/structures/{id}` | Ubah field (kirim `""` untuk mengosongkan `job_grade_id` / `description`), termasuk `is_active` | `payroll:config` |
 | PUT | `/payroll/structures/{id}/components` | `{ components: [{ component_id, default_amount, is_locked, sequence }] }` — ganti seluruh set; override cabang komponen yang tetap ada dipertahankan | `payroll:config` |

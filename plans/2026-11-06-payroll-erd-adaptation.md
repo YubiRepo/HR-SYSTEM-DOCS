@@ -148,9 +148,10 @@ Engine approval (plan 2026-11-05 Fase 1) ──> P7 Approval Berjenjang
 P9 Policy Versioning (opsional, lepas)
 P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesertaan BPJS & Perlakuan Pajak ──> P12 Metode PPh 21 ──> P13 Laporan Setoran BPJS & PPh 21
                                                                     (P4, P6 memperbaiki pengelompokan periode P13)
+P4 Schedule & Period ──> P14 PPh 21 Pegawai Tidak Tetap & Rekonsiliasi Desember Selektif
 ```
 
-Urutan disarankan: **P10 → P11 → P12 → P13 → P1 → P2 → P4 → P5 → P3 → P8 → P6 → P7**. P10 kecil dan berdiri sendiri, jadi dikerjakan lebih dulu agar rekonsiliasi Desember 2026 sudah memakai master. P11 menyusul karena menyentuh tax profile yang sama, P12 menyusul karena menyentuh perhitungan PPh dan kolom payslip yang sama, lalu P13 agar laporan setoran sudah tersedia sebelum masa Desember 2026. Jalur P1–P2 dan P4–P5 bisa dikerjakan paralel oleh orang berbeda.
+Urutan disarankan: **P10 → P11 → P12 → P13 → P1 → P2 → P4 → P14 → P5 → P3 → P8 → P6 → P7**. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4. P10 kecil dan berdiri sendiri, jadi dikerjakan lebih dulu agar rekonsiliasi Desember 2026 sudah memakai master. P11 menyusul karena menyentuh tax profile yang sama, P12 menyusul karena menyentuh perhitungan PPh dan kolom payslip yang sama, lalu P13 agar laporan setoran sudah tersedia sebelum masa Desember 2026. Jalur P1–P2 dan P4–P5 bisa dikerjakan paralel oleh orang berbeda.
 
 ---
 
@@ -163,6 +164,16 @@ Urutan disarankan: **P10 → P11 → P12 → P13 → P1 → P2 → P4 → P5 →
 - Halaman baru `hr-setting/salary-structures` (daftar) dan `hr-setting/salary-structures/[id]` (tab Details, Components, Branch Overrides, Preview), sesuai §5.1 — bukan menghubungkan `grade-templates.vue`. Mock `payroll/grade-templates.vue` dan `salaryGradeTemplates` di `usePayroll` dihapus.
 - `pay_components.is_active = false`: tidak bisa ditambahkan ke structure atau di-assign baru; assignment lama tetap dihitung calculator (calculator belum memfilter `is_active`).
 - `PUT .../components` meng-upsert per komponen sehingga override cabang komponen yang dipertahankan tidak hilang.
+
+**Tindak lanjut review 2026-11-11 (disepakati, sudah dikerjakan 2026-11-11 — migrasi `20261111000002_rate_components_and_structure_cleanup`, belum dijalankan)** — dari simulasi non-bulanan ([lampiran §11](./2026-11-10-payroll-erd-simulasi-satu-periode.md)):
+
+- **Hapus `salary_structures.pay_cycle`.** Siklus pembayaran ditentukan schedule (P4); structure cukup menyimpan `salary_type` (monthly / daily / hourly) sebagai sifat paket, yang di P2 disalin ke profil karyawan.
+- **Jenis komponen `rate`** (`pay_components.type = rate`): nilai yang **tidak dibayar** (tidak masuk gross, potongan, maupun payslip) tetapi bisa dibaca formula lewat kodenya. Contoh: `RATE_HARIAN` 170.000 → `UPAH_HARIAN = RATE_HARIAN * present_days`; `RATE_JAM` 75.000 → `UPAH_JAM = RATE_JAM * actual_work_minutes / 60`.
+  - Selalu `value_type = fixed`, tidak taxable, bukan dasar BPJS, bukan one-time.
+  - Default di structure, bisa di-override per cabang (P1), dan per karyawan lewat kompensasi (P2) bila tidak di-lock.
+  - Calculator memasukkan nilainya ke kamus variabel formula, tetapi tidak ke komponen yang dihitung dan tidak ke `payslip_lines`.
+  - Preview structure menampilkan rate tanpa menjumlahkannya ke total earning/deduction.
+  - Migrasi: ubah CHECK `pay_components.type` menjadi `earning` / `deduction` / `rate`; drop `salary_structures.pay_cycle`.
 
 **Tujuan:** paket komponen gaji per jabatan/level yang bisa dipakai ulang, menggantikan mock grade template.
 
@@ -326,7 +337,59 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 **Docs:** `04-payroll-run.md` (§5 anatomi run + bagian baru "Schedule & Period"), `06-data-model.md`, `07-integration.md` (cutoff absensi), `05-api-contract.md`.
 
-**Kriteria selesai:** tenant dengan cutoff 26–25 menghasilkan variabel absensi sesuai cutoff; run lama tetap terbaca dengan `period_id` hasil backfill.
+**Dukungan siklus non-bulanan (disepakati review 2026-11-11):** sistem harus mendukung karyawan yang dibayar harian / per jam dengan pembayaran mingguan, dua mingguan, dan seterusnya. Simulasi: [lampiran §11](./2026-11-10-payroll-erd-simulasi-satu-periode.md).
+
+- `payroll_schedule_rules` punya dua bentuk aturan sesuai `pay_cycle` schedule:
+  - **Bulanan** (seperti di atas): `period_start_day`, `attendance_cutoff_day`, `pay_day` (tanggal dalam bulan).
+  - **Berbasis hari** (`weekly`, `biweekly`, dan siklus N-hari lain): `period_anchor_date` (tanggal mulai periode pertama), `period_length_days` (7 / 14 / …), `cutoff_offset_days` (geser cutoff absensi terhadap periode; 0 = sama), `pay_offset_days` (hari setelah periode berakhir, mis. 3 = Rabu untuk periode Senin–Minggu).
+  - `pay_day_holiday_shift` berlaku untuk keduanya.
+- `GeneratePeriods` untuk aturan berbasis hari melangkah dari `period_anchor_date` sebanyak `period_length_days`. Kode periode `YYYY-Www` (mingguan, ISO week dari `start_date`) dan `YYYY-Bnn` (dua mingguan, nomor urut dalam tahun).
+- `payroll_runs.period` (masa pajak) tetap = bulan `pay_date`; satu masa bisa berisi beberapa run (mis. 4 run mingguan). Periode yang melintasi dua bulan masuk masa bulan dibayarnya.
+- Komponen one-time untuk karyawan non-bulanan berlaku per `period_id`, bukan per `YYYY-MM` (dikerjakan bersama P6).
+- **Plafon BPJS per bulan** (usulan, menunggu keputusan): plafon `wage_cap` di `bpjs_config` adalah plafon **sebulan**. Untuk run kedua dst. dalam masa yang sama, dasar BPJS yang tersisa = plafon − Σ dasar BPJS karyawan itu di run final/calculated lain pada masa yang sama; iuran dihitung atas `min(dasar run ini, sisa plafon)`. Butuh query "dasar BPJS per program yang sudah terpakai bulan ini" dari `payslips.bpjs_details` (P11). Selisih pembulatan antara iuran per run dan perhitungan bulanan BPJS diterima dan didokumentasikan.
+
+**Kriteria selesai:** tenant dengan cutoff 26–25 menghasilkan variabel absensi sesuai cutoff; schedule mingguan Senin–Minggu dengan bayar Rabu menghasilkan periode W44–W48 seperti simulasi §11.3; run lama tetap terbaca dengan `period_id` hasil backfill.
+
+---
+
+### P14 — PPh 21 Pegawai Tidak Tetap (TER Harian) & Rekonsiliasi Desember Selektif
+
+**Status:** usulan dari review 2026-11-11, **menunggu keputusan** (lihat simulasi [lampiran §11](./2026-11-10-payroll-erd-simulasi-satu-periode.md) temuan #3–#4).
+
+**Masalah:**
+1. Calculator selalu memakai TER **bulanan** per run. Untuk pegawai tidak tetap yang dibayar harian / mingguan / per jam, hasilnya salah: bruto dua mingguan Rp4,5 jt masuk TER A 0%, padahal per hari ±Rp565 rb dan seharusnya kena TER harian 0,5%.
+2. Rekonsiliasi Desember (Pasal 17 setahun) dijalankan untuk **semua** run berperiode `-12`, termasuk pegawai tidak tetap dan setiap run mingguan Desember.
+
+**Aturan yang dipakai** (PP 58/2023 & PMK 168/2023 — **perlu dikonfirmasi tim pajak** sebelum dikerjakan):
+
+| Status | Dibayar | Tarif |
+|---|---|---|
+| Pegawai tetap | bulanan | TER bulanan Jan–Nov, Pasal 17 setahun di masa terakhir (Desember, atau bulan berhenti bekerja) |
+| Pegawai tidak tetap | bulanan | TER bulanan, **tanpa** rekonsiliasi tahunan |
+| Pegawai tidak tetap | harian / mingguan / per jam / borongan | **TER harian** atas rata-rata penghasilan per hari: ≤ Rp450.000 → 0%; > Rp450.000 s.d. Rp2.500.000 → 0,5%; > Rp2.500.000 → Pasal 17 atas 50% bruto. Tanpa rekonsiliasi tahunan |
+
+**Migrasi & seed:**
+- Master baru `pph21_ter_daily_rates` (berversi `effective_from`, pola P10): `income_from`, `income_to`, `rate_pct`. **Seed baru** per tenant: dua baris (0–450.000 → 0%; 450.001–2.500.000 → 0,5%) + **backfill** untuk tenant lama. Batas Rp2.500.000 dan "50% bruto × Pasal 17" disimpan di `pph21_tax_parameters` (kolom baru `daily_ter_max_daily_income`, `non_permanent_above_cap_bruto_pct`), bukan konstanta.
+- `employee_tax_profile` + `employment_tax_status` (`permanent` / `non_permanent`, default `permanent`; backfill semua `permanent`, sehingga angka lama tidak berubah).
+- Snapshot payslip + `employment_tax_status`, `ter_method` (`monthly` / `daily` / `annual`), `taxable_days`.
+
+**Calculator:**
+- Pilih metode per karyawan per run:
+  - `permanent` → TER bulanan; Pasal 17 setahun **hanya** pada run reconciliation (lihat bawah).
+  - `non_permanent` + profil `salary_type` monthly → TER bulanan, tanpa rekonsiliasi.
+  - `non_permanent` + `salary_type` daily / hourly → TER harian: rata-rata per hari = bruto pajak run ÷ `taxable_days` (hari berpenghasilan dalam cutoff, dari `present_days` + cuti berbayar; bisa diinput manual di P5).
+- **Rekonsiliasi Desember selektif** — jalur Pasal 17 setahun hanya bila **semua** terpenuhi:
+  1. karyawan `permanent`;
+  2. run `type = regular` (bukan bonus / THR / adjustment — itu tetap TER bulanan di masa yang sama, lalu ikut dijumlahkan di rekonsiliasi);
+  3. run ini adalah **run regular terakhir** karyawan itu dalam masa Desember: untuk schedule bulanan = run periode Desember; untuk schedule non-bulanan = periode yang `pay_date`-nya paling akhir di Desember. Periode sebelumnya di Desember tetap TER bulanan.
+  4. Atau: masa terakhir karyawan yang berhenti bekerja di tengah tahun (tanggal keluar dari Core HR) — rekonsiliasi di run terakhirnya, bukan menunggu Desember.
+- Run reconciliation menandai payslip `ter_method = annual`; run lain di masa Desember memakai TER dan ikut dihitung sebagai "sudah dibayar" pada YTD.
+
+**API / Backoffice:** field **Employment tax status** di tax profile; tab **TER Harian** di HR Setting › Tax and BPJS; laporan bukti potong (P13) menambah kolom status dan metode.
+
+**Dependensi:** P4 (schedule non-bulanan, `pay_date` periode), P10–P13. Dikerjakan sebelum P5.
+
+**Kriteria selesai:** simulasi §11: Dodi PPh 0 (rata-rata 172.023/hari), Eka 22.622 dan 24.130; pegawai tetap bulanan tidak berubah; run THR/bonus Desember tidak memicu Pasal 17; hanya run regular terakhir Desember yang `ter_method = annual`.
 
 ---
 
@@ -864,7 +927,7 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | 1 | Hasil calculate berubah setelah backfill P2/P3 | Wajib test perbandingan sebelum/sesudah backfill pada data tenant nyata (staging). |
 | 2 | Run lama tanpa `period_id` | Backfill P4; kode tetap toleran `period_id` NULL. |
 | 3 | Karyawan tanpa kompensasi | Jalur lama tetap aktif sampai semua tenant di-backfill; setelah itu bisa diwajibkan. |
-| 4 | Siklus `weekly` / `biweekly` | Perlu konfirmasi apakah dibutuhkan sekarang. PPh 21 TER bulanan perlu aturan agregasi untuk siklus mingguan — **pertanyaan terbuka**. |
+| 4 | Siklus `weekly` / `biweekly` | **Diputuskan 2026-11-11: wajib didukung** (karyawan harian / per jam, dibayar mingguan, dua mingguan, dst.). Schedule berbasis hari di P4; PPh 21 TER harian & rekonsiliasi Desember selektif di P14; plafon BPJS per bulan di P4 (usulan). |
 | 5 | Hubungan structure ↔ `job_grade` | 1:1 (doc 09 §6) atau bebas (banyak structure per grade, mis. beda cabang)? Rencana ini memakai `grade_code` nullable dan **tidak** memaksa 1:1. |
 | 6 | Split payment & banyak rekening | Core HR menyimpan banyak rekening; perlu flag rekening utama di Core HR bila belum ada. |
 | 7 | Ketergantungan P7 pada engine approval | Bila engine tertunda, P7 ikut tertunda; maker-checker satu langkah tetap berlaku. |

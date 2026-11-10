@@ -6,7 +6,7 @@
 | **Status** | Lampiran ilustrasi untuk [2026-11-06-payroll-erd-adaptation.md](./2026-11-06-payroll-erd-adaptation.md). Bukan seed, bukan fixture test. |
 | **Tanggal** | 2026-11-10 |
 | **Tujuan** | Menunjukkan isi setiap tabel (existing + baru dari P1–P8) untuk **satu periode payroll November 2026**, dari setup master sampai run ditutup, termasuk satu adjustment run. |
-| **Skenario** | 1 tenant, 2 cabang, 3 karyawan, schedule bulanan dengan cutoff absensi 26–25, approval 2 step, split payment, satu karyawan error lalu di-exclude. |
+| **Skenario** | 1 tenant, 2 cabang, 3 karyawan, schedule bulanan dengan cutoff absensi 26–25, approval 2 step, split payment, satu karyawan error lalu di-exclude. **§11:** 2 karyawan non-bulanan — operator harian dibayar mingguan dan pekerja paruh waktu per jam dibayar dua mingguan. |
 
 **Konvensi penulisan**
 
@@ -55,10 +55,12 @@ Kolom `formula` (legacy) masih berisi ekspresi versi 1 hasil backfill P3, tetapi
 
 ### 1.2 `salary_structures`
 
-| id | code | name | salary_type | pay_cycle | grade_code | is_active |
+| id | code | name | salary_type | pay_cycle | job_grade_id | is_active |
 |---|---|---|---|---|---|---|
-| `str-l1` | STAFF-L1 | Staff Level 1 | monthly | monthly | `G1` | ✔ |
-| `str-l2` | STAFF-L2 | Staff Level 2 | monthly | monthly | `G2` | ✔ |
+| `str-l1` | STAFF-L1 | Staff Level 1 | monthly | monthly | `jg-g1` | ✔ |
+| `str-l2` | STAFF-L2 | Staff Level 2 | monthly | monthly | `jg-g2` | ✔ |
+
+Implementasi P1 memakai `job_grade_id` (job grade Core HR), bukan `grade_code`.
 
 ### 1.3 `salary_structure_components`
 
@@ -490,3 +492,150 @@ Saat `run-nov-adj` closed, `adj-1.status = applied`. Angka di `run-nov` tidak be
 | 3 | Kapan period `locked`. Simulasi memakai: saat run regular `approved`. | Tetapkan di P4: `locked` = tidak menerima run regular baru dan input absensi untuk cutoff ini tidak lagi ditarik. |
 | 4 | Retry payment ke rekening yang sudah diperbaiki mengubah snapshot di `payroll_payments`. | Alternatif: payment lama `failed` dibiarkan, buat payment baru. Putuskan di P8. |
 | 5 | Payslip `excluded` tetap ada dengan angka 0. | Pastikan laporan PPh 21 & BPJS bulanan mengabaikan payslip non-`ok`. |
+
+---
+
+## 11. Karyawan Non-Bulanan (Mingguan & Dua Mingguan)
+
+Skenario tambahan di tenant yang sama, **November 2026**, untuk karyawan yang **tidak** memakai periode bulanan dengan cutoff 26–25. Tujuannya menguji apakah desain P1, P4, P11 dan P12 masih cocok, dan menemukan apa yang belum. Perhitungan memakai calculator yang berlaku sekarang (termasuk flag pajak BPJS P12), kecuali bagian PPh 21 harian yang **belum ada** di calculator (lihat §11.8).
+
+### 11.1 Karyawan
+
+| Karyawan | Cabang | Status pajak | Structure | Schedule | Catatan |
+|---|---|---|---|---|---|
+| `emp-dodi` Dodi Saputra | BDG | Pegawai **tidak tetap**, upah harian | OPR-HARIAN | `sch-weekly` | Operator produksi, kerja Senin–Sabtu, dibayar tiap Rabu untuk minggu sebelumnya |
+| `emp-eka` Eka Wulandari | JKT | Pegawai **tidak tetap**, upah per jam | PT-HOURLY | `sch-biweekly` | Desainer paruh waktu, kerja Senin–Kamis, dibayar dua minggu sekali |
+
+Keduanya TK/0. Status "pegawai tidak tetap" penting untuk PPh 21 (§11.6), tetapi **belum ada kolomnya** di `employee_tax_profile`.
+
+### 11.2 Komponen & Structure (P1)
+
+`pay_components` tambahan:
+
+| id | code | name | type | value_type | formula | taxable | bpjs_base | sequence |
+|---|---|---|---|---|---|---|---|---|
+| `pc-daily` | UPAH_HARIAN | Upah Harian | earning | formula | `170000 * present_days` | ✔ | ✔ | 10 |
+| `pc-hourly` | UPAH_JAM | Upah per Jam | earning | formula | `75000 * actual_work_minutes / 60` | ✔ | ✔ | 10 |
+
+`salary_structures`:
+
+| id | code | name | salary_type | pay_cycle | job_grade_id |
+|---|---|---|---|---|---|
+| `str-opr` | OPR-HARIAN | Operator Harian | daily | weekly | `jg-opr` |
+| `str-pt` | PT-HOURLY | Paruh Waktu per Jam | hourly | biweekly | — |
+
+`salary_structure_components`: `str-opr` → `pc-daily`; `str-pt` → `pc-hourly`. Keduanya formula, jadi `default_amount` kosong dan **override cabang tidak bisa dipakai**.
+
+> **Masalah tarif:** tarif harian (170.000) dan tarif per jam (75.000) terpaksa ditulis di dalam formula. Akibatnya tarif tidak bisa berbeda per cabang (override P1 hanya untuk komponen `fixed`), tidak bisa berbeda per karyawan, dan kenaikan tarif berarti mengubah formula. Komponen `fixed` bernilai 170.000 juga tidak bisa dipakai sebagai tarif karena akan **ikut dibayar** sebagai earning. Lihat §11.8 #2.
+
+### 11.3 Schedule & Periode (P4)
+
+`payroll_schedules`:
+
+| id | code | name | pay_cycle |
+|---|---|---|---|
+| `sch-weekly` | WEEKLY | Mingguan | weekly |
+| `sch-biweekly` | BIWEEKLY | Dua Mingguan | biweekly |
+
+Aturan yang dibutuhkan:
+
+| Schedule | Periode | Cutoff absensi | Tanggal bayar |
+|---|---|---|---|
+| `sch-weekly` | Senin–Minggu | sama dengan periode | Rabu setelah periode berakhir (+3 hari) |
+| `sch-biweekly` | 14 hari mulai Senin 26 Okt 2026 | sama dengan periode | Rabu setelah periode berakhir (+3 hari) |
+
+> Kolom `payroll_schedule_rules` di plan P4 (`period_start_day`, `attendance_cutoff_day`, `pay_day`) adalah **tanggal dalam bulan**, sehingga tidak bisa menyatakan "Senin–Minggu, bayar Rabu berikutnya". Lihat §11.8 #1.
+
+`payroll_periods` (hasil generate):
+
+| id | schedule | code | start_date | end_date | cutoff | pay_date | Masa PPh 21 |
+|---|---|---|---|---|---|---|---|
+| `per-w44` | weekly | 2026-W44 | 2026-10-26 | 2026-11-01 | = periode | 2026-11-04 | **2026-11** |
+| `per-w45` | weekly | 2026-W45 | 2026-11-02 | 2026-11-08 | = periode | 2026-11-11 | 2026-11 |
+| `per-w46` | weekly | 2026-W46 | 2026-11-09 | 2026-11-15 | = periode | 2026-11-18 | 2026-11 |
+| `per-w47` | weekly | 2026-W47 | 2026-11-16 | 2026-11-22 | = periode | 2026-11-25 | 2026-11 |
+| `per-w48` | weekly | 2026-W48 | 2026-11-23 | 2026-11-29 | = periode | 2026-12-02 | **2026-12** |
+| `per-bw1` | biweekly | 2026-B22 | 2026-10-26 | 2026-11-08 | = periode | 2026-11-11 | 2026-11 |
+| `per-bw2` | biweekly | 2026-B23 | 2026-11-09 | 2026-11-22 | = periode | 2026-11-25 | 2026-11 |
+| `per-bw3` | biweekly | 2026-B24 | 2026-11-23 | 2026-12-06 | = periode | 2026-12-09 | 2026-12 |
+
+Periode W44 sebagian besar jatuh di Oktober, tetapi dibayar 4 November, sehingga masuk **masa pajak November**. Periode W48 bekerja di November tetapi dibayar 2 Desember, sehingga masuk masa Desember. Ini sesuai plan §8 #12 (masa pajak = bulan dibayar).
+
+Dalam November ada **4 run mingguan** dan **2 run dua mingguan** — semuanya `payroll_runs.period = 2026-11` dengan `period_id` berbeda.
+
+### 11.4 Kepesertaan BPJS (P11)
+
+| employee | program | is_enrolled | risk_class | exclusion_reason |
+|---|---|---|---|---|
+| `emp-dodi` | jkk | ✔ | `medium` (0,89%) | |
+| `emp-dodi` | jkm | ✔ | | |
+| `emp-dodi` | kesehatan / jht / jp | ✗ | | `other` (pekerja harian lepas, terdaftar mandiri) |
+| `emp-eka` | jht | ✔ | | |
+| `emp-eka` | jkk | ✔ | `very_low` (0,24%) | |
+| `emp-eka` | jkm | ✔ | | |
+| `emp-eka` | kesehatan / jp | ✗ | | `other` |
+
+### 11.5 Perhitungan per run
+
+Input dari `payroll_run_inputs` (cutoff = periode, tanpa libur nasional).
+
+**Dodi** — operator harian, dibayar mingguan
+
+| Periode | present_days | UPAH_HARIAN (gross) | JKK 0,89% | JKM 0,3% | Bruto pajak¹ | Rata-rata per hari | PPh 21² | Net |
+|---|---|---|---|---|---|---|---|---|
+| W44 | 6 | 1.020.000 | 9.078 | 3.060 | 1.032.138 | 172.023 | 0 | 1.020.000 |
+| W45 | 6 | 1.020.000 | 9.078 | 3.060 | 1.032.138 | 172.023 | 0 | 1.020.000 |
+| W46 | 5 (1 hari absen) | 850.000 | 7.565 | 2.550 | 860.115 | 172.023 | 0 | 850.000 |
+| W47 | 6 | 1.020.000 | 9.078 | 3.060 | 1.032.138 | 172.023 | 0 | 1.020.000 |
+
+¹ Gross + premi JKK & JKM perusahaan (flag `employer_contribution_taxable`, P12). Tidak ada iuran karyawan karena Dodi hanya ikut JKK & JKM.
+² TER harian: rata-rata ≤ Rp450.000 per hari → 0%.
+
+**Eka** — paruh waktu per jam, dibayar dua mingguan
+
+| Periode | Hari kerja | Jam (`actual_work_minutes`/60) | UPAH_JAM (gross) | JHT karyawan 2% | JHT perusahaan 3,7% | JKK 0,24% | JKM 0,3% | Bruto pajak | Rata-rata per hari | PPh 21 (TER harian 0,5%) | Net |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| B22 | 8 | 60 | 4.500.000 | 90.000 | 166.500 | 10.800 | 13.500 | 4.524.300 | 565.538 | 22.622 | 4.387.378 |
+| B23 | 8 | 64 | 4.800.000 | 96.000 | 177.600 | 11.520 | 14.400 | 4.825.920 | 603.240 | 24.130 | 4.679.870 |
+
+Rata-rata harian Eka di atas Rp450.000 dan di bawah Rp2.500.000, sehingga TER harian 0,5% dari bruto.
+
+> Calculator **sekarang** akan menghitung PPh 21 Eka dengan **TER bulanan kategori A** untuk tiap run dua mingguan: bruto 4.524.300 per run masuk rentang TER A 0% (≤ 5.400.000), sehingga PPh 21 = 0 — padahal per bulan Eka berpenghasilan > Rp9 juta. Dodi juga 0 karena kebetulan memang 0%. Lihat §11.8 #3.
+
+### 11.6 Payslip (ringkas)
+
+| id | run (periode) | employee | gross | taxable_gross | bpjs_employee | bpjs_employer | pph21 | net | pph21_method | tax_treatment |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `slip-dodi-w44` | W44 | `emp-dodi` | 1.020.000 | 1.032.138 | 0 | 12.138 | 0 | 1.020.000 | gross | subject |
+| `slip-dodi-w45` | W45 | `emp-dodi` | 1.020.000 | 1.032.138 | 0 | 12.138 | 0 | 1.020.000 | gross | subject |
+| `slip-dodi-w46` | W46 | `emp-dodi` | 850.000 | 860.115 | 0 | 10.115 | 0 | 850.000 | gross | subject |
+| `slip-dodi-w47` | W47 | `emp-dodi` | 1.020.000 | 1.032.138 | 0 | 12.138 | 0 | 1.020.000 | gross | subject |
+| `slip-eka-b22` | B22 | `emp-eka` | 4.500.000 | 4.524.300 | 90.000 | 190.800 | 22.622 | 4.387.378 | gross | subject |
+| `slip-eka-b23` | B23 | `emp-eka` | 4.800.000 | 4.825.920 | 96.000 | 206.400 | 24.130 | 4.679.870 | gross | subject |
+
+### 11.7 Laporan setoran November (P13)
+
+Semua slip di atas berasal dari run dengan `payroll_runs.period = 2026-11`, sehingga satu laporan masa November menjumlahkan **6 run**.
+
+| Laporan | Dodi | Eka | Total |
+|---|---|---|---|
+| BPJS TK · JHT (karyawan + perusahaan) | — | 186.000 + 344.100 | 530.100 |
+| BPJS TK · JKK | 34.799 | 22.320 | 57.119 |
+| BPJS TK · JKM | 11.730 | 27.900 | 39.630 |
+| BPJS Kesehatan | — | — | 0 |
+| PPh 21 dipotong (TER harian) | 0 | 46.752 | 46.752 |
+
+Daftar bukti potong menampilkan Dodi dan Eka masing-masing **satu baris** (penjumlahan semua run masa November), seperti yang sudah diimplementasikan P13.
+
+### 11.8 Temuan dari simulasi non-bulanan
+
+| # | Temuan | Usulan |
+|---|---|---|
+| 1 | `payroll_schedule_rules` (P4) hanya punya tanggal dalam bulan, tidak bisa menyatakan periode mingguan / dua mingguan. | Tambah di P4: `period_anchor_date` (tanggal mulai periode pertama), `period_length_days` (7 / 14) dan `pay_offset_days` / `cutoff_offset_days` untuk schedule non-bulanan; kolom tanggal-dalam-bulan tetap untuk bulanan. Kode periode `YYYY-Www` (mingguan) dan `YYYY-Bnn` (dua mingguan). |
+| 2 | Tarif harian / per jam harus ditulis di formula, sehingga tidak bisa dioverride per cabang atau per karyawan, dan komponen `fixed` sebagai tarif akan ikut dibayar. `payroll_employee_profiles.base_rate` ada tetapi **tidak** tersedia sebagai variabel formula. | Pilihan: (a) jenis komponen baru **rate** (tidak masuk gross, nilainya tersedia di formula sebagai variabel kode komponen), memakai default structure + override cabang P1 dan override per karyawan P2; atau (b) variabel formula `base_rate` dari kompensasi (P2). Rekomendasi (a). Putuskan sebelum P2. |
+| 3 | PPh 21 pegawai tidak tetap dengan upah harian / mingguan / per jam memakai **TER harian** (rata-rata sehari ≤ Rp450.000 → 0%, s.d. Rp2.500.000 → 0,5%; di atas itu Pasal 17 atas 50% bruto — **perlu dikonfirmasi tim pajak**, PMK 168/2023). Calculator sekarang selalu memakai TER bulanan, sehingga run mingguan/dua mingguan menghasilkan PPh terlalu kecil. | Fase pajak baru (setelah P4): `employee_tax_profile.employment_tax_status` (`permanent` / `non_permanent`), master `pph21_ter_daily_rates` (berversi, seperti P10), dan variabel jumlah hari berpenghasilan per run untuk rata-rata harian. |
+| 4 | Rekonsiliasi Desember (Pasal 17 setahun) tidak berlaku untuk pegawai tidak tetap, tetapi calculator memakai jalur Desember untuk **semua** run berperiode `-12`. Run mingguan Desember (bisa 4–5 run) masing-masing akan direkonsiliasi ulang. | Jalur Desember hanya untuk pegawai tetap, dan hanya pada run regular terakhir masa Desember. Masuk fase pajak di #3. |
+| 5 | Plafon BPJS (Kesehatan Rp12 jt, JP Rp10.547.400) adalah **per bulan**, tetapi calculator menerapkan plafon per run. Untuk upah tinggi yang dibayar mingguan, plafon per run terlalu longgar (4 × plafon sebulan). | Plafon dihitung atas akumulasi dasar BPJS dalam masa yang sama (run sebelumnya di bulan pembayaran yang sama ikut dihitung). Masuk P4 atau P5. |
+| 6 | Iuran BPJS dilaporkan per bulan, tetapi dihitung per run. Pembulatan per run bisa selisih beberapa rupiah dari perhitungan bulanan BPJS. | Terima selisih pembulatan (didokumentasikan), atau hitung ulang di laporan P13. Rekomendasi: terima, catat di 03-calculation. |
+| 7 | `salary_structures.pay_cycle` (P1) dobel dengan schedule (P4). Untuk Dodi dan Eka yang menentukan siklus adalah `sch-weekly` / `sch-biweekly`. | Sesuai diskusi: hapus `pay_cycle` dari structure, cukup `salary_type`; siklus dari schedule. |
+| 8 | Satu periode mingguan bisa melintasi dua bulan (W44: 26 Okt – 1 Nov). Variabel absensi diambil dari cutoff periode, jadi benar; tetapi komponen one-time `effective_period = 2026-11` tidak jelas berlaku untuk run mingguan yang mana. | One-time untuk karyawan non-bulanan memakai `period_id` (P4/P6), bukan `YYYY-MM`. |

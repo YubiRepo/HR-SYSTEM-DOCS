@@ -154,13 +154,15 @@ Konsep "grade template" dibangun dengan nama **salary structure** (plan `2026-11
 
 | Tabel | Isi |
 |---|---|
-| `salary_structures` | Paket per jabatan/level: `code` (unik per tenant), `name`, `salary_type`, `pay_cycle` (default karyawan baru), `job_grade_id` (opsional, job grade Core HR), `is_active` |
+| `salary_structures` | Paket per jabatan/level: `code` (unik per tenant), `name`, `salary_type`, `job_grade_id` (opsional, job grade Core HR), `is_active` |
 | `salary_structure_components` | Komponen di structure: `default_amount` (hanya komponen `fixed`), `is_locked` (tidak boleh di-override per karyawan), `sequence` |
 | `salary_structure_branch_overrides` | Nilai default per cabang untuk komponen `fixed` |
 
 Aturan:
 - Komponen harus aktif, satu tenant, tidak dobel; structure wajib punya minimal satu komponen earning.
 - Urutan resolusi nilai default: override cabang → default structure → diisi per karyawan. Komponen formula dihitung saat payroll.
+- Tarif harian / per jam disimpan sebagai komponen `rate` (tidak dibayar) dengan default di structure dan override cabang; komponen formula membacanya, mis. `UPAH_HARIAN = RATE_HARIAN * present_days`.
+- Siklus bayar tidak disimpan di structure; ditentukan schedule (P4).
 - `PUT .../components` mempertahankan override cabang untuk komponen yang tetap ada.
 - Hubungan ke karyawan (assign structure, override per karyawan, simulator) dikerjakan di P2 lewat `employee_compensations`.
 

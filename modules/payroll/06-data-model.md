@@ -36,6 +36,7 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `one_time_mode` | enum (nullable) | `single_period` / `until_revoked` |
 | `is_system` | boolean | Komponen dihitung sistem (BPJS/PPh21) |
 | `sequence` | int | Urutan tampil di slip (P1) |
+| `type` = `rate` | — | Selain `earning` / `deduction`: nilai yang **tidak dibayar** tetapi dibaca formula lewat kodenya (mis. tarif harian). Selalu `fixed`, tidak taxable, bukan dasar BPJS, bukan one-time; tidak masuk gross, potongan, maupun `payslip_lines` |
 | `is_active` | boolean | `false` = tidak bisa ditambahkan ke structure / di-assign baru; assignment lama tetap dihitung (P1) |
 
 ### 2.2 `employee_components` (assignment)
@@ -207,7 +208,6 @@ Jejak potong pinjaman per periode.
 | `id` / `tenant_id` | uuid | |
 | `code` / `name` | string | `code` unik per tenant, disimpan huruf besar |
 | `salary_type` | enum | `monthly` / `daily` / `hourly` |
-| `pay_cycle` | enum | `monthly` / `weekly` / `biweekly` — default karyawan baru; sumber kebenaran tetap schedule (P4) |
 | `job_grade_id` | uuid (nullable) | Job grade Core HR (tanpa FK lintas modul) |
 | `description` | text (nullable) | |
 | `is_active` | boolean | |
