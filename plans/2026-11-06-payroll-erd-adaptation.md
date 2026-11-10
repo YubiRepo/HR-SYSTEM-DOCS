@@ -156,6 +156,14 @@ Urutan disarankan: **P10 → P11 → P12 → P13 → P1 → P2 → P4 → P5 →
 
 ### P1 — Salary Structure
 
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Migrasi `20261111000001_create_salary_structures` ditulis, **belum dijalankan**. Tidak ada backfill. Catatan implementasi:
+
+- `grade_code` diganti `job_grade_id` (UUID): job grade sekarang entity Core HR (`job_grades`), bukan common code. Divalidasi lewat contract Core HR `GetJobGradeNames`.
+- Aturan "komponen sistem BASIC wajib ada" **tidak** diterapkan: belum ada komponen sistem BASIC di katalog. Diganti: structure wajib punya minimal satu komponen earning.
+- Halaman baru `hr-setting/salary-structures` (daftar) dan `hr-setting/salary-structures/[id]` (tab Details, Components, Branch Overrides, Preview), sesuai §5.1 — bukan menghubungkan `grade-templates.vue`. Mock `payroll/grade-templates.vue` dan `salaryGradeTemplates` di `usePayroll` dihapus.
+- `pay_components.is_active = false`: tidak bisa ditambahkan ke structure atau di-assign baru; assignment lama tetap dihitung calculator (calculator belum memfilter `is_active`).
+- `PUT .../components` meng-upsert per komponen sehingga override cabang komponen yang dipertahankan tidak hilang.
+
 **Tujuan:** paket komponen gaji per jabatan/level yang bisa dipakai ulang, menggantikan mock grade template.
 
 **Migrasi**
@@ -693,6 +701,8 @@ Aturan bersama:
 ---
 
 ### P13 — Laporan Setoran BPJS & PPh 21
+
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Tidak ada migrasi/backfill. Catatan implementasi: data identitas (nomor, nama, NIK) dibaca per karyawan lewat contract Core HR `FindEmployeeTaxIdentity` (tidak hanya karyawan aktif); filter opsional `branch_id`; endpoint PPh 21 di-gate benefit `payroll.tax`; daftar bukti potong menjumlahkan semua run final di satu periode per karyawan.
 
 **Tujuan:** tim payroll/finance tahu per periode berapa yang harus disetor dan ke mana:
 

@@ -148,42 +148,21 @@ Satu job grade (Core HR) memiliki satu salary template (Payroll). Pemisahan ini 
 
 ---
 
-## 7. Data Model (ringkas)
+## 7. Data Model — diimplementasikan sebagai *salary structure* (P1)
 
-### `salary_grade_templates`
-| Field | Tipe | Keterangan |
-|---|---|---|
-| `id` | string (PK) | `sgt_...` |
-| `tenant_id` | string (FK) | |
-| `job_grade_id` | string (FK) | Rujuk `job_grades` (Core HR) |
-| `name` | string | mis. "Manager" |
-| `salary_type` | string | Tipe gaji (configurable: `monthly`/`daily`/`piece_rate`/`hourly`/...) |
-| `pay_cycle` | enum | `weekly`/`biweekly`/`monthly` — ritme bayar |
-| `base_rate` | int (nullable) | Tarif dasar untuk daily/piece_rate/hourly |
+Konsep "grade template" dibangun dengan nama **salary structure** (plan `2026-11-06-payroll-erd-adaptation.md` §P1). Detail kolom ada di [06-data-model.md](./06-data-model.md) §2.12.
 
-> `salary_type` & `pay_cycle` diwarisi karyawan; menautkan ke jenis payroll run (lihat `04-payroll-run.md`).
+| Tabel | Isi |
+|---|---|
+| `salary_structures` | Paket per jabatan/level: `code` (unik per tenant), `name`, `salary_type`, `pay_cycle` (default karyawan baru), `job_grade_id` (opsional, job grade Core HR), `is_active` |
+| `salary_structure_components` | Komponen di structure: `default_amount` (hanya komponen `fixed`), `is_locked` (tidak boleh di-override per karyawan), `sequence` |
+| `salary_structure_branch_overrides` | Nilai default per cabang untuk komponen `fixed` |
 
-### `grade_template_components`
-| Field | Tipe | Keterangan |
-|---|---|---|
-| `id` | string (PK) | |
-| `template_id` | string (FK) | |
-| `component_id` | string (FK) | Rujuk `pay_components` |
-| `default_amount` | int (nullable) | Default (untuk komponen fixed) |
-| `is_locked` | boolean | Tak boleh di-override per karyawan |
-
-### `grade_component_branch_overrides`
-| Field | Tipe | Keterangan |
-|---|---|---|
-| `id` | string (PK) | |
-| `template_id` | string (FK) | |
-| `component_id` | string (FK) | |
-| `branch_id` | string (FK) | |
-| `default_amount` | int | Default khusus cabang |
-
-> Override per karyawan tetap disimpan di `employee_components` (lihat `06-data-model.md`). Resolusi nilai mengikuti §4.
-
----
+Aturan:
+- Komponen harus aktif, satu tenant, tidak dobel; structure wajib punya minimal satu komponen earning.
+- Urutan resolusi nilai default: override cabang → default structure → diisi per karyawan. Komponen formula dihitung saat payroll.
+- `PUT .../components` mempertahankan override cabang untuk komponen yang tetap ada.
+- Hubungan ke karyawan (assign structure, override per karyawan, simulator) dikerjakan di P2 lewat `employee_compensations`.
 
 ## 8. Manfaat
 

@@ -116,3 +116,18 @@ Setelah `paid`/`closed`, run menghasilkan data untuk:
 - **Lapor** (SPT masa, dsb) — via ekspor/integrasi.
 
 Modul dapat memunculkan pengingat jatuh tempo (lewat Notification) agar tenant tidak terkena denda.
+
+## 9. Laporan Setoran (Statutory Reports, P13)
+
+Setelah run final (`approved` / `paid` / `closed`), payroll/finance melihat berapa yang harus disetor untuk satu periode (`YYYY-MM`) di menu **Salary › Statutory Reports**. Semua angka dibaca dari `payslips` (snapshot P11/P12) — tidak ada tabel laporan sendiri.
+
+| Laporan | Isi |
+|---|---|
+| Rekap BPJS | Per lembaga (BPJS Kesehatan / Ketenagakerjaan) dan per program: peserta, iuran karyawan, iuran perusahaan, total setor. Slip sebelum P11 (tanpa rincian) masuk total sebagai "tanpa rincian". |
+| Peserta BPJS | Per karyawan per program: nomor kepesertaan (ditandai bila kosong), dasar upah, iuran. |
+| Rekap PPh 21 | Dipotong, ditanggung perusahaan, DTP, terutang; **setor = dipotong + ditanggung perusahaan** (DTP tidak disetor). Dipisah per `tax_treatment`. |
+| Daftar bukti potong | Per karyawan: NIK, NPWP, PTKP, TER, metode, perlakuan, bruto, PPh. Beberapa run di satu periode dijumlahkan; snapshot dari slip final terakhir. |
+
+- Run yang belum final pada periode itu **tidak ikut total**, ditampilkan sebagai "pending".
+- Masa pajak sementara = `payroll_runs.period` (lihat plan §8 #12; setelah P4 memakai tanggal bayar periode).
+- Semua laporan bisa diunduh CSV (`?format=csv`). Format impor resmi e-Bupot / SIPP / e-Dabu belum tersedia.

@@ -35,6 +35,8 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `one_time` | boolean | Komponen sekali-pakai (single-period / until-revoked) |
 | `one_time_mode` | enum (nullable) | `single_period` / `until_revoked` |
 | `is_system` | boolean | Komponen dihitung sistem (BPJS/PPh21) |
+| `sequence` | int | Urutan tampil di slip (P1) |
+| `is_active` | boolean | `false` = tidak bisa ditambahkan ke structure / di-assign baru; assignment lama tetap dihitung (P1) |
 
 ### 2.2 `employee_components` (assignment)
 | Field | Tipe | Keterangan |
@@ -198,6 +200,21 @@ Jejak potong pinjaman per periode.
 | `default_jkk_risk_class` | string (nullable) | Kelas risiko JKK bila kepesertaan karyawan tidak mengisinya — P11 |
 
 ---
+
+### 2.12 `salary_structures` (P1)
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` / `tenant_id` | uuid | |
+| `code` / `name` | string | `code` unik per tenant, disimpan huruf besar |
+| `salary_type` | enum | `monthly` / `daily` / `hourly` |
+| `pay_cycle` | enum | `monthly` / `weekly` / `biweekly` — default karyawan baru; sumber kebenaran tetap schedule (P4) |
+| `job_grade_id` | uuid (nullable) | Job grade Core HR (tanpa FK lintas modul) |
+| `description` | text (nullable) | |
+| `is_active` | boolean | |
+
+`salary_structure_components`: `structure_id`, `component_id` (UNIQUE bersama), `default_amount` (nullable, hanya komponen `fixed`), `is_locked`, `sequence`.
+
+`salary_structure_branch_overrides`: `structure_component_id`, `branch_id` (UNIQUE bersama), `default_amount`.
 
 ## 3. Indeks
 

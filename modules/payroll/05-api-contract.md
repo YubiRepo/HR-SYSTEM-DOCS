@@ -11,10 +11,23 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 |---|---|---|---|
 | GET | `/payroll/components` | Katalog komponen tenant | `payroll:read` |
 | GET | `/payroll/components/variables` | Variabel formula selain kode komponen: konstanta sistem, variabel Attendance/Leave, dan variabel per kode tenant (`ot_min_/ot_wmin_<KODE>`, `leave_days_<KODE>`, `shift_days_<KODE>`) — `[{name, group, code?}]` | `payroll:read` |
-| POST | `/payroll/components` | Buat komponen | `payroll:config` |
+| POST | `/payroll/components` | Buat komponen. Body menerima `sequence` (P1); PATCH menerima `sequence` dan `is_active` (komponen sistem tidak bisa dinonaktifkan). List menerima filter `is_active` | `payroll:config` |
 | PATCH | `/payroll/components/{id}` | Ubah komponen | `payroll:config` |
 | GET | `/payroll/employees/{id}/components` | Komponen milik karyawan | `payroll:read` |
 | PUT | `/payroll/employees/{id}/components` | Set komponen & nilai karyawan | `payroll:config` |
+
+### Salary Structure (P1)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/payroll/structures` | Daftar structure (`?is_active=&search=`), dengan `job_grade_name` dan `component_count` | `payroll:read` |
+| POST | `/payroll/structures` | Buat structure (`code`, `name`, `salary_type`, `pay_cycle`, `job_grade_id`, `description`). Code dobel → `409 CONFLICT` | `payroll:config` |
+| GET | `/payroll/structures/{id}` | Detail + komponen + override cabang | `payroll:read` |
+| PATCH | `/payroll/structures/{id}` | Ubah field (kirim `""` untuk mengosongkan `job_grade_id` / `description`), termasuk `is_active` | `payroll:config` |
+| PUT | `/payroll/structures/{id}/components` | `{ components: [{ component_id, default_amount, is_locked, sequence }] }` — ganti seluruh set; override cabang komponen yang tetap ada dipertahankan | `payroll:config` |
+| PUT | `/payroll/structures/{id}/branch-overrides` | `{ overrides: [{ component_id, branch_id, default_amount }] }` — ganti seluruh override; hanya komponen `fixed` di structure, cabang harus ada | `payroll:config` |
+| GET | `/payroll/structures/{id}/preview?branch_id=` | Nilai default efektif per komponen (`source`: `branch` / `structure` / `formula` / `employee`) + total earning/deduction tetap | `payroll:read` |
+
+Validasi gagal → `422 INVALID_SALARY_STRUCTURE_ARGUMENT`. Assign komponen tidak aktif ke karyawan → `422 INVALID_EMPLOYEE_COMPONENT_ARGUMENT`.
 
 ### Konfigurasi Pajak & BPJS
 | Method | Endpoint | Deskripsi | Izin |
@@ -55,6 +68,15 @@ Payslip (`GET /payroll/payslips/{id}`, `/runs/{id}/payslips`) menambah snapshot 
 | POST | `/payroll/runs/{id}/close` | Kunci run | `payroll:approve` |
 | GET | `/payroll/runs/{id}/payslips` | Daftar slip dalam run | `payroll:read` |
 | GET | `/payroll/runs/{id}/bank-file` | Unduh file transfer bank | `payroll:approve` |
+
+### Laporan Setoran (P13)
+Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `format=csv` (opsional, unduhan CSV). Hanya run `approved`/`paid`/`closed` dihitung; run lain di `pending` / `runs[].final = false`. Period salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`. Endpoint PPh 21 juga butuh benefit plan `payroll.tax`.
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| GET | `/payroll/reports/bpjs` | Rekap per lembaga & program: `institutions[].programs[]` (participants, base, employee, employer, total), total, `without_breakdown`, `pending`, `runs` |
+| GET | `/payroll/reports/bpjs/participants` | Per karyawan per program; `institution=kesehatan\|ketenagakerjaan` (opsional); `missing_membership_number` |
+| GET | `/payroll/reports/pph21` | `final` (withheld, employer_borne, dtp, due, payable), `by_treatment`, `pending`, `runs` |
+| GET | `/payroll/reports/pph21/withholdings` | Per karyawan: NIK, NPWP, PTKP, TER, metode, perlakuan, bruto, PPh |
 
 ### Payslip (karyawan)
 | Method | Endpoint | Deskripsi | Izin |

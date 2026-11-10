@@ -23,7 +23,7 @@ Modul penggajian untuk HR Management System. Menghitung gaji karyawan dari kompo
 - **Instruksi pembayaran** — file/April transfer bank
 - **Kepatuhan** — data untuk setor & lapor PPh 21 & BPJS
 
-**Di luar cakupan:** pencatatan kehadiran/cuti (Attendance & Leave), transfer bank aktual (integrasi eksternal), pelaporan pajak ke DJP (integrasi/ekspor).
+**Di luar cakupan:** pencatatan kehadiran/cuti (Attendance & Leave), transfer bank aktual (integrasi eksternal), pelaporan pajak ke DJP dan BPJS (integrasi / format impor resmi). Rekap setoran BPJS & PPh 21 per periode beserta export CSV **masuk** cakupan (P13, lihat [04-payroll-run.md](./04-payroll-run.md) §9).
 
 ---
 
