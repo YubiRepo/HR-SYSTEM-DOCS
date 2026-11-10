@@ -19,9 +19,16 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 ### Konfigurasi Pajak & BPJS
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| GET | `/payroll/config/ter` | Tabel TER berlaku | `payroll:read` |
-| GET | `/payroll/config/bpjs` | Tarif & plafon BPJS berlaku | `payroll:read` |
-| PATCH | `/payroll/config/bpjs` | Perbarui tarif/plafon (versi baru) | `payroll:config` |
+| GET / PUT | `/payroll/config` | Konfigurasi umum (cap potongan) | `payroll:read` / `payroll:config` |
+| GET / POST | `/payroll/config/bpjs` | Tarif & plafon BPJS (POST = baris versi baru) | `payroll:read` / `payroll:config` |
+| GET / POST | `/payroll/config/pph21-ter-rates` | Tabel TER A/B/C | `payroll:read` / `payroll:config` |
+| GET / POST | `/payroll/config/pph21-brackets` | Tarif progresif Pasal 17 (rekonsiliasi Desember) | `payroll:read` / `payroll:config` |
+| GET / POST | `/payroll/config/pph21-ptkp-rates` | Master PTKP: status, PTKP tahunan, kategori TER. `GET ?as_of=YYYY-MM-DD` = hanya versi yang berlaku pada tanggal itu (dipakai dropdown PTKP tax profile). POST duplikat `(ptkp_status, effective_from)` → `409 CONFLICT` | `payroll:read` / `payroll:config` |
+| GET / POST | `/payroll/config/pph21-tax-parameters` | Biaya jabatan (`occupational_expense_pct`, `occupational_expense_annual_cap`). POST duplikat `effective_from` → `409 CONFLICT` | `payroll:read` / `payroll:config` |
+
+Semua tabel konfigurasi pajak/BPJS **append-only**: perubahan = baris baru dengan `effective_from` baru, tidak ada edit/hapus, sehingga run lama tetap bisa direproduksi.
+
+`PUT /payroll/employees/{id}/tax-profile`: `ptkp_status` divalidasi terhadap master PTKP yang berlaku hari ini dan `ter_category` diisi dari master. Status tidak ada di master → `INVALID_TAX_PROFILE_ARGUMENT`; tenant belum punya master → `CONFIG_NOT_FOUND`.
 
 ### Payroll Run
 | Method | Endpoint | Deskripsi | Izin |

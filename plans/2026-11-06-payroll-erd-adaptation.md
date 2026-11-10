@@ -439,6 +439,8 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 ### P10 — Master PTKP & Parameter Pajak
 
+> **Status: selesai dikerjakan 2026-11-10, menunggu review.** Migrasi `20261110000005_create_pph21_ptkp_and_tax_parameters_tables` dan backfill `seed_ptkp_defaults_for_tenant` (`20261110090001`) ditulis, **belum dijalankan**. Tenant existing wajib menjalankan backfill sebelum calculate berikutnya.
+
 **Tujuan:** semua angka PPh 21 menjadi data konfigurasi berversi, sesuai prinsip [03-calculation.md](../modules/payroll/03-calculation.md) §2 ("tarif, persentase, dan plafon tidak di-hardcode").
 
 **Kondisi saat ini**

@@ -84,10 +84,13 @@ Tarif progresif Pasal 17 (lapisan PKP tahunan): 5% / 15% / 25% / 30% / 35%.
 Menentukan kategori TER & besaran PTKP. Contoh kode: `TK/0` (tidak kawin, 0 tanggungan), `K/0` (kawin), `K/2` (kawin, 2 tanggungan).
 - Disimpan per karyawan (di Core HR / payroll profile).
 - **Ditetapkan berdasar kondisi 1 Januari tahun berjalan** (mis. menikah Februari → tetap dianggap TK/0 untuk tahun itu).
+- **Daftar status, nominal PTKP tahunan, dan kategori TER adalah data master** (`pph21_ptkp_rates`, HR Setting › Tax and BPJS › PTKP), bukan konstanta kode. Default seed: PMK 101/PMK.010/2016 (TK/0 = Rp54 jt, +Rp4,5 jt per tanggungan/kawin) dan mapping PP 58/2023 (A = TK/0, TK/1, K/0; B = TK/2, TK/3, K/1, K/2; C = K/3).
+- Calculate memakai versi master yang berlaku pada **1 Januari tahun pajak** run, sejalan dengan aturan di atas: perubahan master di tengah tahun baru berlaku tahun berikutnya. Kategori TER diambil dari master saat calculate (kolom `employee_tax_profile.ter_category` hanya cache tampilan).
+- Master tidak ada, atau status karyawan tidak ada di master → calculate gagal `CONFIG_NOT_FOUND` (tidak ada fallback ke angka lama).
 
 ### 4.4 Hal lain (konfigurabel)
 - **Tanpa NPWP**: dapat dikenakan tarif lebih tinggi (aturan berlaku).
-- **Biaya jabatan**: 5% dari bruto, maks (mis.) Rp500.000/bulan atau Rp6 jt/tahun — pengurang di skema tahunan.
+- **Biaya jabatan**: 5% dari bruto, maks (mis.) Rp500.000/bulan atau Rp6 jt/tahun — pengurang di skema tahunan. Persentase dan batas tahunannya data master (`pph21_tax_parameters`, versi per 1 Januari tahun pajak), default seed 5% / Rp6 jt.
 - **PPh 21 DTP** (ditanggung pemerintah): untuk kriteria tertentu, pajak tidak memotong gaji — perlu ditandai agar pelaporan benar.
 - **Metode**: nett / gross / gross-up (siapa menanggung pajak) — dapat dipilih per tenant/komponen.
 

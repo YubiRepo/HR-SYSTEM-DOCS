@@ -52,7 +52,7 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 |---|---|---|
 | `employee_id` | string (PK, FK) | |
 | `ptkp_status` | enum | `TK/0`, `K/0`, `K/1`, `K/2`, `K/3`, ... |
-| `ter_category` | enum | `A` / `B` / `C` (turunan dari PTKP) |
+| `ter_category` | enum | `A` / `B` / `C` — cache tampilan, diisi dari master `pph21_ptkp_rates` saat simpan. Calculate selalu membaca ulang dari master tahun pajak run |
 | `has_npwp` | boolean | Memengaruhi tarif |
 | `pph21_method` | enum | `nett` / `gross` / `gross_up` |
 | `dtp_eligible` | boolean | PPh 21 ditanggung pemerintah |
@@ -103,6 +103,27 @@ Rincian tiap komponen pada slip (untuk transparansi & audit).
 | `category` | enum | `A` / `B` / `C` |
 | `income_from` / `income_to` | int | Rentang bruto bulanan |
 | `rate_pct` | number | Tarif efektif |
+| `effective_from` | date | Versi berlaku |
+
+### 2.7a `pph21_ptkp_rates` (config, versioned)
+Satu baris per status PTKP per versi. Satu versi = semua baris dengan `effective_from` yang sama; calculate memakai versi yang berlaku pada 1 Januari tahun pajak.
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `ptkp_status` | string | `TK/0` … `K/3` (bebas, maks 10 karakter) |
+| `annual_amount` | int | PTKP setahun (rekonsiliasi Desember) |
+| `ter_category` | enum | `A` / `B` / `C` (tarif TER Jan–Nov) |
+| `effective_from` | date | Versi berlaku. UNIQUE `(tenant_id, ptkp_status, effective_from)` |
+
+### 2.7b `pph21_tax_parameters` (config, versioned)
+Parameter skalar PPh 21, satu baris per versi (UNIQUE `(tenant_id, effective_from)`).
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `occupational_expense_pct` | number | Biaya jabatan, % bruto setahun |
+| `occupational_expense_annual_cap` | int | Batas biaya jabatan setahun |
 | `effective_from` | date | Versi berlaku |
 
 ### 2.8 `bpjs_config` (config, versioned)
