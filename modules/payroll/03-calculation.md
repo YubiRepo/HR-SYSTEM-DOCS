@@ -46,6 +46,7 @@ Lima program, tiap program beda tarif & pihak penanggung. Yang **memotong gaji k
 **Aturan penting:**
 - **Plafon (cap):** iuran dihitung `min(dasar, plafon)`. Mis. gaji Rp20 jt, iuran JP tetap dari Rp10.547.400.
 - **JKK bervariasi** menurut tingkat risiko pekerjaan: `bpjs_config` boleh punya satu baris JKK per `risk_class`. Kelas karyawan diambil dari kepesertaannya, lalu `payroll_config.default_jkk_risk_class`; tanpa kelas, tenant dengan satu tarif JKK (atau satu tarif tanpa kelas) tetap memakai tarif itu. Selain itu → `CONFIG_NOT_FOUND`.
+- **Seed per tenant:** lima kelas risiko JKK PP 44/2015 — `very_low` 0,24%, `low` 0,54%, `medium` 0,89%, `high` 1,27%, `very_high` 1,74% — dan `default_jkk_risk_class = very_low`. Tenant lama yang dulu di-seed satu baris `low` 0,24% dinamai ulang menjadi `very_low` (migrasi `20261110000007`) lalu dilengkapi backfill `seed_jkk_risk_classes_for_tenant`; tenant yang punya tarif JKK sendiri dilewati.
 - **Dasar BPJS** = komponen ber-flag `bpjs_base` (umumnya pokok + tunjangan tetap), atau `wage_base_override` kepesertaan bila diisi. Plafon tetap berlaku.
 - Iuran karyawan (JHT+JP) menjadi **pengurang neto** pada rekonsiliasi tahunan PPh 21 (§4.2).
 
