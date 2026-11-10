@@ -432,7 +432,62 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 ---
 
-## 5. Dampak ke Kode Existing
+## 5. Pemetaan Menu Backoffice
+
+Prinsip pembagian:
+
+- **HR Setting**: konfigurasi atau master data yang jarang berubah (komponen, structure, schedule, pajak/BPJS, policy approval).
+- **Salary** (grup payroll di sidebar, `/tenants/salary/*`): pekerjaan operasional per periode (kompensasi karyawan, periode, run, adjustment, pembayaran, slip).
+- Approval memakai engine generik, sehingga konfigurasi policy-nya ada di HR Setting dan berlaku untuk semua jenis dokumen, bukan khusus payroll.
+- Label menu dalam bahasa Inggris. Menu didaftarkan di `app/layouts/default.vue`.
+
+### 5.1 HR Setting
+
+| Sub-grup | Menu | Status | Fase | Isi |
+|---|---|---|---|---|
+| Payroll | **Salary Component** | Ada (`hr-setting/salary-component.vue`) | P1, P3 | + kolom `sequence`, `is_active`, filter aktif [P1]. Editor formula dengan riwayat versi (draft → published, validate) sebagai drawer/tab [P3]. |
+| Payroll | **Salary Structures** | Baru (`hr-setting/salary-structures.vue`) | P1, P2, P3 | Tab **Components** (default amount, locked, sequence), **Branch Overrides**, **Formulas** per komponen structure [P3], **Preview / Simulator** [P2]. Menggantikan mock `payroll/grade-templates.vue`. |
+| Payroll | **Payroll Schedules** | Baru (`hr-setting/payroll-schedules.vue`) | P4 | List schedule (code, pay cycle, default). Detail: **Rules** berversi (period start day, attendance cutoff day, pay day, holiday shift) dan aksi **Generate Periods**. |
+| Payroll | **Tax and BPJS** | Ada (`hr-setting/tax-bpjs.vue`) | P9 | Tetap. Riwayat policy `payroll_config` ditambahkan di sini bila P9 dikerjakan. |
+| Approval | **Approval Policies** | Baru (engine generik) | P7 | Policy per `document_type` (leave, payroll_run, overtime, …). Payroll hanya menambah `document_type = payroll_run`. |
+
+Formula belum diberi menu sendiri. Menu **Formulas** terpisah baru diperlukan bila satu formula dipakai ulang oleh banyak komponen.
+
+### 5.2 Salary (payroll)
+
+| Menu | Status | Fase | Isi |
+|---|---|---|---|
+| **Overview** | Mock (`payroll/index.vue`) | opsional | Dashboard ringkas periode aktif. Dipindah ke grup Salary bila dipakai. |
+| **Employee Payrolls** | Ada (`salary/employees.vue`) | P2, P4, P8 | Detail per karyawan + tab **Compensation** (riwayat versi, effective date) [P2], **Payroll Schedule** (assignment) [P4], **Bank Accounts** read-only dari Core HR [P8]. |
+| **Compensations** | Baru (`salary/compensations.vue`) | P2 | Semua versi kompensasi lintas karyawan: bulk assign structure, draft → activate, promosi/kenaikan. |
+| **Payroll Periods** | Baru (`salary/periods.vue`) | P4 | Daftar periode per schedule (start/end, cutoff, pay date, status), aksi lock/close. |
+| **Payroll Runs** | Ada (`salary/runs.vue`) | P4–P8 | Form create memilih **period** [P4]. Detail run: tab **Employees** (status ok/error/excluded, exclude/include) [P5], **Inputs** (snapshot absensi/cuti, input manual, refresh) [P5], **Approval** timeline [P7], **Payments** (batch, split, bank file, bukti bayar) [P8]. |
+| **Adjustments** | Baru (`salary/adjustments.vue`) | P6 | Daftar adjustment (pending/applied/cancelled), create & cancel. Menggantikan mock `payroll/adjustments.vue`. |
+| **Payments** | Baru, opsional (`salary/payments.vue`) | P8 | Semua payment batch lintas run untuk tim Finance. Alur utama tetap dari tab Payments di detail run. |
+| **Payslips** | Ada (`salary/payslips.vue`) | P5 | + sumber nilai per line dan versi formula. |
+
+### 5.3 Di luar kedua grup
+
+| Menu | Keterangan |
+|---|---|
+| **My Approvals** (inbox) | Generik lintas `document_type` (`GET /approval/inbox`), tempat approver memproses payroll run, leave, dan lainnya. Diletakkan di level atas atau ESS, bukan di HR Setting. Detail run tetap bisa approve langsung. |
+| Employees → Employee Info | Rekening bank tetap dikelola di Core HR. Payroll hanya membaca. |
+| Loans (`payroll/loans.vue`) | Tetap mock, di luar cakupan rencana ini (lihat §2 #6). |
+
+Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
+
+### 5.4 Pertanyaan terbuka menu
+
+| # | Hal | Usulan |
+|---|---|---|
+| 1 | Lokasi **Approval Policies** | Plan approval ([2026-11-05-approval-berjenjang.md](./2026-11-05-approval-berjenjang.md) §7) menaruhnya di `settings/approval-policies.vue` (Company Settings). Rencana ini memakai HR Setting. Salah satu plan perlu diselaraskan. |
+| 2 | **Payroll Periods** di Salary atau tab di Payroll Schedules | Salary, karena lock/close adalah operasi rutin per periode. |
+| 3 | **Compensations** menu sendiri atau cukup tab di Employee Payrolls | Menu sendiri bila promosi/kenaikan massal sering. |
+| 4 | Nama grup **Salary** diganti **Payroll** | Belum diputuskan. |
+
+---
+
+## 6. Dampak ke Kode Existing
 
 | File / area | Fase |
 |---|---|
@@ -451,7 +506,7 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 ---
 
-## 6. Dokumentasi yang Diubah per Fase
+## 7. Dokumentasi yang Diubah per Fase
 
 | Dokumen | Fase |
 |---|---|
@@ -465,7 +520,7 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 ---
 
-## 7. Risiko & Pertanyaan Terbuka
+## 8. Risiko & Pertanyaan Terbuka
 
 | # | Hal | Catatan |
 |---|---|---|
@@ -479,7 +534,7 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 ---
 
-## 8. Verifikasi (per fase)
+## 9. Verifikasi (per fase)
 
 - Unit test domain untuk setiap entity baru, termasuk aturan effective-dating & larangan overlap (pola `*_test.go` yang sudah ada).
 - Test `CalculateRunUseCase`: karyawan jalur lama vs jalur kompensasi menghasilkan angka identik untuk data backfill.

@@ -43,8 +43,9 @@ Kontrak kerja sebagai entity mandiri — berdampingan dengan `employees.contract
 
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| POST | `/employees/{id}/contracts` | Buat kontrak baru (isi `previous_contract_id` untuk perpanjangan — otomatis menandai kontrak lama `superseded`) | `contracts:write` |
+| POST | `/employees/{id}/contracts` | Buat kontrak baru (isi `previous_contract_id` untuk perpanjangan — otomatis menandai kontrak lama `superseded`; kontrak lama harus `active` atau `expired`) | `contracts:write` |
 | GET | `/employees/{id}/contracts` | Daftar kontrak karyawan (filter `status`/`type`) | `contracts:read` |
+| GET | `/contracts` | Daftar kontrak seluruh karyawan di tenant (branch-scoped untuk caller level branch). Query: `filter[status]`, `filter[type]`, `filter[employee_id]`, `filter[expiring_within_days]` (kontrak `active` dengan `end_date` ≤ hari ini + N), `branch_id`, `search` (nama/nomor karyawan), `page`/`per_page` (`-1` = semua), `sort` (`employee_name`, `employee_number`, `type`, `status`, `start_date`, `end_date`, `created_at`)/`order`. Default urut `end_date ASC NULLS LAST`. Tiap baris menyertakan `employee_name`, `employee_number`, `branch_id`, `branch_name` | `contracts:read` |
 | GET | `/contracts/{id}` | Detail satu kontrak | `contracts:read` |
 | PATCH | `/contracts/{id}` | Ubah `remark`, atau set `status="terminated"` (penutupan dini manual — `active`/`expired`/`superseded` diatur sistem) | `contracts:write` |
 | GET | `/contracts/{id}/documents` | Daftar dokumen kontrak | `contracts:read` |
@@ -613,7 +614,7 @@ Baris yang sukses **di-commit**; yang gagal dikumpulkan di `error_report_url` un
 | `MANAGER_CYCLE` | 422 | Perubahan atasan membentuk siklus |
 | `INVALID_ORG_UNIT_HEAD` | 422 | Kepala unit bukan karyawan aktif satu tenant |
 | `MUTATION_REQUEST_NOT_PENDING` | 422 | Approve/reject pada pengajuan yang sudah direview |
-| `CONTRACT_NOT_ACTIVE` | 422 | Terminate/supersede/expire pada kontrak yang sudah tidak aktif |
+| `CONTRACT_NOT_ACTIVE` | 422 | Terminate/expire pada kontrak yang sudah tidak aktif, atau supersede (perpanjangan) kontrak `terminated`/`superseded` |
 | `INVALID_CONTRACT_TYPE` | 422 | Tipe kontrak bukan pkwt/pkwtt/permanent/contract/intern/outsource |
 | `PREVIOUS_CONTRACT_MISMATCH` | 422 | `previous_contract_id` bukan milik karyawan yang sama |
 | `INVALID_CONTRACT_DOCUMENT_TYPE` | 422 | Tipe dokumen kontrak tidak valid |
