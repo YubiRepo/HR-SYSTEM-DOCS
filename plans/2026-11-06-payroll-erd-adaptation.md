@@ -9,6 +9,7 @@
 | **Keputusan user** | (1) **Nama tabel existing dipertahankan.** ERD diadaptasi dengan menambah kolom/tabel, bukan rename massal. (2) Semua area ERD masuk cakupan, dikerjakan **bertahap per fase** yang masing-masing bisa di-merge sendiri. Lihat §2. |
 | **Modul terdampak** | Payroll (utama), Core HR (contract rekening bank), modul `approval` (consumer baru), Scheduler (opsional, generate periode), Backoffice |
 | **Repo terkait** | HR-SYSTEM-API, HR-SYSTEM-BACKOFFICE, HR-SYSTEM-DOCS |
+| **Lampiran** | [2026-11-10-payroll-erd-simulasi-satu-periode.md](./2026-11-10-payroll-erd-simulasi-satu-periode.md) — contoh isi data semua tabel untuk satu periode payroll |
 | **Mengubah keputusan** | [modules/payroll/09-grade-templates.md](../modules/payroll/09-grade-templates.md) §7 (grade template → salary structure), [modules/payroll/06-data-model.md](../modules/payroll/06-data-model.md) §2, [modules/payroll/04-payroll-run.md](../modules/payroll/04-payroll-run.md) §2, §4, §6 (period, approval, adjustment run) |
 
 ---
@@ -107,6 +108,8 @@ approval_requests (document_type = payroll_run) ──< approval_request_steps �
 | Payroll Adjustment | `payroll_adjustments` | Baru | `payroll_adjustments` |
 | Payroll Policy | `payroll_policies` | Sudah ada | `payroll_config` (+ `bpjs_config`, `tax_ter_rates`, `pph21_tax_brackets`) |
 | Payroll Policy Version | `payroll_policy_versions` | Ditunda | P9 (opsional) |
+| *(tidak ada di ERD)* | — | Baru | `employee_bpjs_enrollments` + `employee_tax_profile.tax_treatment` (P11). Saat ini semua karyawan otomatis ikut semua program BPJS dan tidak ada opsi bukan subjek PPh 21. |
+| *(tidak ada di ERD)* | — | Baru | `pph21_ptkp_rates`, `pph21_tax_parameters` (P10). Saat ini nominal PTKP, daftar status PTKP, mapping PTKP → kategori TER, dan biaya jabatan masih konstanta Go. |
 
 ### 3.1 Aturan relasi
 
@@ -143,9 +146,10 @@ P4 Schedule & Period ──> P5 Run Snapshot ──┬──> P6 Adjustment Run
                                            └──> P8 Bank & Payment
 Engine approval (plan 2026-11-05 Fase 1) ──> P7 Approval Berjenjang
 P9 Policy Versioning (opsional, lepas)
+P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesertaan BPJS & Perlakuan Pajak
 ```
 
-Urutan disarankan: **P1 → P2 → P4 → P5 → P3 → P8 → P6 → P7**. Jalur P1–P2 dan P4–P5 bisa dikerjakan paralel oleh orang berbeda.
+Urutan disarankan: **P10 → P11 → P1 → P2 → P4 → P5 → P3 → P8 → P6 → P7**. P10 kecil dan berdiri sendiri, jadi dikerjakan lebih dulu agar rekonsiliasi Desember 2026 sudah memakai master. P11 menyusul karena menyentuh tax profile yang sama. Jalur P1–P2 dan P4–P5 bisa dikerjakan paralel oleh orang berbeda.
 
 ---
 
@@ -236,8 +240,9 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 - `CalculateRunUseCase` (`application/payrollrun/command/calculate_run.go`): ambil versi kompensasi yang berlaku di periode run → komponen dari versi itu + komponen manual/one-time. Karyawan **tanpa** kompensasi → jalur lama (semua `employee_components` aktif).
 - `base_rate` di `payroll_employee_profiles` menjadi deprecated: bila karyawan punya kompensasi, nilai BASIC diambil dari kompensasi.
 - Endpoint: `GET/POST /payroll/employees/:employeeId/compensations`, `POST .../compensations/:id/activate`.
+- `GET /payroll/compensations` (`payroll:read`) — list berbasis karyawan untuk menu Compensations: semua karyawan aktif (nama, nomor, cabang via contract Core HR, bukan `employees:read`) + versi kompensasi aktif, flag `has_tax_profile`; filter `structure_id`, `branch_id`, `status`, `missing=compensation|tax_profile`. `POST /payroll/compensations/bulk` untuk bulk assign / kenaikan (membuat versi `draft`).
 
-**Backoffice:** tab assignments & simulator di `grade-templates.vue`; tab Compensation di detail karyawan (riwayat versi).
+**Backoffice:** tab assignments & simulator di `grade-templates.vue`; sub-tab **Payroll › Compensation** dan **Pay Components** di Employee Info (§5.3).
 
 **Backfill:** satu versi `reason = legacy` per karyawan yang punya `employee_components`, `structure_id` = structure "LEGACY" per tenant yang dibuat backfill, `effective_from` = `MIN(employee_components.effective_from)`; komponen recurring diikat ke versi itu. BASIC dari `base_rate` bila belum ada sebagai komponen.
 
@@ -304,7 +309,7 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 - `payroll_employee_profiles.pay_cycle` deprecated (dibaca dari schedule).
 - Endpoint: `GET/POST/PATCH /payroll/schedules`, `PUT /payroll/schedules/:id/rules`, `POST /payroll/schedules/:id/periods/generate`, `GET /payroll/periods`, `POST /payroll/periods/:id/lock|close`, `PUT /payroll/employees/:employeeId/schedule`.
 
-**Backoffice:** halaman Schedules & Periods; dropdown periode di form buat run.
+**Backoffice:** halaman Schedules & Periods; dropdown periode di form buat run; field schedule di sub-tab **Payroll › Compensation** Employee Info (§5.3).
 
 **Backfill:** schedule `MONTHLY` default per tenant (start day 1, cutoff = akhir bulan); assignment untuk semua karyawan yang punya `payroll_employee_profiles`; satu `payroll_periods` per `payroll_runs.period` distinct; isi `payroll_runs.period_id`.
 
@@ -416,7 +421,7 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 - `PayRunUseCase` dan `BankFileQuery` dialihkan ke batch; endpoint lama `GET /runs/:id/bank-file` tetap sebagai alias batch terakhir.
 - Belum ada integrasi API bank (host-to-host) — di luar cakupan.
 
-**Backoffice:** tab Payments di detail run (batch, status per karyawan, unggah bukti).
+**Backoffice:** tab Payments di detail run (batch, status per karyawan, unggah bukti); flag **rekening utama** di section Others › Bank Accounts Employee Info yang sudah ada (bukan tab baru di payroll).
 
 **Backfill:** tidak ada; run lama yang sudah `paid` tidak punya batch (ditampilkan "paid (legacy)").
 
@@ -429,6 +434,148 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 ### P9 — Policy Versioning (opsional)
 
 `payroll_policy_versions` — snapshot `payroll_config` per `effective_from`, agar aturan cap potongan yang berlaku pada periode lama bisa diaudit. Dikerjakan bila ada kebutuhan audit nyata.
+
+---
+
+### P10 — Master PTKP & Parameter Pajak
+
+**Tujuan:** semua angka PPh 21 menjadi data konfigurasi berversi, sesuai prinsip [03-calculation.md](../modules/payroll/03-calculation.md) §2 ("tarif, persentase, dan plafon tidak di-hardcode").
+
+**Kondisi saat ini**
+
+| Data | Sudah master? | Lokasi sekarang |
+|---|---|---|
+| Tarif TER A/B/C | ✅ `tax_ter_rates` (berversi, di-seed PP 58/2023) | `seed_ter_defaults.go` |
+| Tarif progresif Pasal 17 (5/15/25/30/35%) | ✅ `pph21_tax_brackets` (berversi, di-seed) | `seed_defaults.go` → `seedPPh21BracketDefaults` |
+| Nominal PTKP tahunan per status | ❌ konstanta `annualPTKPAmounts` | `domain/payrollrun/service/pph21_constants.go` |
+| Daftar status PTKP valid (`TK/0`…`K/3`) | ❌ konstanta `ValidPTKPStatuses` | `domain/taxprofile/constant/constant.go` |
+| Mapping PTKP → kategori TER | ❌ `switch` di `deriveTERCategory` | `domain/taxprofile/entity/employee_tax_profile.go` |
+| Biaya jabatan (5%, maks Rp6 jt/tahun) | ❌ konstanta `biayaJabatanPct`, `biayaJabatanAnnualCap` | `pph21_constants.go` |
+
+**Migrasi**
+
+`pph21_ptkp_rates` — satu baris per status PTKP per versi. Mapping kategori TER disimpan di baris yang sama karena keduanya ditentukan oleh status PTKP dan berubah bersama regulasi.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id`, `tenant_id` | UUID | |
+| `ptkp_status` | varchar | `TK/0`, `TK/1`, …, `K/3` (nanti bisa `K/I/0` dst. bila diperlukan) |
+| `annual_amount` | bigint | PTKP setahun, mis. `TK/0` = 54.000.000 |
+| `ter_category` | varchar | `A` / `B` / `C` |
+| `effective_from` | date | Versi berlaku |
+| `created_at`, `updated_at` | timestamptz | |
+
+UNIQUE `(tenant_id, ptkp_status, effective_from)`.
+
+`pph21_tax_parameters` — parameter skalar PPh 21, satu baris per versi.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id`, `tenant_id` | UUID | |
+| `occupational_expense_pct` | numeric(6,3) | Biaya jabatan, default 5 |
+| `occupational_expense_annual_cap` | bigint | Default 6.000.000 |
+| `effective_from` | date | UNIQUE `(tenant_id, effective_from)` |
+| `created_at`, `updated_at` | timestamptz | |
+
+Keduanya tenant-scoped dan berversi `effective_from`, sama seperti `bpjs_config`, `tax_ter_rates`, dan `pph21_tax_brackets`.
+
+**API**
+
+- Entity & repository baru di `domain/payrollconfig` (`ptkp_rate.go`, `tax_parameter.go`), mengikuti pola `ter_rate.go` / `pph21_bracket.go`.
+- Resolusi versi: baris dengan `effective_from` terbesar yang ≤ **1 Januari tahun pajak** periode run. Status PTKP karyawan ditetapkan per 1 Januari ([03-calculation.md](../modules/payroll/03-calculation.md) §4.3), jadi tabel acuannya juga dikunci per awal tahun.
+- `employee_tax_profile`:
+  - Validasi `ptkp_status` terhadap status yang ada di versi PTKP terbaru, menggantikan `ValidPTKPStatuses`.
+  - `ter_category` tetap disimpan sebagai cache tampilan, diisi dari master saat simpan, menggantikan `deriveTERCategory`.
+- `CalculateRunUseCase` / `calculator.go`:
+  - Kategori TER bulanan diambil dari master (bukan dari kolom cache), agar perubahan mapping langsung berlaku tanpa menyimpan ulang semua tax profile.
+  - `decemberPPh21` menerima `annual_amount` PTKP dan parameter biaya jabatan sebagai input, bukan konstanta.
+  - Master tidak ditemukan → `CONFIG_NOT_FOUND` untuk karyawan itu (menjadi payslip `error` setelah P5), bukan fallback diam-diam ke angka lama.
+- Hapus `annualPTKPAmounts`, `biayaJabatanPct`, `biayaJabatanAnnualCap`, `ValidPTKPStatuses`, dan `switch` di `deriveTERCategory`. Nilainya pindah ke data seed.
+- Seed default per tenant baru di `seed_defaults.go`: PTKP PMK 101/PMK.010/2016 + mapping TER PP 58/2023, dan biaya jabatan 5% / Rp6 jt. `effective_from` sama dengan seed BPJS/bracket (`2026-01-01`).
+- Endpoint (`payroll:config`), mengikuti pola `/payroll/config/*`:
+  - `GET/POST /payroll/config/pph21-ptkp-rates`
+  - `GET/POST /payroll/config/pph21-tax-parameters`
+- Versi yang sudah dipakai run `closed` tidak boleh diedit atau dihapus; perubahan = baris baru dengan `effective_from` baru.
+
+**Backoffice:** dua tab baru di **HR Setting › Tax and BPJS** (`tax-bpjs.vue`): **PTKP** (status, nominal tahunan, kategori TER, effective from) dan **Tax Parameters** (biaya jabatan). Dropdown PTKP di tax profile karyawan diisi dari master, bukan daftar statis.
+
+**Backfill:** seeder untuk tenant existing (ditulis tim, dijalankan user) yang mengisi nilai sama persis dengan konstanta sekarang. Idempotent: tenant yang sudah punya baris dilewati.
+
+**Docs:** [03-calculation.md](../modules/payroll/03-calculation.md) §4.2–§4.4 (sumber PTKP & biaya jabatan), [06-data-model.md](../modules/payroll/06-data-model.md) (tabel baru, §2.3 `ter_category` = cache), [05-api-contract.md](../modules/payroll/05-api-contract.md).
+
+**Kriteria selesai:** tidak ada lagi angka PTKP, biaya jabatan, atau mapping kategori TER di kode Go; hasil calculate Januari–November dan rekonsiliasi Desember untuk data hasil backfill **identik** dengan sebelumnya; menambah versi PTKP baru berlaku mulai tahun pajak berikutnya tanpa deploy.
+
+---
+
+### P11 — Kepesertaan BPJS & Perlakuan Pajak per Karyawan
+
+**Tujuan:** HR bisa mengatur per karyawan program BPJS mana yang diikuti dan bagaimana PPh 21-nya diperlakukan, dengan riwayat berlaku. Saat ini semua karyawan dalam run otomatis dikenakan semua program BPJS di `bpjs_config`.
+
+**Kondisi saat ini**
+
+| Hal | Kondisi | Lokasi |
+|---|---|---|
+| Kepesertaan BPJS | Tidak ada. `calculator.go` menerapkan semua baris `bpjs_config` yang berlaku ke setiap karyawan. | `domain/payrollrun/service/calculator.go` |
+| Nomor kepesertaan BPJS | Tidak disimpan (hanya kolom BPJS di data keluarga Core HR). | `core-hr/domain/employee/entity/records.go` |
+| Kelas risiko JKK | `bpjs_config.risk_class` ada, tetapi calculator tidak memilih per kelas risiko; bila tenant punya beberapa baris JKK, semuanya ikut terjumlah. | `bpjs_config`, `calculator.go` |
+| Perlakuan PPh 21 | Hanya `dtp_eligible` (pajak 0). Tidak ada opsi bukan subjek pajak. | `domain/taxprofile` |
+| `has_npwp` | Diinput di tax profile, padahal NPWP sudah ada di Core HR (`employees.npwp`). Belum dipakai calculator. | `domain/taxprofile`, `core-hr` |
+| `pph21_method` | Disimpan (`nett` / `gross` / `gross_up`), belum dipakai calculator: semua dihitung sebagai `gross`. | `domain/taxprofile` |
+
+**Migrasi**
+
+`employee_bpjs_enrollments` — satu baris per karyawan per program per rentang berlaku.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id`, `tenant_id`, `employee_id` | UUID | |
+| `program` | varchar | `kesehatan` / `jht` / `jp` / `jkk` / `jkm` (sama dengan `bpjs_config.program`) |
+| `is_enrolled` | boolean | `false` = tidak dipotong dan tidak dibebankan ke perusahaan |
+| `membership_number` | varchar (nullable) | No. KPJ (Ketenagakerjaan) / No. JKN (Kesehatan) |
+| `risk_class` | varchar (nullable) | Hanya untuk `jkk`; memilih baris `bpjs_config` dengan `risk_class` yang sama |
+| `wage_base_override` | bigint (nullable) | Dasar upah yang dilaporkan ke BPJS bila berbeda dari Σ komponen `bpjs_base`. Plafon tetap berlaku |
+| `exclusion_reason` | varchar (nullable) | Mis. `retirement_age` (JP), `spouse_coverage` (Kesehatan), `foreign_worker`, `other` |
+| `effective_from` | date | |
+| `effective_to` | date (nullable) | |
+
+Constraint: tidak boleh overlap per `(employee_id, program)`.
+
+`employee_tax_profile`:
+
+- + `tax_treatment VARCHAR NOT NULL DEFAULT 'subject'` — `subject` / `dtp` / `exempt`. Menggantikan `dtp_eligible` (backfill: `dtp_eligible = true` → `dtp`).
+- `has_npwp` deprecated: diturunkan dari `employees.npwp` lewat contract Core HR.
+
+`payroll_config` + `default_bpjs_programs` (array/JSONB, default semua program) dan `default_jkk_risk_class` — dipakai saat membuat enrollment awal karyawan baru.
+
+**API**
+
+- Domain baru `domain/bpjsenrollment` (entity, repository, service) dengan aturan effective-dating tanpa overlap.
+- Enrollment awal dibuat otomatis saat karyawan pertama kali punya kompensasi (P2) atau tax profile, dari default `payroll_config`, `effective_from` = tanggal masuk.
+- `CalculateRunUseCase` / `calculator.go`:
+  - Hanya program dengan enrollment `is_enrolled = true` yang berlaku pada periode run yang dihitung.
+  - JKK memakai baris `bpjs_config` sesuai `risk_class` enrollment; tanpa `risk_class` → `default_jkk_risk_class`; tidak ada baris yang cocok → `CONFIG_NOT_FOUND`.
+  - `wage_base_override` menggantikan Σ `bpjs_base` bila terisi.
+  - Karyawan tanpa enrollment sama sekali → perilaku lama (semua program) sampai backfill dijalankan.
+  - `tax_treatment = exempt` atau `dtp` → PPh 21 = 0; `pph21` slip tetap dicatat 0 dan perlakuannya disimpan di payslip agar laporan bisa membedakan.
+- Snapshot ke payslip (sejalan P5): `payslips` + `tax_treatment`, dan rincian iuran per program (`bpjs_details` JSONB: program, base, employee, employer), karena sekarang hanya total.
+- Contract Core HR: `GetEmployeeNPWP` / ikut `ListEmployeesBasic`, untuk `has_npwp` turunan.
+- Endpoint (`payroll:config`):
+  - `GET/PUT /payroll/employees/:employeeId/bpjs-enrollments` (replace-all per program, satu transaksi)
+  - `POST /payroll/bpjs-enrollments/bulk` (mis. set kelas risiko JKK untuk satu cabang)
+  - `PATCH /payroll/employees/:employeeId/tax-profile` menerima `tax_treatment`.
+- `pph21_method` belum diimplementasikan di fase ini: lihat §8 #10.
+
+**Backoffice**
+
+- Sub-tab **Payroll › Tax** diganti **Payroll › Tax & BPJS** (§5.3): tabel enrollment per program (ikut, nomor, kelas risiko, dasar upah, berlaku), perlakuan pajak, NPWP read-only dari Core HR.
+- Menu **Compensations**: filter "BPJS belum lengkap" (tanpa enrollment atau tanpa nomor kepesertaan).
+- **HR Setting › Tax and BPJS**: default program dan kelas risiko JKK untuk karyawan baru.
+
+**Backfill:** untuk setiap karyawan yang punya `payroll_employee_profiles` atau tax profile: enrollment semua program `is_enrolled = true`, `effective_from` = tanggal masuk, `risk_class` JKK = kelas risiko tunggal tenant bila hanya satu. Tenant dengan lebih dari satu kelas risiko JKK dilaporkan oleh backfill untuk diisi manual. `dtp_eligible` → `tax_treatment`.
+
+**Docs:** [03-calculation.md](../modules/payroll/03-calculation.md) §3 (kepesertaan & JKK per risiko) dan §4.4 (perlakuan pajak), [06-data-model.md](../modules/payroll/06-data-model.md) §2.3 + tabel baru, [07-integration.md](../modules/payroll/07-integration.md) (NPWP dari Core HR), [05-api-contract.md](../modules/payroll/05-api-contract.md).
+
+**Kriteria selesai:** karyawan dengan JP `is_enrolled = false` tidak dipotong dan tidak dibebani JP; dua karyawan dengan kelas risiko JKK berbeda mendapat tarif JKK berbeda; data hasil backfill menghasilkan angka identik dengan sebelum backfill (untuk tenant dengan satu kelas risiko); karyawan `exempt` PPh 21 = 0 dan terlihat di laporan.
 
 ---
 
@@ -448,7 +595,7 @@ Prinsip pembagian:
 | Payroll | **Salary Component** | Ada (`hr-setting/salary-component.vue`) | P1, P3 | + kolom `sequence`, `is_active`, filter aktif [P1]. Editor formula dengan riwayat versi (draft → published, validate) sebagai drawer/tab [P3]. |
 | Payroll | **Salary Structures** | Baru (`hr-setting/salary-structures.vue`) | P1, P2, P3 | Tab **Components** (default amount, locked, sequence), **Branch Overrides**, **Formulas** per komponen structure [P3], **Preview / Simulator** [P2]. Menggantikan mock `payroll/grade-templates.vue`. |
 | Payroll | **Payroll Schedules** | Baru (`hr-setting/payroll-schedules.vue`) | P4 | List schedule (code, pay cycle, default). Detail: **Rules** berversi (period start day, attendance cutoff day, pay day, holiday shift) dan aksi **Generate Periods**. |
-| Payroll | **Tax and BPJS** | Ada (`hr-setting/tax-bpjs.vue`) | P9 | Tetap. Riwayat policy `payroll_config` ditambahkan di sini bila P9 dikerjakan. |
+| Payroll | **Tax and BPJS** | Ada (`hr-setting/tax-bpjs.vue`) | P9, P10, P11 | + tab **PTKP** dan **Tax Parameters** [P10]. Default program BPJS & kelas risiko JKK karyawan baru [P11]. Riwayat policy `payroll_config` ditambahkan di sini bila P9 dikerjakan. |
 | Approval | **Approval Policies** | Baru (engine generik) | P7 | Policy per `document_type` (leave, payroll_run, overtime, …). Payroll hanya menambah `document_type = payroll_run`. |
 
 Formula belum diberi menu sendiri. Menu **Formulas** terpisah baru diperlukan bila satu formula dipakai ulang oleh banyak komponen.
@@ -458,31 +605,49 @@ Formula belum diberi menu sendiri. Menu **Formulas** terpisah baru diperlukan bi
 | Menu | Status | Fase | Isi |
 |---|---|---|---|
 | **Overview** | Mock (`payroll/index.vue`) | opsional | Dashboard ringkas periode aktif. Dipindah ke grup Salary bila dipakai. |
-| **Employee Payrolls** | Ada (`salary/employees.vue`) | P2, P4, P8 | Detail per karyawan + tab **Compensation** (riwayat versi, effective date) [P2], **Payroll Schedule** (assignment) [P4], **Bank Accounts** read-only dari Core HR [P8]. |
-| **Compensations** | Baru (`salary/compensations.vue`) | P2 | Semua versi kompensasi lintas karyawan: bulk assign structure, draft → activate, promosi/kenaikan. |
+| **Compensations** | Baru (`salary/compensations.vue`), **menggantikan Employee Payrolls** (`salary/employees.vue` dihapus) | P2, P4 | Pintu masuk tim payroll untuk data per karyawan. List **berbasis karyawan**: satu baris = satu karyawan + versi kompensasi aktifnya (structure, cabang, BASIC, effective from, schedule). Karyawan **tanpa kompensasi**, **tanpa tax profile**, atau **BPJS belum lengkap** [P11] tetap muncul, dengan filter khusus agar karyawan baru yang belum disetup terlihat sebelum run. Aksi: bulk assign structure, bulk kenaikan/promosi (buat versi draft), activate. Klik baris membuka `PayrollEmployeePanel` (§5.3) sebagai halaman detail, sehingga `payroll_officer` tidak butuh `employees:read`. |
 | **Payroll Periods** | Baru (`salary/periods.vue`) | P4 | Daftar periode per schedule (start/end, cutoff, pay date, status), aksi lock/close. |
 | **Payroll Runs** | Ada (`salary/runs.vue`) | P4–P8 | Form create memilih **period** [P4]. Detail run: tab **Employees** (status ok/error/excluded, exclude/include) [P5], **Inputs** (snapshot absensi/cuti, input manual, refresh) [P5], **Approval** timeline [P7], **Payments** (batch, split, bank file, bukti bayar) [P8]. |
 | **Adjustments** | Baru (`salary/adjustments.vue`) | P6 | Daftar adjustment (pending/applied/cancelled), create & cancel. Menggantikan mock `payroll/adjustments.vue`. |
 | **Payments** | Baru, opsional (`salary/payments.vue`) | P8 | Semua payment batch lintas run untuk tim Finance. Alur utama tetap dari tab Payments di detail run. |
 | **Payslips** | Ada (`salary/payslips.vue`) | P5 | + sumber nilai per line dan versi formula. |
 
-### 5.3 Di luar kedua grup
+### 5.3 Employee Info › tab Payroll
+
+Data payroll yang melekat pada satu karyawan ditampilkan di detail karyawan (`employee/[id].vue`) sebagai **satu tab top-level "Payroll"** dengan sub-tab, mengikuti pola tab Others. Isinya dibuat sebagai komponen bersama (mis. `PayrollEmployeePanel`) yang juga dipakai sebagai halaman detail menu **Compensations** (§5.2), sehingga logikanya tidak dobel.
+
+| Sub-tab | Fase | Isi |
+|---|---|---|
+| **Compensation** | P2, P4 | Riwayat versi kompensasi (structure, cabang, effective from/to, status, reason), aksi buat versi baru & activate. Field **Payroll Schedule** (assignment + effective date) di sini, tidak dibuat tab sendiri [P4]. |
+| **Pay Components** | P2 | Komponen manual / one-time (`employee_components.compensation_id` NULL). Komponen recurring tampil read-only di Compensation. Menggantikan section "Assigned Pay Components" halaman Employee Payrolls. |
+| **Tax & BPJS** | ada, P11 | Tax profile (PTKP, metode PPh 21, perlakuan pajak `subject` / `dtp` / `exempt`), NPWP read-only dari Core HR, dan kepesertaan BPJS per program (ikut, nomor kepesertaan, kelas risiko JKK, dasar upah, berlaku) [P11]. Dipindah dari section "Tax Profile" halaman Employee Payrolls (dihapus) ke komponen bersama. |
+| **Payslips** | P5 | Riwayat slip per periode (read-only, link ke slip). Adjustment karyawan ditampilkan read-only di sini [P6]; pembuatan adjustment tetap dari menu Adjustments. |
+
+Aturan akses:
+
+- Tab tampil hanya bila fitur payroll aktif dan user punya `payroll:read`. Admin HR dengan `employees:read` saja tidak melihat gaji.
+- Data di-load lazy dari endpoint payroll saat tab dibuka, bukan ikut fetch employee.
+- Edit Compensation/Pay Components/BPJS enrollment butuh `payroll:config`; edit tax profile mengikuti izin endpoint tax profile yang berlaku sekarang.
+
+Tidak masuk tab ini karena level tenant atau per periode: Salary Structures, Payroll Schedules, Payroll Periods, Payroll Runs, Payments, Approval Policies, Compensations (bulk).
+
+### 5.4 Di luar kedua grup
 
 | Menu | Keterangan |
 |---|---|
 | **My Approvals** (inbox) | Generik lintas `document_type` (`GET /approval/inbox`), tempat approver memproses payroll run, leave, dan lainnya. Diletakkan di level atas atau ESS, bukan di HR Setting. Detail run tetap bisa approve langsung. |
-| Employees → Employee Info | Rekening bank tetap dikelola di Core HR. Payroll hanya membaca. |
+| Employees → Employee Info | Tab **Payroll** (§5.3). Rekening bank tetap dikelola di Others › Bank Accounts (Core HR); payroll hanya membaca, P8 menambah flag rekening utama di sana. |
 | Loans (`payroll/loans.vue`) | Tetap mock, di luar cakupan rencana ini (lihat §2 #6). |
 
 Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 
-### 5.4 Pertanyaan terbuka menu
+### 5.5 Pertanyaan terbuka menu
 
 | # | Hal | Usulan |
 |---|---|---|
 | 1 | Lokasi **Approval Policies** | Plan approval ([2026-11-05-approval-berjenjang.md](./2026-11-05-approval-berjenjang.md) §7) menaruhnya di `settings/approval-policies.vue` (Company Settings). Rencana ini memakai HR Setting. Salah satu plan perlu diselaraskan. |
 | 2 | **Payroll Periods** di Salary atau tab di Payroll Schedules | Salary, karena lock/close adalah operasi rutin per periode. |
-| 3 | **Compensations** menu sendiri atau cukup tab di Employee Payrolls | Menu sendiri bila promosi/kenaikan massal sering. |
+| 3 | **Compensations** menu sendiri atau cukup sub-tab Payroll › Compensation | **Diputuskan: menu sendiri**, menggantikan Employee Payrolls. Isi Employee Payrolls (payroll profile, tax profile, pay component) sudah terserap ke kompensasi, schedule, dan tab Payroll, dan tim payroll tetap butuh pintu masuk tanpa `employees:read`. |
 | 4 | Nama grup **Salary** diganti **Payroll** | Belum diputuskan. |
 
 ---
@@ -502,7 +667,10 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | `domain/employeecomponent/*` | P2 |
 | `module.go`, `seed_defaults.go`, `contract.go` | semua fase |
 | `infrastructure/corehrgateway`, `internal/modules/core-hr/contract.go` | P8 |
+| `domain/payrollrun/service/pph21_constants.go` (dihapus), `calculator.go`, `domain/taxprofile/*`, `domain/payrollconfig/*`, `seed_defaults.go`, `interfaces/http/payrollconfig/*` | P10 |
+| `domain/bpjsenrollment` (baru), `domain/taxprofile/*`, `calculator.go` (filter program, JKK per risiko, rincian iuran), `calculate_run.go`, `domain/payrollconfig/entity/payroll_config.go`, `core-hr/contract.go` (NPWP) | P11 |
 | Backoffice `app/pages/tenants/payroll/*`, composable `usePayroll`, `types/payroll` | P1, P2, P4–P8 |
+| Backoffice `app/pages/tenants/employee/[id].vue` (tab Payroll), `salary/compensations.vue` (baru, `salary/employees.vue` dihapus), komponen bersama `PayrollEmployeePanel`, `composables/useEmployeeRecordSections.ts` (flag rekening utama) | P2, P4, P5, P8 |
 
 ---
 
@@ -514,6 +682,8 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | [05-api-contract.md](../modules/payroll/05-api-contract.md) | semua fase |
 | [09-grade-templates.md](../modules/payroll/09-grade-templates.md) | P1, P2 |
 | [08-formula-engine.md](../modules/payroll/08-formula-engine.md) | P3 |
+| [03-calculation.md](../modules/payroll/03-calculation.md) §4 (PTKP & biaya jabatan dari master) | P10 |
+| [03-calculation.md](../modules/payroll/03-calculation.md) §3, §4.4; [07-integration.md](../modules/payroll/07-integration.md) (NPWP) | P11 |
 | [04-payroll-run.md](../modules/payroll/04-payroll-run.md) | P4–P8 |
 | [03-calculation.md](../modules/payroll/03-calculation.md) | P2, P5, P6 |
 | [07-integration.md](../modules/payroll/07-integration.md) | P4, P7, P8 |
@@ -531,6 +701,10 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | 5 | Hubungan structure ↔ `job_grade` | 1:1 (doc 09 §6) atau bebas (banyak structure per grade, mis. beda cabang)? Rencana ini memakai `grade_code` nullable dan **tidak** memaksa 1:1. |
 | 6 | Split payment & banyak rekening | Core HR menyimpan banyak rekening; perlu flag rekening utama di Core HR bila belum ada. |
 | 7 | Ketergantungan P7 pada engine approval | Bila engine tertunda, P7 ikut tertunda; maker-checker satu langkah tetap berlaku. |
+| 8 | Career Mutation mengubah cabang/jabatan tanpa versi kompensasi baru | `employee_compensations.branch_id` menentukan override cabang, jadi karyawan yang pindah Bandung → Jakarta tetap memakai BASIC Bandung. Mutasi yang mengubah cabang/jabatan sebaiknya mengingatkan (atau menawarkan) pembuatan versi kompensasi baru. Diputuskan di P2. |
+| 9 | Pajak tanpa NPWP | `HasNPWP` sudah dikirim ke calculator tetapi belum dipakai. Bila tarif lebih tinggi untuk karyawan tanpa NPWP diterapkan, persentasenya menjadi kolom baru di `pph21_tax_parameters`, bukan konstanta. Perlu konfirmasi apakah masih relevan setelah NIK = NPWP. |
+| 10 | `pph21_method` (`nett` / `gross` / `gross_up`) disimpan tetapi belum dipakai | Calculator selalu menghitung `gross`. Karyawan yang di-set `nett`/`gross_up` sekarang mendapat hasil yang tidak sesuai setting tanpa peringatan. Perlu fase sendiri (gross-up = iterasi tunjangan pajak) atau, sementara, UI hanya menawarkan `gross`. |
+| 11 | JKK dengan beberapa kelas risiko sebelum P11 | Bila tenant sudah membuat lebih dari satu baris JKK di `bpjs_config`, calculator sekarang kemungkinan menjumlahkan semuanya. Perlu dicek dengan test sebelum P11 dan, bila benar, diperbaiki lebih dulu sebagai bug. |
 
 ---
 
@@ -543,5 +717,7 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 - Snapshot: perubahan absensi setelah calculate tidak memengaruhi recalculate tanpa `refresh_inputs`.
 - Approval: policy 1 step = perilaku sekarang; pembuat run ditolak sebagai approver.
 - Payment: Σ payment per payslip = net; run otomatis `paid`.
+- PTKP & parameter pajak: test `decemberPPh21` dengan master hasil seed = hasil konstanta lama; versi PTKP baru hanya berlaku mulai 1 Januari tahun berikutnya; grep kode tidak menemukan `54_000_000` / `6_000_000` lagi.
+- BPJS enrollment: program `is_enrolled = false` tidak dihitung; JKK mengikuti kelas risiko karyawan; tidak ada overlap per `(employee_id, program)`; backfill tenant satu kelas risiko menghasilkan angka identik.
 - `go build ./... && go test ./internal/modules/payroll/...`, lalu `graphify update .` di HR-SYSTEM-API.
 - Migrasi & backfill dijalankan user.
