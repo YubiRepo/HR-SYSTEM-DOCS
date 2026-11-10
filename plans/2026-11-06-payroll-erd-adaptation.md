@@ -611,6 +611,14 @@ Constraint: tidak boleh overlap per `(employee_id, program)`.
 
 ### P12 — Penerapan Metode PPh 21 (gross / nett)
 
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Migrasi `20261110000009_pph21_method_and_bpjs_tax_flags` dan backfill `reset_pph21_method_to_gross_for_tenant` (`20261110090004`) ditulis, **belum dijalankan**. Catatan implementasi:
+
+- Flag BPJS untuk baris `bpjs_config` yang sudah ada diisi langsung oleh migrasi (UPDATE per program), bukan oleh backfill.
+- Profil `gross_up` lama yang belum di-backfill dihitung dan dicatat sebagai `gross`.
+- `PPH21_DTP` di-seed sebagai system component (nama bisa diubah HR); assign komponen sistem ke karyawan kini ditolak.
+- `totals` run menambah `pph21_employer_borne` dan `pph21_dtp`; `pph21` tetap = dipotong.
+- Response payslip memakai `pph21_total` (terutang), bukan `pph21_withheld`.
+
 **Tujuan:** `employee_tax_profile.pph21_method` benar-benar dipakai calculator. Saat ini kolom itu disimpan tetapi calculator selalu memotong PPh dari gaji (`gross`), dan default entity justru `nett` — jadi karyawan yang tampil "nett" di UI sebenarnya dipotong.
 
 **Cakupan (diputuskan user 2026-11-10):** hanya `gross` dan `nett`. **Gross-up belum disediakan** — `gross_up` ditolak saat simpan tax profile dan tidak ditawarkan di UI (§8 #10).

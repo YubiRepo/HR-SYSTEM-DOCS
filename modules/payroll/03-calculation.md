@@ -49,6 +49,9 @@ Lima program, tiap program beda tarif & pihak penanggung. Yang **memotong gaji k
 - **Seed per tenant:** lima kelas risiko JKK PP 44/2015 — `very_low` 0,24%, `low` 0,54%, `medium` 0,89%, `high` 1,27%, `very_high` 1,74% — dan `default_jkk_risk_class = very_low`. Tenant lama yang dulu di-seed satu baris `low` 0,24% dinamai ulang menjadi `very_low` (migrasi `20261110000007`) lalu dilengkapi backfill `seed_jkk_risk_classes_for_tenant`; tenant yang punya tarif JKK sendiri dilewati.
 - **Dasar BPJS** = komponen ber-flag `bpjs_base` (umumnya pokok + tunjangan tetap), atau `wage_base_override` kepesertaan bila diisi. Plafon tetap berlaku.
 - Iuran karyawan (JHT+JP) menjadi **pengurang neto** pada rekonsiliasi tahunan PPh 21 (§4.2).
+- **Perlakuan pajak per program = data master** (`bpjs_config`, P12), bukan konstanta:
+  - `employer_contribution_taxable` — iuran **perusahaan** ditambahkan ke bruto PPh 21 (`taxable_gross`), tidak ke `gross`/`net`. Seed: Kesehatan, JKK, JKM.
+  - `employee_contribution_deductible` — iuran **karyawan** mengurangi neto pada rekonsiliasi Desember. Seed: JHT, JP.
 
 **Kepesertaan per karyawan (`employee_bpjs_enrollments`, P11):**
 - Hanya program yang `is_enrolled = true` dan berlaku pada **hari terakhir periode run** yang dihitung — tidak dipotong dari karyawan dan tidak dibebankan ke perusahaan bila tidak ikut.
@@ -103,7 +106,12 @@ Menentukan kategori TER & besaran PTKP. Contoh kode: `TK/0` (tidak kawin, 0 tang
   - `dtp` (ditanggung pemerintah) — PPh 21 **tetap dihitung** dan disimpan di `payslips.pph21_dtp` untuk pelaporan; `pph21` (yang dipotong) = 0, net tidak berkurang. Di rekonsiliasi Desember, PPh Jan–Nov yang sudah "dibayar" = Σ `pph21` + Σ `pph21_dtp`.
   - `exempt` — bukan subjek PPh 21, tidak dihitung.
 - **Snapshot pajak di slip** (P11): `tax_treatment`, `ptkp_status`, `ter_category` & `ter_rate` (Jan–Nov), `has_npwp`, `npwp` disalin ke `payslips` saat calculate, agar slip lama tetap bisa ditelusuri walau tax profile berubah.
-- **Metode**: nett / gross / gross-up (siapa menanggung pajak) — dapat dipilih per tenant/komponen.
+- **Metode PPh 21** (`employee_tax_profile.pph21_method`, P12):
+  - `gross` (default) — dipotong dari gaji (`payslips.pph21`).
+  - `nett` — ditanggung perusahaan (`payslips.pph21_employer_borne`), net tidak berkurang. Dasar pajak sama dengan `gross`.
+  - `nett` + DTP — perusahaan tidak menanggung apa pun; nilai DTP dibayarkan ke karyawan sebagai earning `PPH21_DTP` (tidak kena pajak, bukan dasar BPJS), sehingga net naik sebesar DTP.
+  - `gross_up` **belum didukung**: ditolak saat simpan; profil lama dihitung sebagai `gross`.
+  - PPh 21 terutang = `pph21 + pph21_employer_borne + pph21_dtp`; ketiganya dihitung sebagai "sudah dibayar" Jan–Nov pada rekonsiliasi Desember.
 
 ---
 

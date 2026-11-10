@@ -54,7 +54,7 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `ptkp_status` | enum | `TK/0`, `K/0`, `K/1`, `K/2`, `K/3`, ... |
 | `ter_category` | enum | `A` / `B` / `C` — cache tampilan, diisi dari master `pph21_ptkp_rates` saat simpan. Calculate selalu membaca ulang dari master tahun pajak run |
 | `has_npwp` | boolean | Cache dari NPWP Core HR saat simpan (P11); calculate membaca Core HR langsung |
-| `pph21_method` | enum | `nett` / `gross` / `gross_up` |
+| `pph21_method` | enum | `gross` (default) / `nett`. `gross_up` hanya data lama, ditolak saat simpan (P12) |
 | `tax_treatment` | enum | `subject` / `dtp` / `exempt` (P11), default `subject` |
 | `dtp_eligible` | boolean | **Deprecated** — disinkronkan dengan `tax_treatment = dtp`, tidak dibaca lagi |
 
@@ -101,8 +101,10 @@ Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per
 | `net` | int | |
 | `taxable_gross` / `bpjs_employee_pph21_base` | int | Dasar rekonsiliasi Desember |
 | `pph21_dtp` | int | PPh 21 ditanggung pemerintah — dilaporkan, tidak dipotong (P11) |
+| `pph21_employer_borne` | int | PPh 21 ditanggung perusahaan (`nett`) — P12 |
+| `pph21_method` | string (nullable) | Metode saat calculate (`gross`/`nett`) — P12 |
 | `tax_treatment`, `ptkp_status`, `ter_category`, `ter_rate`, `has_npwp`, `npwp` | snapshot (nullable) | Nilai saat calculate (P11). Null pada slip sebelum P11. `ter_*` null di Desember dan untuk `exempt` |
-| `bpjs_details` | json (nullable) | Per program: `program`, `institution` (`kesehatan`/`ketenagakerjaan`), `membership_number`, `risk_class`, `base`, `employee_rate`, `employer_rate`, `employee_amount`, `employer_amount` (P11) |
+| `bpjs_details` | json (nullable) | Per program: `program`, `institution` (`kesehatan`/`ketenagakerjaan`), `membership_number`, `risk_class`, `base`, `employee_rate`, `employer_rate`, `employee_amount`, `employer_amount` (P11), `employer_taxable` (P12) |
 
 ### 2.6 `payslip_lines`
 Rincian tiap komponen pada slip (untuk transparansi & audit).
@@ -154,6 +156,8 @@ Parameter skalar PPh 21, satu baris per versi (UNIQUE `(tenant_id, effective_fro
 | `wage_cap` | int (nullable) | Plafon upah (null = tanpa plafon) |
 | `risk_class` | string (nullable) | Untuk JKK: satu baris per kelas risiko. Duplikat dicek per (program, risk_class, effective_from) |
 | `effective_from` | date | Versi berlaku — calculate memakai baris terbaru per (program, risk_class) |
+| `employer_contribution_taxable` | boolean | Iuran perusahaan masuk bruto PPh 21 (P12) |
+| `employee_contribution_deductible` | boolean | Iuran karyawan mengurangi neto rekonsiliasi Desember (P12) |
 
 ### 2.9 `employee_loans`
 Hutang karyawan (kasbon/pinjaman/cicilan/denda) — lihat `10-loan-deduction.md`.
