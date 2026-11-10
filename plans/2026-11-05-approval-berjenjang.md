@@ -3,10 +3,10 @@
 
 | | |
 |---|---|
-| **Status** | **Rencana — belum dikerjakan.** |
+| **Status** | **Fase 0 selesai (2026-11-10)** — kode API + Backoffice + docs Core HR; migrasi `20261110000001_job_grades` ditulis, belum dijalankan. Fase 1–3 belum dikerjakan. |
 | **Tanggal** | 2026-11-05 |
 | **Pemicu** | Admin perlu mengatur bahwa sebuah jenis dokumen (mulai dari pengajuan cuti) butuh persetujuan **beberapa orang secara berjenjang**, misalnya atasan langsung → user tertentu dari role HR → direktur. Saat ini approval leave dipaksa satu step, sedangkan dokumen lain hanya punya approve/reject satu langkah yang digate permission. |
-| **Keputusan user** | (1) Engine **generik lintas modul**, leave menjadi consumer pertama. (2) Approver konkret ditentukan **admin di konfigurasi**; sistem me-resolve otomatis saat submit. (3) Record per step menyimpan **`user_id` approver**, bukan role id atau kode entitas. (4) Sumber atasan: **`manager_id`, fallback kepala unit**. (5) **Grade jabatan** dimasukkan ke Fase 0. Lihat §3. |
+| **Keputusan user** | (1) Engine **generik lintas modul**, leave menjadi consumer pertama. (2) Approver konkret ditentukan **admin di konfigurasi**; sistem me-resolve otomatis saat submit. (3) Record per step menyimpan **`user_id` approver**, bukan role id atau kode entitas. (4) Sumber atasan: **`manager_id`, fallback kepala unit**. (5) **Grade jabatan** dimasukkan ke Fase 0. (6) Atasan dihitung dari **subject employee** (pemilik dokumen), bukan dari pengaju. Dokumen internal tanpa subject employee memakai pengaju sebagai titik awal. Lihat §3. |
 | **Modul terdampak** | Core HR (reporting line, position), Leave, Auth/RBAC (permission baru), modul baru `approval`, Backoffice. Fase berikutnya: Attendance (lembur, koreksi), Core HR (mutasi), Payroll |
 | **Repo terkait** | HR-SYSTEM-API, HR-SYSTEM-BACKOFFICE, HR-SYSTEM-DOCS |
 | **Mengubah keputusan** | [modules/leave/04-request-approval.md](../modules/leave/04-request-approval.md) §2–§3 dan [modules/leave/06-data-model.md](../modules/leave/06-data-model.md) §2.4–§2.5 (approval flow milik modul leave dipindah ke modul `approval`) |
@@ -78,15 +78,34 @@ Aturan per level:
 
 ### 2.4 Grade jabatan
 
-- Common code group baru `job_grade` (tenant-defined, mis. Staff → Supervisor → Manager → General Manager → Director). **Urutan elemen = rank.** Seed default via migrasi, mengikuti pola `20261023000003_employee_common_codes`.
-- Kolom `positions.grade_code` (nullable) + validasi code tersedia di create/update position (pola sama dengan validasi `organization_type` di `CreateOrgUnitUseCase`).
+Grade jabatan menjadi **master data Core HR** (entity sendiri, bukan common code), karena punya `rank` yang dipakai untuk logika approval dan ke depan bisa dipakai modul lain (payroll, benefit).
+
+> Catatan sejarah: tabel `job_grades` pernah ada lalu dihapus di `20260903000003_remove_catalog`. Saat itu fungsinya katalog untuk merekonsiliasi org per cabang, dan masalah itu sudah hilang setelah org structure lepas dari cabang. Kali ini fungsinya berbeda: **tingkatan jabatan**.
+
+**Tabel `job_grades`** (modul core-hr, domain `jobgrade`):
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id`, `tenant_id` | UUID | |
+| `code` | string | Unik per tenant, mis. `STAFF`, `SPV`, `MGR`, `GM`, `DIR` |
+| `name` | string | |
+| `rank` | int | Makin besar makin tinggi. **Tidak unik** — rank yang sama diperbolehkan (agar urutan bisa diubah tanpa tabrakan constraint; logika cukup membandingkan ≥) |
+| `is_active` | boolean | |
+| `created_at`, `updated_at` | timestamp | |
+
+- **Position punya grade:** kolom `positions.job_grade_id` (nullable, FK ke `job_grades`). Validasi di create/update position: grade ada, satu tenant, dan aktif.
+- **Karyawan tidak punya grade sendiri.** Grade karyawan = grade jabatan yang sedang dia pegang (via assignment aktif). Tidak ada syarat grade saat assign karyawan ke jabatan.
+- Grade tidak boleh dinonaktifkan/dihapus selama masih dipakai position aktif (`JOB_GRADE_IN_USE`).
+- API CRUD `/api/v1/core-hr/job-grades` dengan permission **`org:read` / `org:write`** (sama dengan positions — grade adalah master struktur organisasi; tidak perlu seeding permission baru).
+- Seed default (Staff → Supervisor → Manager → General Manager → Director) lewat migrasi **untuk tenant yang sudah ada**; tenant baru mulai dari daftar kosong. Tenant boleh mengubah.
 - Belum dipakai engine di Fase 1; disiapkan untuk step `position` / "atasan pertama dengan grade ≥ X" (Fase 3).
 
 ### 2.5 Backoffice
 
 - Munculkan lagi field **Direct Manager** di `pages/tenants/employee/create.vue` dan `pages/tenants/employee/[id].vue` (kode yang di-comment tinggal dipulihkan) + tampilkan error validasi dari API.
 - Profil karyawan: tampilkan **"Effective manager"** hasil resolver beserta sumbernya (manager langsung / kepala unit).
-- Halaman positions: field **Grade** (select dari common code `job_grade`).
+- Halaman baru **Job Grades** (`hr-setting/job-grades.vue`, master Core HR: code, name, rank, active), gate `org:write`.
+- Halaman positions: field **Grade** (select dari `job_grades`, urut `rank`) + kolom Grade di list.
 - Halaman organizations: peringatan bila unit tidak punya kepala.
 - (Opsional) laporan "karyawan tanpa atasan efektif / atasan tanpa akun user" untuk pembersihan data sebelum approval multi-step diaktifkan.
 
@@ -100,7 +119,9 @@ Aturan per level:
 | 2 | Siapa yang menentukan approver konkret | Admin di konfigurasi. Sistem me-resolve otomatis saat submit. |
 | 3 | Apa yang disimpan di record per step | `user_id` approver hasil resolve (snapshot), bukan role id / kode entitas. Role hanya filter di UI saat admin memilih user. |
 | 4 | Sumber atasan | `manager_id`, fallback kepala unit (naik ke unit induk). |
-| 5 | Grade jabatan | Masuk Fase 0, via common code `job_grade`. |
+| 5 | Grade jabatan | Masuk Fase 0 sebagai master data Core HR `job_grades` (code, name, rank). Position punya grade (`positions.job_grade_id`); karyawan mewarisi grade dari jabatannya. |
+| 6 | Atasan dari siapa | Dari **subject employee**, yaitu karyawan pemilik dokumen (untuk leave: `leave_requests.employee_id`). **Bukan** dari user yang menekan submit, karena HR bisa mengajukan atas nama karyawan (`SubmitLeaveRequestUseCase`: `actorUserID` ≠ `req.EmployeeID`). Titik awal diatur per step lewat `manager_of` (§4.2). |
+| 7 | Dokumen internal tanpa subject employee | Didukung. `subject_employee_id` nullable; step `direct_manager` memakai `manager_of = submitter` (atasan si pengaju). Lihat §4.6. |
 
 ---
 
@@ -112,12 +133,12 @@ Aturan per level:
 |---|---|---|
 | `id`, `tenant_id` | UUID | |
 | `document_type` | string | `leave_request` (nanti `overtime_request`, `attendance_correction`, `mutation_request`, …) |
-| `subject_ref` | UUID (nullable) | Mis. `leave_type_id` agar flow bisa beda per jenis cuti. Null = default untuk `document_type` |
+| `subtype_ref` | UUID (nullable) | Mis. `leave_type_id` agar flow bisa beda per jenis cuti. Null = default untuk `document_type`. (Sebelumnya bernama `subject_ref`; diganti agar tidak tertukar dengan *subject employee*.) |
 | `name` | string | |
 | `is_active` | boolean | |
 | `created_at`, `updated_at` | timestamp | |
 
-**Unik:** `(tenant_id, document_type, subject_ref)`. Resolusi saat submit: cari policy spesifik (`subject_ref`), lalu fallback ke default (`subject_ref` null).
+**Unik:** `(tenant_id, document_type, subtype_ref)`. Resolusi saat submit: cari policy spesifik (`subtype_ref`), lalu fallback ke default (`subtype_ref` null).
 
 ### 4.2 `approval_policy_steps` — siapa saja dan urutannya
 
@@ -127,6 +148,7 @@ Aturan per level:
 | `step_order` | int | 1..N tanpa celah/duplikat |
 | `approver_type` | enum | `direct_manager` / `user` |
 | `manager_level` | int (nullable) | Untuk `direct_manager`: 1 = atasan langsung, 2 = atasan dari atasan (via `ResolveManagerChain`) |
+| `manager_of` | enum (nullable) | Untuk `direct_manager`: titik awal rantai atasan. `subject` = atasan pemilik dokumen (default); `submitter` = atasan user yang menekan submit (wajib untuk dokumen tanpa subject employee, §4.6) |
 | `approver_user_id` | UUID (nullable) | Untuk `user`: user yang dipilih admin |
 | `role_id_hint` | UUID (nullable) | **Hanya untuk UI** (filter "pilih user dengan role X" + label). Tidak dipakai untuk otorisasi |
 | `on_unresolved` | enum | `skip` / `fallback_user` — bila atasan tidak ditemukan atau tidak punya akun |
@@ -139,7 +161,9 @@ Aturan per level:
 | `id`, `tenant_id` | UUID | |
 | `document_type`, `document_id` | string, UUID | Referensi polimorfik, tanpa FK (konvensi lintas modul) |
 | `policy_id` | UUID | Policy yang dipakai saat submit |
-| `requester_user_id`, `requester_employee_id` | UUID | |
+| `subject_employee_id` | UUID (nullable) | Karyawan pemilik dokumen (untuk leave: `leave_requests.employee_id`). Null untuk dokumen internal (§4.6) |
+| `submitted_by_user_id` | UUID | User yang menekan submit (karyawan sendiri atau HR atas nama karyawan) |
+| `submitted_by_employee_id` | UUID (nullable) | Employee milik `submitted_by_user_id`, di-resolve via `FindEmployeeByUserID`. Null bila user tidak terhubung ke karyawan (mis. admin murni) |
 | `status` | enum | `pending` / `approved` / `rejected` / `cancelled` |
 | `current_step` | int | |
 | `submitted_at`, `completed_at` | timestamp | |
@@ -153,7 +177,7 @@ Aturan per level:
 | `id`, `approval_request_id` | UUID | |
 | `step_order` | int | |
 | `approver_user_id` | UUID | **User konkret hasil resolve saat submit** |
-| `source` | string | `direct_manager:L1`, `user`, `fallback` — penjelasan di UI |
+| `source` | string | `direct_manager:subject:L1`, `direct_manager:submitter:L1`, `user`, `fallback` — penjelasan di UI |
 | `status` | enum | `waiting` (belum giliran) / `pending` (giliran) / `approved` / `rejected` / `skipped` |
 | `decided_at` | timestamp (nullable) | |
 | `note` | string | |
@@ -173,20 +197,48 @@ Satu baris per step, karena tipe `direct_manager` dan `user` selalu menghasilkan
 
 **Indeks:** `approval_request_steps (approver_user_id, status)` untuk inbox.
 
+### 4.6 Dokumen internal tanpa subject employee
+
+Contoh: memo/dokumen HR, permintaan pembelian, atau pengajuan anggaran yang tidak menyangkut satu karyawan tertentu dan ditujukan ke atasan si pengaju atau ke jabatan tertentu.
+
+| Kebutuhan | Cara di engine |
+|---|---|
+| Tidak ada pemilik dokumen | Modul pemilik mengirim `SubjectEmployeeID = nil`. |
+| Ke atasan si pengaju | Step `direct_manager` dengan `manager_of = submitter`; rantai dimulai dari `submitted_by_employee_id`. |
+| Ke user tertentu | Step `user` (sudah ada di Fase 1). |
+| Ke jabatan tertentu (mis. "HR Manager", "Direktur") | Step `position` (Fase 3, §9). Di-resolve saat submit ke karyawan aktif yang assignment-nya memegang `position_id` tersebut, lalu disimpan sebagai `approver_user_id`. Karena `positions.headcount` bisa > 1: bila pemegang jabatan lebih dari satu → pakai `on_unresolved` (atau `role_pool` any/all di Fase 3); bila kosong atau tanpa akun → `on_unresolved`. |
+
+Validasi:
+
+- **Simpan policy:** bila `document_type` didaftarkan sebagai "tanpa subject" (registry `document_type` di modul approval), step `direct_manager` dengan `manager_of = subject` ditolak (`INVALID_POLICY`).
+- **Submit:** step `manager_of = subject` dengan `SubjectEmployeeID` nil, atau `manager_of = submitter` dengan `submitted_by_employee_id` nil (admin tanpa data karyawan), dianggap *unresolved* → ikuti `on_unresolved`.
+
+**Contoh 1 — Dokumen HR internal:** (1) `direct_manager`, `manager_of = submitter`, L1 → (2) `position` = HR Manager → (3) `user` = Direktur.
+
+**Contoh 2 — Payroll run** (`document_type = payroll_run`):
+
+- Tidak ada subject employee (`SubjectEmployeeID = nil`); pengaju = staf payroll.
+- Policy: (1) `direct_manager`, `manager_of = submitter`, L1 (atasan staf payroll) → (2) `position` = Finance Manager → (3) `user` = Direktur.
+- `subtype_ref` opsional: payroll group / cabang bila flow perlu dibedakan; null = default.
+- Modul payroll tetap memegang status run. Ajukan approval → `Engine.Submit`; approve/reject → `Engine.Decide`. `FinalApproved` → run di-approve/dikunci (efek tombol approve yang sekarang, `payroll:approve`). `Rejected` → run kembali ke draft untuk dihitung ulang.
+- **Pengajuan ulang:** setelah ditolak dan dihitung ulang, run diajukan lagi sebagai **instance baru** untuk `document_id` yang sama (unik di §4.3 hanya untuk instance aktif). Riwayat penolakan sebelumnya tetap tersimpan dan tampil di timeline.
+- **Syarat data:** akun staf payroll harus terhubung ke karyawan (`employees.user_id`). Bila tidak, step atasan menjadi *unresolved* → `on_unresolved` (sebaiknya `fallback_user`).
+
 ---
 
 ## 5. Aturan Runtime
 
 | Aksi | Aturan |
 |---|---|
-| **Submit** | Resolve policy → resolve `user_id` tiap step → insert request + steps (step pertama `pending`, sisanya `waiting`) → action `submit`. Satu transaksi dengan pembuatan dokumen. |
+| **Submit** | Resolve policy → resolve `user_id` tiap step (titik awal `direct_manager` sesuai `manager_of`: `subject_employee_id` atau `submitted_by_employee_id`) → insert request + steps (step pertama `pending`, sisanya `waiting`) → action `submit`. Satu transaksi dengan pembuatan dokumen. |
 | Resolve gagal | Ikuti `on_unresolved` (`skip` / `fallback_user`). |
-| Approver = pemohon | Step di-`skip`. |
+| Approver = user milik subject employee | Step di-`skip` (tidak boleh meng-approve dokumen milik sendiri). |
+| Approver = `submitted_by_user_id` | Step di-`skip` (HR yang menginput atas nama karyawan tidak meng-approve inputannya sendiri). |
 | User sama di step berurutan | Step kedua di-`skip` (mempertahankan aturan "satu user tak boleh approve dua step"). |
 | Tidak ada policy aktif | Dokumen auto-approved (action `skip`). |
 | **Approve** | Hanya `approver_user_id` step `pending` (plus permission modul, mis. `leave:approve`). Row request di-lock (`FOR UPDATE`). Step → `approved`, step berikutnya → `pending`; bila step terakhir, request → `approved` dan outcome `FinalApproved`. |
 | **Reject** | Step dan request → `rejected`, outcome `Rejected`. |
-| **Cancel** | Oleh pemohon selama `pending`: request → `cancelled`. |
+| **Cancel** | Oleh subject employee atau `submitted_by_user_id` selama `pending`: request → `cancelled`. |
 | Approver salah | `NOT_CURRENT_APPROVER`. |
 | Dua approve bersamaan di step sama | Yang kedua mendapat `INVALID_STATE` (sama seperti leave sekarang). |
 
@@ -200,7 +252,8 @@ Modul baru `internal/modules/approval/` mengikuti pola DDD yang ada (`domain/`, 
 
 ```go
 type Engine interface {
-    Submit(ctx, tx, SubmitInput{DocumentType, DocumentID, SubjectRef, RequesterUserID, RequesterEmployeeID}) (*Request, error)
+    Submit(ctx, tx, SubmitInput{DocumentType, DocumentID, SubtypeRef, SubjectEmployeeID /* nullable */, SubmittedByUserID}) (*Request, error)
+    // SubmittedByEmployeeID di-resolve engine via FindEmployeeByUserID.
     Decide(ctx, tx, DecideInput{DocumentType, DocumentID, ActorUserID, Decision, Note}) (Outcome, error) // Advanced | FinalApproved | Rejected
     Cancel(ctx, tx, CancelInput{...}) error
     GetByDocument(ctx, docType, docID string) (*RequestView, error) // timeline
@@ -220,7 +273,7 @@ type Engine interface {
 
 ### 6.1 Integrasi Leave (consumer pertama)
 
-- Submit leave → `Engine.Submit` dalam transaksi yang sama, `SubjectRef = leave_type_id`.
+- Submit leave → `Engine.Submit` dalam transaksi yang sama, `SubtypeRef = leave_type_id`, `SubjectEmployeeID = req.EmployeeID`, `SubmittedByUserID = actorUserID`. Step leave memakai `manager_of = subject`.
 - `review_leave_request.go` → logika `GuardStep` + `approvalflow/service/authorize.go` diganti `Engine.Decide`. `FinalApproved` → konsumsi saldo + ledger (logika lama). `Rejected` → lepas reservasi (logika lama).
 - Cancel → `Engine.Cancel`.
 - `leave_requests.current_step` dipertahankan sementara (diisi dari engine) agar list lama tidak rusak. Endpoint `/leave/approval-flows` ditandai deprecated.
@@ -232,14 +285,14 @@ type Engine interface {
 3. Seed permission `approval:config` + tambahkan ke role template admin.
 4. Tabel leave lama (`approval_flows`, `approval_steps`, `leave_request_approvals`) **tidak dihapus** di fase ini.
 
-Fase 0: migrasi `positions.grade_code` + seed common code `job_grade`.
+Fase 0: migrasi `20261110000001_job_grades` (tabel + `positions.job_grade_id` FK) + seed grade default untuk tenant yang sudah ada.
 
 ---
 
 ## 7. Backoffice
 
 - Halaman baru `pages/tenants/settings/approval-policies.vue` (pola `AppListPage` + `AppFormSlideover`, contoh `hr-setting/overtime-rules.vue`):
-  - editor step yang bisa diurutkan: **Direct manager** (+ level) atau **Specific user** (pilih role sebagai filter → pilih user);
+  - editor step yang bisa diurutkan: **Direct manager** (+ level, + "of document owner" / "of submitter") atau **Specific user** (pilih role sebagai filter → pilih user); pilihan "of document owner" disembunyikan untuk document type tanpa subject;
   - fallback bila atasan tidak ditemukan;
   - untuk leave: berlaku untuk semua jenis cuti atau jenis cuti tertentu;
   - gate `approval:config`.
@@ -254,7 +307,7 @@ Fase 0: migrasi `positions.grade_code` + seed common code `job_grade`.
 
 - Folder baru `modules/approval/`: `01-overview.md`, `02-data-model.md`, `03-runtime-rules.md`, `04-api-contract.md`.
 - Update `modules/leave/04-request-approval.md` & `06-data-model.md` → rujuk ke modul approval.
-- Update `modules/core-hr/02-org-structure.md` §3–§4 (grade, resolver, validasi) & `05-data-model.md`.
+- Update `modules/core-hr/02-org-structure.md` §3–§4 (job grades, position ↔ grade, resolver, validasi) & `05-data-model.md` (tabel `job_grades`, `positions.job_grade_id`).
 
 ---
 
@@ -262,15 +315,33 @@ Fase 0: migrasi `positions.grade_code` + seed common code `job_grade`.
 
 | Fase | Isi |
 |---|---|
-| **0** | Validasi `manager_id`, reporting line resolver, grade jabatan, UI Direct Manager & Effective manager, docs Core HR. Bisa di-merge sendiri. |
+| **0** ✅ | Validasi `manager_id`, reporting line resolver, master `job_grades` + grade di position (API & UI), UI Direct Manager & Effective manager, docs Core HR. Bisa di-merge sendiri. |
 | **1** | Modul approval (schema, domain, engine, policy CRUD API) + integrasi leave + UI policy + timeline leave + docs. |
 | **2** | Inbox lintas dokumen; migrasi overtime request & attendance correction ke engine. |
-| **3** | Mutation request, payroll run (opsional); tipe step tambahan (`position`/grade, `role_pool` any/all), delegasi, notifikasi via outbox messaging. |
+| **3** | Mutation request, payroll run (opsional); tipe step tambahan (`position` → pemegang jabatan, grade, `role_pool` any/all) untuk dokumen internal (§4.6), delegasi, notifikasi via outbox messaging. |
 
 ---
 
 ## 10. Verifikasi
 
-- **Fase 0:** unit test `AssignManager` (self, siklus A→B→C→A, lintas tenant, nonaktif) dan resolver (manager_id ada; kosong → kepala unit; karyawan = kepala unit → kepala unit induk; level 2; atasan tanpa akun → `UserID` nil). Manual: set Direct Manager di form, coba buat siklus (harus ditolak), cek "Effective manager" di profil.
-- **Engine:** unit test resolve (L1/L2, kosong → skip/fallback, approver = pemohon → skip, duplikat berurutan → skip), transisi status, `NOT_CURRENT_APPROVER`, `INVALID_STATE`. Integration test repository.
+- **Fase 0:** unit test `AssignManager` (self, siklus A→B→C→A, lintas tenant, nonaktif) dan resolver (manager_id ada; kosong → kepala unit; karyawan = kepala unit → kepala unit induk; level 2; atasan tanpa akun → `UserID` nil). Unit test `job_grades` (code/rank unik per tenant, grade nonaktif tidak bisa dipasang ke position, `JOB_GRADE_IN_USE`). Manual: set Direct Manager di form, coba buat siklus (harus ditolak), cek "Effective manager" di profil, buat grade lalu pasang ke position.
+- **Engine:** unit test resolve (L1/L2, kosong → skip/fallback, `manager_of` subject vs submitter, HR submit atas nama karyawan → atasan karyawan yang dipakai, subject nil + `manager_of = subject` → unresolved, approver = subject/submitter → skip, duplikat berurutan → skip), transisi status, `NOT_CURRENT_APPROVER`, `INVALID_STATE`. Integration test repository.
 - **End-to-end** (setelah migrasi dijalankan): buat policy leave 3 step (atasan → user HR → direktur) → ajukan cuti → login tiap approver berurutan, pastikan hanya approver aktif yang melihat tombol → saldo terpotong hanya di step terakhir → reject di step 2 melepas reservasi saldo.
+
+---
+
+## 11. Catatan Implementasi Fase 0 (2026-11-10)
+
+Yang dikerjakan:
+
+- **API (core-hr):**
+  - `application/reportingline`: `ValidateManager` (`MANAGER_INVALID` / `MANAGER_SELF` / `MANAGER_CYCLE`) dipanggil di create/update (bulk import ikut lewat create); `Resolver.ResolveChain` (manager_id → kepala unit → kepala unit induk). `Employee.AssignManager` di domain.
+  - Contract Core HR: `ResolveManagerChain` + DTO `ReportingManager`. Endpoint `GET /employees/{id}/reporting-line?levels=N`.
+  - Org unit: validasi `head_employee_id` (`INVALID_ORG_UNIT_HEAD`); `""` menghapus kepala unit.
+  - Job grades: domain/aplikasi/persistence/HTTP `/job-grades`; `positions.job_grade_id` + validasi + `job_grade` di response position.
+  - Migrasi `20261110000001_job_grades` (ditulis, **belum dijalankan**).
+  - Test: `reportingline` (self, siklus, lintas tenant, nonaktif, fallback kepala unit, kepala = diri sendiri → unit induk, L2, atasan tanpa akun, data lama melingkar), job grade commands, update employee (self/siklus/tidak dikenal).
+- **Backoffice:** field Direct Manager dipulihkan di create & detail karyawan (pencarian server-side); baris "Manager" di profil menampilkan atasan efektif + sumbernya; halaman Job Grades + menu; kolom/filter/field Grade di Positions; badge, filter, dan stat "No head" di Organizations.
+- **Docs:** `core-hr/02-org-structure.md` §3.1 & §4, `04-api-contract.md`, `05-data-model.md`.
+
+Penyimpangan dari rencana awal: permission `org:read`/`org:write` (bukan `job_grade:*`), `rank` tidak unik, seed hanya untuk tenant yang sudah ada.

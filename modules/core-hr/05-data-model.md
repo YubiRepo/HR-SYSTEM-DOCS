@@ -102,8 +102,22 @@ Selain field standar, **tiap tenant dapat mendefinisikan field sendiri** untuk k
 | `tenant_id` | string (FK) | |
 | `title` | string | Nama jabatan |
 | `org_unit_id` | string (FK, nullable) | Unit terkait |
-| `headcount` | int | Kapasitas posisi ini (tenant-wide) |
+| `headcount` | int | Kapasitas posisi ini (tenant-wide), ≥ 1 (`chk_positions_headcount_min`). Ditegakkan saat penempatan — lihat `02-org-structure.md` §3.0 |
+| `job_grade_id` | string (FK, nullable) | Grade jabatan → `job_grades`. Karyawan mewarisi grade dari posisinya |
 | `is_active` | boolean | |
+
+### 2.3a `job_grades` (milik tenant)
+Tingkatan jabatan, lihat `02-org-structure.md` §3.1.
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `tenant_id` | string (FK) | |
+| `code` | string | Unik per tenant (`uq_job_grades_tenant_code`), huruf besar |
+| `name` | string | |
+| `rank` | int | ≥ 0; makin besar makin senior |
+| `is_active` | boolean | Tidak bisa `false` selama dipakai position aktif |
+| `created_at`, `updated_at` | timestamp | |
 
 ### 2.5 `assignments`
 Penempatan karyawan pada unit + posisi (aktif & historis).
@@ -228,6 +242,8 @@ Response tiap region node: `{code, parent_code, level, name}` — kode memakai f
 | `employees` | `(tenant_id, status)` | Filter daftar karyawan |
 | `employees` | `manager_id` | Query bawahan |
 | `org_units` | `parent_id` | Traversal pohon |
+| `job_grades` | `(tenant_id, rank)` | Daftar grade terurut |
+| `positions` | `job_grade_id` | Cek grade dipakai |
 | `assignments` | `(employee_id, end_date)` | Cari assignment aktif |
 | `status_history` | `employee_id` | Riwayat status |
 | `employment_history` | `employee_id` | Riwayat peristiwa kepegawaian |
@@ -243,6 +259,6 @@ Response tiap region node: `{code, parent_code, level, name}` — kode memakai f
 ## 4. Catatan Desain
 
 - **Denormalisasi terkontrol:** `current_org_unit_id` & `current_position_id` disimpan di `employees` untuk query cepat, tetapi kebenaran historis ada di `assignments`.
-- **Self-reference:** `manager_id` & `org_units.parent_id` membentuk hierarki — hati-hati cegah siklus.
+- **Self-reference:** `manager_id` & `org_units.parent_id` membentuk hierarki — siklus dicegah di aplikasi (`MANAGER_CYCLE`, cek reparent org unit). Lihat `02-org-structure.md` §4.
 - **Tenancy 2 level:** `tenant_id` adalah batas isolasi utama; `branch_id` sub-pembeda cabang (sesuai [Tenancy Model](../../architecture/HRMS_Tenancy_Model.md) — final: A2 + B1 shared DB). `employees` membawa `branch_id` (penempatan operasional). Org unit & posisi **tidak** membawa `branch_id` — keduanya milik tenant secara langsung, satu struktur organisasi untuk seluruh tenant (lihat `02-org-structure.md` §0).
 - **Kepatuhan:** `national_id` & data pribadi adalah data sensitif (UU PDP) — pertimbangkan enkripsi at-rest.

@@ -20,6 +20,7 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | POST | `/employees/{id}/offboarding` | Mulai proses keluar | `employees:write` |
 | GET | `/employees/{id}/history` | Riwayat kepegawaian | `employees:read` |
 | GET | `/employees/{id}/subordinates` | Daftar bawahan langsung | `employees:read` |
+| GET | `/employees/{id}/reporting-line` | Atasan efektif (manager_id → fallback kepala unit) | `employees:read` |
 | GET | `/employees/{id}/documents` | Daftar dokumen | `employees:read` |
 | POST | `/employees/{id}/documents/presign` | Minta presigned upload URL (MinIO) | `employees:write` |
 | POST | `/employees/{id}/documents` | Konfirmasi dokumen ter-upload | `employees:write` |
@@ -73,6 +74,15 @@ Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lew
 | GET | `/positions/{id}` | Detail posisi | `org:read` |
 | PATCH | `/positions/{id}` | Ubah posisi | `org:write` |
 | DELETE | `/positions/{id}` | Hapus/nonaktifkan posisi | `org:write` |
+
+### Job Grades
+| Method | Path | Deskripsi | Permission |
+|---|---|---|---|
+| GET | `/job-grades` | Daftar grade (urut `rank`); `?filter[is_active]=true\|false`, `?search=` | `org:read` |
+| POST | `/job-grades` | Buat grade | `org:write` |
+| GET | `/job-grades/{id}` | Detail grade | `org:read` |
+| PATCH | `/job-grades/{id}` | Ubah code/name/rank/is_active | `org:write` |
+| DELETE | `/job-grades/{id}` | Nonaktifkan grade | `org:write` |
 
 > **Konteks cabang:** `/org-units*`, `/positions*`, dan `/org-chart` semuanya tenant-wide — org structure milik tenant secara langsung, tidak ada `?branch_id=` untuk endpoint-endpoint ini (lihat `02-org-structure.md` §0). Hanya endpoint **karyawan** yang discope ke cabang aktif dari konteks aktor: branch admin (cakupan `branch`) hanya melihat/mengubah karyawan cabangnya; tenant admin (cakupan `tenant`) dapat memilih cabang via `?branch_id=` atau melihat semua.
 
@@ -186,6 +196,8 @@ Respons memakai envelope koleksi + `pagination`.
 { "email": "budi.s@example.com", "manager_id": "emp_09H8..." }
 ```
 **Response `200 OK`** — data terbaru. Perubahan pada field ber-riwayat (unit/posisi) dilakukan lewat `/assignments`, bukan di sini.
+
+`manager_id` divalidasi (`MANAGER_INVALID`, `MANAGER_SELF`, `MANAGER_CYCLE` — lihat `02-org-structure.md` §4.1); `""` menghapus atasan.
 
 ---
 
@@ -342,6 +354,23 @@ Daftar bawahan langsung (berdasarkan `manager_id`). Tambahkan `?recursive=true` 
 
 ---
 
+## 9a. GET /employees/{id}/reporting-line
+
+Atasan **efektif** karyawan — sama dengan yang dipakai routing approval (`02-org-structure.md` §4.2). `?levels=N` (default 1, maks 10). List kosong = tidak ada atasan yang bisa di-resolve.
+
+**Response `200 OK`**
+```json
+{
+  "success": true,
+  "data": [
+    { "level": 1, "employee_id": "emp_09H8...", "full_name": "Sari", "user_id": "usr_...", "has_account": true, "source": "manager_id" },
+    { "level": 2, "employee_id": "emp_01H8...", "full_name": "Budi", "has_account": false, "source": "org_unit_head" }
+  ]
+}
+```
+
+---
+
 ## 10. Dokumen Karyawan
 
 File tersimpan di MinIO (bucket privat) — alur upload dua langkah: minta presigned URL, upload langsung ke storage dari klien, lalu konfirmasi ke backend.
@@ -402,7 +431,7 @@ Klien lalu `PUT` file langsung ke `presign_url`.
 }
 ```
 
-**Ubah — `PATCH /org-units/{id}`** → ubah nama/parent/head.
+**Ubah — `PATCH /org-units/{id}`** → ubah nama/parent/head. `head_employee_id` harus karyawan aktif satu tenant (`422 INVALID_ORG_UNIT_HEAD`); `""` menghapus kepala unit.
 **Hapus — `DELETE /org-units/{id}`** → `204`; **Error:** `409 ORG_UNIT_NOT_EMPTY` bila masih ada anak/karyawan.
 
 **Karyawan di unit — `GET /org-units/{id}/employees`** → daftar (mendukung `?recursive=true`).
@@ -439,9 +468,21 @@ Parameter opsional: `?root=org_01H8...` (subtree), `?depth=2` (batasi kedalaman)
 
 **Buat — `POST /positions`**
 ```json
-{ "title": "Manager Akuntansi", "level": "manager", "org_unit_id": "org_01H8..." }
+{ "title": "Manager Akuntansi", "headcount": 1, "org_unit_id": "org_01H8...", "job_grade_id": "jg_..." }
 ```
-**Ubah — `PATCH /positions/{id}`**, **Hapus — `DELETE /positions/{id}`** (`204`; `409 POSITION_IN_USE` bila masih dipakai assignment aktif).
+`headcount` ≥ 1 (tidak diisi = 1; `422 INVALID_HEADCOUNT`). `job_grade_id` opsional; harus grade aktif milik tenant (`422 INVALID_JOB_GRADE`). Response memuat `job_grade_id` dan `job_grade` (`{ id, code, name, rank }`).
+
+**Ubah — `PATCH /positions/{id}`** (`headcount` tidak boleh < 1 atau < jumlah pemegang saat ini → `422 INVALID_HEADCOUNT`; `job_grade_id: ""` = hapus grade; grade hanya divalidasi bila berubah), **Hapus — `DELETE /positions/{id}`** (`204`; `409 POSITION_IN_USE` bila masih dipakai assignment aktif).
+
+## 13a. Job Grades
+
+**Buat — `POST /job-grades`**
+```json
+{ "code": "MGR", "name": "Manager", "rank": 30 }
+```
+`code` disimpan huruf besar dan unik per tenant (`409 JOB_GRADE_CODE_TAKEN`). `rank` ≥ 0.
+
+**Ubah — `PATCH /job-grades/{id}`** → `code`/`name`/`rank`/`is_active`. **Hapus — `DELETE /job-grades/{id}`** → nonaktifkan (`204`). Menonaktifkan grade yang masih dipakai position aktif ditolak `409 JOB_GRADE_IN_USE`.
 
 ---
 
@@ -561,6 +602,16 @@ Baris yang sukses **di-commit**; yang gagal dikumpulkan di `error_report_url` un
 | `INVALID_ORG_UNIT` | 422 | Unit tidak valid/aktif |
 | `ORG_UNIT_NOT_EMPTY` | 409 | Unit masih punya anak/karyawan |
 | `POSITION_IN_USE` | 409 | Posisi masih dipakai assignment aktif |
+| `POSITION_FULL` | 409 | Position sudah penuh (terisi ≥ headcount) — create karyawan, bulk import, assignment, mutasi |
+| `INVALID_HEADCOUNT` | 422 | Headcount < 1 atau di bawah jumlah pemegang saat ini |
+| `JOB_GRADE_IN_USE` | 409 | Grade masih dipakai position aktif |
+| `JOB_GRADE_CODE_TAKEN` | 409 | Code grade sudah dipakai di tenant |
+| `INVALID_JOB_GRADE` | 422 | `job_grade_id` bukan grade aktif milik tenant |
+| `INVALID_JOB_GRADE_ARGUMENT` | 422 | Code/name kosong atau rank negatif |
+| `MANAGER_INVALID` | 422 | Atasan tidak ada / beda tenant / tidak aktif |
+| `MANAGER_SELF` | 422 | Karyawan dijadikan atasan dirinya sendiri |
+| `MANAGER_CYCLE` | 422 | Perubahan atasan membentuk siklus |
+| `INVALID_ORG_UNIT_HEAD` | 422 | Kepala unit bukan karyawan aktif satu tenant |
 | `MUTATION_REQUEST_NOT_PENDING` | 422 | Approve/reject pada pengajuan yang sudah direview |
 | `CONTRACT_NOT_ACTIVE` | 422 | Terminate/supersede/expire pada kontrak yang sudah tidak aktif |
 | `INVALID_CONTRACT_TYPE` | 422 | Tipe kontrak bukan pkwt/pkwtt/permanent/contract/intern/outsource |

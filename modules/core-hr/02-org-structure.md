@@ -58,8 +58,27 @@ Divisi Keuangan
 
 - Position adalah *slot* jabatan, terpisah dari orangnya.
 - Contoh: "Manager Akuntansi", "Staff Pajak".
-- Satu position dapat memiliki atribut: level/grade, unit terkait, status aktif.
+- Satu position dapat memiliki atribut: grade (job grade), unit terkait, status aktif.
 - Position memudahkan pelaporan headcount & perencanaan (posisi kosong vs terisi).
+
+### 3.0 Kapasitas (Headcount) — Ditegakkan
+
+- `headcount` = jumlah karyawan maksimal yang boleh memegang position, **minimal 1** (`POST` tanpa headcount = 1).
+- **Terisi (filled)** = karyawan dengan `current_position_id` = position tsb. dan status **bukan** `offboarded`/`terminated` (karyawan `resigned` masih dihitung sampai offboarding).
+- Menempatkan karyawan **baru masuk** ke position yang sudah penuh (filled ≥ headcount) ditolak `409 POSITION_FULL`. Berlaku di semua jalur: create karyawan, bulk import (per baris), assignment, mutation request (approve maupun apply terjadwal — request ditandai `failed` dengan alasannya).
+- Karyawan yang tetap di position yang sama (mis. hanya ganti cabang/status) tidak dicek. Perubahan yang berakhir di status `terminated`/`offboarded` membebaskan kursi, tidak memakai.
+- Headcount tidak bisa diturunkan di bawah jumlah pemegang saat ini (`422 INVALID_HEADCOUNT`).
+- Pengecekan dilakukan dengan row lock pada position (`SELECT … FOR UPDATE`) di dalam transaksi assignment, sehingga dua penempatan bersamaan tidak bisa sama-sama mengambil kursi terakhir.
+- Position yang sudah kelebihan isi sebelum aturan ini berlaku tidak diubah: pemegangnya tetap, hanya penempatan baru yang ditolak sampai headcount dinaikkan.
+
+### 3.1 Job Grade (Tingkatan Jabatan)
+
+- **Master data Core HR** per tenant (`job_grades`): `code` (unik per tenant, disimpan huruf besar), `name`, `rank`, `is_active`.
+- **`rank` mengurutkan grade** — makin besar makin senior (mis. Staff 10 → Supervisor 20 → Manager 30 → General Manager 40 → Director 50). Rank boleh sama; logika membandingkan rank (mis. step approval "atasan pertama dengan grade ≥ X"), bukan code/nama.
+- **Position punya grade** (`positions.job_grade_id`, opsional). Hanya grade aktif yang bisa dipasang ke position; position yang grade-nya kemudian dinonaktifkan tetap menyimpan grade tersebut.
+- **Karyawan tidak punya grade sendiri** — grade karyawan = grade jabatan yang sedang dia pegang. Tidak ada syarat grade saat menempatkan karyawan ke jabatan.
+- Grade tidak bisa dinonaktifkan selama masih dipakai position aktif (`409 JOB_GRADE_IN_USE`).
+- Tenant yang sudah ada saat migrasi `20261110000001_job_grades` mendapat 5 grade default; tenant baru mulai dari daftar kosong.
 
 ---
 
@@ -69,10 +88,37 @@ Hubungan atasan–bawahan bisa ditentukan dengan dua pendekatan (bisa dikombinas
 
 | Pendekatan | Cara | Catatan |
 |---|---|---|
-| **Berbasis unit** | Atasan = pimpinan unit induk | Otomatis mengikuti struktur |
-| **Eksplisit** | Field `manager_id` pada karyawan | Fleksibel (mis. lapor ke lintas unit) |
+| **Eksplisit** (utama) | Field `manager_id` pada karyawan | Fleksibel (mis. lapor ke lintas unit) |
+| **Berbasis unit** (fallback) | Atasan = kepala unit (`org_units.head_employee_id`) | Otomatis mengikuti struktur |
 
-Reporting line dipakai modul lain — mis. Attendance (approval cuti) & Performance (review oleh atasan).
+Reporting line dipakai modul lain — mis. approval cuti/lembur/dokumen & Performance (review oleh atasan).
+
+### 4.1 Validasi `manager_id`
+
+Berlaku di create, update, dan bulk import karyawan:
+
+| Aturan | Error |
+|---|---|
+| Atasan harus karyawan **satu tenant**, belum diarsip, dan masih bekerja (`probation`/`active`/`on_leave`) | `422 MANAGER_INVALID` |
+| Tidak boleh dirinya sendiri | `422 MANAGER_SELF` |
+| Tidak boleh membentuk siklus (A → B → C → A) — dicek dengan menaiki rantai atasan dari calon atasan | `422 MANAGER_CYCLE` |
+
+- `manager_id: ""` pada `PATCH` = hapus atasan.
+- Bulk import: atasan harus sudah ada sebelum baris yang merujuknya diproses.
+- Saat atasan diterminasi/nonaktif, bawahannya **tidak** di-clear otomatis; resolver di §4.2 akan melewati atasan yang tidak aktif.
+- Kepala unit (`head_employee_id`) juga harus karyawan aktif satu tenant (`422 INVALID_ORG_UNIT_HEAD`).
+
+### 4.2 Effective Manager (Resolver)
+
+Atasan efektif di-resolve per level (`ResolveManagerChain` di contract Core HR, `GET /employees/{id}/reporting-line`):
+
+1. `manager_id` bila terisi dan atasannya aktif.
+2. Bila kosong/tidak aktif → **kepala unit** dari unit karyawan saat ini. Bila kepala unit adalah orang itu sendiri (atau kosong/tidak aktif) → naik ke kepala **unit induk**, terus sampai ketemu atau habis.
+3. Level berikutnya diulang dari atasan yang ditemukan.
+
+- Rantai berhenti lebih awal bila satu level tidak bisa di-resolve.
+- Atasan tanpa akun login tetap dikembalikan (`has_account: false`); modul pemakai (mis. engine approval) yang memutuskan tindakannya.
+- Ada batas iterasi dan pengecekan orang yang sudah muncul, sebagai pengaman terhadap data lama yang mungkin melingkar.
 
 ---
 
