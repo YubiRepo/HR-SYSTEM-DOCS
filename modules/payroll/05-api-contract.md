@@ -84,6 +84,21 @@ Semua tabel konfigurasi pajak/BPJS **append-only**: perubahan = baris baru denga
 
 Payslip (`GET /payroll/payslips/{id}`, `/runs/{id}/payslips`) menambah snapshot P11: `taxable_gross`, `pph21_dtp`, `tax_treatment`, `ptkp_status`, `ter_category`, `ter_rate`, `has_npwp`, `npwp`, `bpjs_details[]`; dan P12: `pph21_method`, `pph21_employer_borne`, `pph21_total` (terutang). `totals` run menambah `pph21_employer_borne` dan `pph21_dtp`. Komponen sistem `PPH21_DTP` (earning nett + DTP) tidak bisa di-assign ke karyawan.
 
+### Schedule & Periode Payroll (P4)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/payroll/schedules` | Daftar schedule + aturan yang berlaku hari ini | `payroll:read` |
+| POST | `/payroll/schedules` | `{ code, name, pay_cycle, is_default, rule }` — schedule pertama tenant otomatis default | `payroll:config` |
+| GET | `/payroll/schedules/{id}` | Detail + semua versi aturan | `payroll:read` |
+| PATCH | `/payroll/schedules/{id}` | `{ code, name, is_default, is_active }` (pay cycle tetap; default tidak bisa dinonaktifkan) | `payroll:config` |
+| PUT | `/payroll/schedules/{id}/rules` | Tambah/ganti satu versi aturan (per `effective_from`) | `payroll:config` |
+| POST | `/payroll/schedules/{id}/periods/generate` | `{ year }` → `{ created, updated, kept }`. Idempoten: periode baru dibuat; periode `open` tanpa run mengikuti aturan terbaru; lainnya dibiarkan | `payroll:config` |
+| GET | `/payroll/periods` | Filter `schedule_id`, `year` (prefix kode), `status`; respons menambah `tax_period` | `payroll:read` |
+| GET | `/payroll/periods/{id}` | Detail periode | `payroll:read` |
+| POST | `/payroll/periods/{id}/lock` · `/reopen` · `/close` | `open`→`locked`, `locked`→`open`, `open/locked`→`closed` | `payroll:run` |
+
+Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bulk`) menerima `schedule_id` (null = default); respons versi & daftar menambah `schedule_id` / `schedule_name`. Error: `INVALID_PAYROLL_SCHEDULE_ARGUMENT` (422), `INVALID_PAYROLL_PERIOD_STATE` (409).
+
 ### Payroll Run
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
@@ -116,6 +131,7 @@ Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `f
 ---
 
 ## 1. POST /payroll/runs
+Run regular (P4): `{ "period_id": "...", "type": "regular" }` — `period` diturunkan dari bulan `pay_date` periode dan `pay_date` default ke tanggal bayar periode. Tanpa `period_id` hanya untuk off-cycle (THR/bonus/final) dengan `period` + `pay_date`. Periode `closed` → `409 INVALID_PAYROLL_PERIOD_STATE`. Respons run menambah `period_id`, `period_code`, `schedule_name`.
 ```json
 {
   "period": "2026-01",

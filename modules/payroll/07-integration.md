@@ -59,8 +59,9 @@ Tanpa data attendance, angka-angka ini tak bisa dihitung. Payroll menarik rekap 
 ### 1.2 Periode & Rentang Tanggal
 
 - Attendance dan Leave **hanya mengenal rentang tanggal** (`date_from`..`date_to`). Konsep periode milik Payroll.
-- Periode run = **bulan kalender**: periode `2026-11` → `2026-11-01 .. 2026-11-30`. (Cutoff periode, mis. 21–20, belum didukung; karena kontrak Attendance/Leave sudah berbasis rentang, cutoff nanti cukup mengubah penerjemahan periode → rentang di Payroll.)
-- Kunci periode (`IsPeriodLocked`) memakai bulan dari tanggal (`YYYY-MM`).
+- Rentang absensi run = **jendela cutoff periode payroll** (P4: `cutoff_from`..`cutoff_to`, mis. 26 Okt – 25 Nov, atau Senin–Minggu untuk schedule mingguan). Run tanpa periode (off-cycle) memakai bulan kalender `period`.
+- Kunci periode (`IsPeriodLocked`): tanggal terkunci bila berada dalam jendela cutoff periode `locked`/`closed` schedule mana pun (P4), atau bila ada run `closed` untuk bulan tanggal itu (perilaku lama).
+- Payroll membaca libur nasional tenant dari Attendance (`ObservedHolidayDates`: `is_observed`, tanpa cabang) untuk menggeser tanggal bayar.
 - Lembur dihitung berdasarkan `effective_date` OT transaction: tanggal kerja untuk transaksi biasa; tanggal booking untuk adjustment/transaksi yang dibukukan ke periode terbuka karena periode asalnya sudah terkunci.
 
 ### 1.3 Syarat Sebelum Calculate Run (bila Attendance aktif)

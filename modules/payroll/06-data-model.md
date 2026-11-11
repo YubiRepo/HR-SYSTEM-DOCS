@@ -83,7 +83,8 @@ Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per
 | `tenant_id` | string (FK) | |
 | `branch_id` | string (FK, nullable) | null = seluruh tenant |
 | `target_filter` | json (nullable) | Filter peserta: branch/salary_type/employment_type/employee_ids (P15: `pay_cycle` tidak lagi difilter, diganti schedule P4) |
-| `period` | string | `YYYY-MM` |
+| `period_id` | uuid (FK, nullable) | Periode payroll (P4) yang dibayar run; null = run off-cycle / sebelum P4 |
+| `period` | string | `YYYY-MM` — **masa pajak** (bulan `pay_date` periode bila ada `period_id`) |
 | `type` | enum | `regular`, `thr`, `bonus`, `final` |
 | `status` | enum | `draft`, `calculated`, `in_review`, `approved`, `paid`, `closed` |
 | `pay_date` | date | |
@@ -223,12 +224,30 @@ Jejak potong pinjaman per periode.
 | `id` / `tenant_id` / `employee_id` | uuid | |
 | `branch_id` | uuid | Cabang yang override-nya dipakai |
 | `structure_id` | uuid (FK) | `salary_structures` |
+| `schedule_id` | uuid (FK, nullable) | `payroll_schedules` (P4); null = schedule default tenant. Ganti schedule = versi baru |
 | `effective_from` / `effective_to` | date | `effective_to` diisi saat versi berikutnya diaktifkan |
 | `status` | enum | `draft` / `active` / `superseded` |
 | `reason` | enum | `hire` / `promotion` / `adjustment` / `transfer` / `legacy` / `other` |
 | `notes`, `created_by`, `activated_at` | | |
 
 `employee_components` + `compensation_id` (nullable, FK, `ON DELETE CASCADE` — baris draft ikut terhapus) dan `source` (`structure` / `override` / `manual`). `compensation_id` NULL = komponen manual / one-time.
+
+### 2.13a `payroll_schedules` / `payroll_schedule_rules` / `payroll_periods` (P4)
+**`payroll_schedules`**: `code` (unik per tenant), `name`, `pay_cycle` (`monthly` / `weekly` / `biweekly` / `custom`), `is_default` (tepat satu per tenant), `is_active`.
+
+**`payroll_schedule_rules`** (berversi `effective_from`, unik per schedule):
+
+| Bentuk | Field | Keterangan |
+|---|---|---|
+| Bulanan | `period_start_day` | 1 = bulan kalender; 26 = tgl 26 bulan lalu s.d. 25 |
+| | `attendance_cutoff_day` | null = sama dengan periode; mis. 25 = absensi 26 bulan lalu s.d. 25 |
+| | `pay_day` | Tanggal bayar dalam bulan periode (dipotong ke akhir bulan) |
+| Berbasis hari | `period_anchor_date`, `period_length_days` | Periode = anchor + k × panjang (7 / 14 / N) |
+| | `cutoff_offset_days` | Geser jendela absensi terhadap periode |
+| | `pay_offset_days` | Hari setelah periode berakhir |
+| Keduanya | `pay_day_holiday_shift` | `before` / `after` / `none` — geser dari Sabtu/Minggu & libur nasional tenant (Attendance, `is_observed`, tanpa cabang) |
+
+**`payroll_periods`**: `schedule_id`, `code` (`2026-11`, `2026-W45`, `2026-B22`, `2026-P007`), `start_date`, `end_date`, `cutoff_from`, `cutoff_to`, `pay_date`, `status` (`open` → `locked` → `closed`); UNIQUE `(schedule_id, code)`. Masa pajak = bulan `pay_date`.
 
 ### 2.14 `payroll_formulas` / `payroll_formula_versions` / `payroll_formula_variables` (P3)
 | Tabel | Field utama |

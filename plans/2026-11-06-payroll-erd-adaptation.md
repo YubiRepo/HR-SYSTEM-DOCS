@@ -395,6 +395,17 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 
 ### P4 — Schedule & Period
 
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Migrasi `20261111000006_create_payroll_schedules_and_periods` dan backfill `seed_payroll_schedule_for_tenant` (`20261111090002`) ditulis, **belum dijalankan**. Catatan implementasi:
+- Schedule, aturan dan periode satu subdomain `domain/schedule` (bukan `domain/schedule` + `domain/period` terpisah). Pay cycle: `monthly`, `weekly` (7 hari), `biweekly` (14), `custom` (N hari); tidak bisa diubah setelah dibuat.
+- Aturan bulanan: tanggal bayar adalah tanggal di bulan periode (belum bisa "tgl 1 bulan berikutnya"). Aturan yang dipakai = versi yang berlaku tgl 1 bulan kode periode (bulanan) / tanggal mulai periode (berbasis hari).
+- Geser tanggal bayar: Sabtu/Minggu + libur `is_observed` tanpa cabang dari Attendance (contract baru `ObservedHolidayDates`).
+- Generate idempoten: periode baru dibuat; `open` tanpa run diperbarui mengikuti aturan terbaru; `locked`/`closed`/terpakai run dibiarkan.
+- Status periode `open` → `locked` (bisa `reopen`) → `closed`. `locked`: absensi dalam jendela cutoff dibekukan (`IsPeriodLocked`), run tetap bisa dihitung. `closed`: run baru ditolak dan run draft di periode itu tidak bisa dihitung. Belum ada tipe run `adjustment` (P6), jadi pengecualian "selain adjustment" belum berlaku.
+- `IsPeriodLocked` belum tahu schedule karyawan (signature hanya cabang): periode locked/closed schedule **mana pun** membekukan tanggal di cutoff-nya.
+- Run regular wajib `period_id` (off-cycle boleh tanpa). Komponen recurring dinilai terhadap `start_date..end_date` periode; komponen one-time `single_period` masih dicocokkan dengan masa pajak (`YYYY-MM`), sehingga untuk schedule mingguan ikut di setiap run masa itu — diselesaikan di P6.
+- **Plafon BPJS bulanan dikerjakan** (usulan di atas): `wage_cap` dikurangi dasar BPJS karyawan di run lain (status non-draft) pada masa pajak yang sama, berlaku untuk semua tipe run.
+- Seed tenant: schedule `MONTHLY` default (bulan kalender, cutoff = akhir periode, bayar hari kerja terakhir bulan) + periode tahun berjalan.
+
 **Tujuan:** periode gajian sebagai entitas nyata dengan cutoff absensi dan tanggal bayar, mendukung siklus selain bulanan.
 
 **Migrasi**

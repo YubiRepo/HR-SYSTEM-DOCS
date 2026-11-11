@@ -81,6 +81,10 @@ Run "Bulanan Staff" → filter: salary_type=monthly, employment_type=permanent
 ```
 Filter bisa dikombinasi. Ini memungkinkan satu tenant menjalankan beberapa run berbeda untuk kelompok karyawan berbeda. Siklus bayar (mingguan / dua mingguan) mengikuti schedule payroll (P4), bukan filter.
 
+**Schedule & periode (P4):** run regular wajib memilih **periode payroll** (`period_id`). Peserta = karyawan yang versi kompensasinya (berlaku di `end_date` periode) memakai schedule periode itu (tanpa `schedule_id` = schedule default). Absensi/cuti dibaca pada jendela cutoff periode, komponen dinilai terhadap `start_date`..`end_date`, dan `period` run = masa pajak (bulan `pay_date`), sehingga satu masa bisa berisi beberapa run mingguan. Plafon upah BPJS berlaku **per bulan**: run kedua dst. di masa yang sama hanya memakai sisa plafon setelah dasar BPJS run lain (non-draft) di masa itu. Run off-cycle (THR/bonus/final) boleh tanpa periode.
+
+Status periode: `open` → `locked` (absensi dalam jendela cutoff dibekukan — koreksi ditolak — run tetap bisa dihitung; bisa `reopen`) → `closed` (final; tidak bisa membuat atau menghitung run baru).
+
 **Implementasi peserta run (P15):** karyawan ikut run bila punya versi kompensasi (bukan draft) yang berlaku pada **hari terakhir periode** run. Karyawan tanpa kompensasi tidak ikut. Sumber tiap filter: `branch_id` (dan cabang run) = cabang versi kompensasi; `salary_type` = structure versi tersebut; `employment_type` = jenis kontrak aktif di Core HR. `employee_ids` (off-cycle) mengabaikan filter lain, tetapi setiap karyawan yang disebut wajib punya kompensasi berlaku — bila tidak, run gagal (`BUSINESS_RULE_VIOLATED`), tidak dilewati diam-diam. `department_id` / `grade_id` belum diimplementasikan.
 
 ---
