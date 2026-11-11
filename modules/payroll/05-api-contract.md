@@ -43,6 +43,21 @@ Validasi gagal → `422 INVALID_SALARY_STRUCTURE_ARGUMENT`. Assign komponen tida
 
 Error: `422 INVALID_COMPENSATION_ARGUMENT`, `409 INVALID_COMPENSATION_STATE` (mis. aktivasi bukan draft). Revoke komponen yang berasal dari kompensasi ditolak (`422 INVALID_EMPLOYEE_COMPONENT_ARGUMENT`).
 
+### Formula Berversi (P3)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/payroll/formulas` | Daftar formula + `current` (berlaku hari ini), `latest`, `has_draft`, `used_by` | `payroll:read` |
+| POST | `/payroll/formulas` | `{ code, name, description?, expression, effective_from? (default 2000-01-01), publish? (default true) }`. Code dobel → `409 CONFLICT` | `payroll:config` |
+| GET | `/payroll/formulas/{id}` | Detail + semua versi + variabel | `payroll:read` |
+| PATCH | `/payroll/formulas/{id}` | `name`, `description`, `is_active` (code tetap) | `payroll:config` |
+| POST | `/payroll/formulas/{id}/versions` | `{ expression, effective_from, notes?, publish }` — wajib setelah versi published terakhir; satu draft | `payroll:config` |
+| POST | `/payroll/formulas/{id}/versions/{vid}/publish` | Draft → published (validasi + cek siklus) | `payroll:config` |
+| DELETE | `/payroll/formulas/{id}/versions/{vid}` | Hapus draft | `payroll:config` |
+| POST | `/payroll/formulas/validate` | `{ expression, formula_id?, component_code? }` → `{ valid, error, variables[] }` (tidak pernah error HTTP untuk ekspresi salah) | `payroll:read` |
+| POST | `/payroll/formulas/evaluate` | `{ expression, variables: {nama: nilai} }` → `{ result, rounded }` | `payroll:read` |
+
+`PATCH /payroll/components/{id}` menerima `formula_effective_from`: teks formula yang berubah menjadi versi baru mulai tanggal itu. `PUT /payroll/structures/{id}/components` menerima `formula_id` per komponen formula. Error: `422 INVALID_FORMULA_ARGUMENT`, `409 INVALID_FORMULA_STATE`, `422 CIRCULAR_REFERENCE_DETECTED`.
+
 ### Konfigurasi Pajak & BPJS
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|

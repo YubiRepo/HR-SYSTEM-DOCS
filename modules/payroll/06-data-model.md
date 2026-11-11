@@ -229,6 +229,15 @@ Jejak potong pinjaman per periode.
 
 `employee_components` + `compensation_id` (nullable, FK, `ON DELETE CASCADE` — baris draft ikut terhapus) dan `source` (`structure` / `override` / `manual`). `compensation_id` NULL = komponen manual / one-time.
 
+### 2.14 `payroll_formulas` / `payroll_formula_versions` / `payroll_formula_variables` (P3)
+| Tabel | Field utama |
+|---|---|
+| `payroll_formulas` | `code` (unik per tenant, A-Z0-9_), `name`, `description`, `is_active` |
+| `payroll_formula_versions` | `formula_id`, `version_no` (unik per formula), `expression`, `effective_from` (unik per formula untuk yang published), `status` `draft` / `published`, `notes`, `created_by`, `published_by`, `published_at` |
+| `payroll_formula_variables` | `version_id`, `variable_name`, `source` — dicatat saat publish |
+
+Kolom baru: `pay_components.formula_id`, `salary_structure_components.formula_id` (override formula di structure), `payslip_lines.formula_version_id`.
+
 ## 3. Indeks
 
 | Tabel | Indeks | Alasan |

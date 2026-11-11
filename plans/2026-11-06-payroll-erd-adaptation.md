@@ -287,6 +287,16 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 ### P3 — Formula Versioning
 
+**Status:** selesai dikerjakan 2026-11-11 (dikerjakan sebelum P4 atas keputusan user), menunggu review. Migrasi `20261111000004_create_payroll_formulas` dan backfill `backfill_formulas_for_tenant` (`20261111090001`) ditulis, **belum dijalankan**. Catatan implementasi:
+
+- `salary_structure_component_formulas` **tidak** dibuat: override formula per structure cukup `salary_structure_components.formula_id`, karena waktu berlakunya sudah diatur oleh versi formula.
+- Status `retired` tidak dipakai: draft bisa dihapus, published tidak bisa diubah/dihapus, timeline published hanya maju (versi baru wajib mulai setelah versi published terakhir).
+- `payslip_lines.formula_version_id` (rencana P5) sudah ditambahkan sekarang.
+- Edit formula lewat komponen = versi baru mulai `formula_effective_from` (default hari ini); komponen formula baru otomatis punya formula sendiri (v1 dari 2000-01-01).
+- Validasi publish & editor: kompilasi + cek siklus di katalog **dan** di setiap structure yang punya override.
+- Tidak ada menu Formulas terpisah: editor ada di Salary Component (validasi live, sisip variabel/operator/fungsi, "Try it", riwayat versi) dan override + buat formula baru di tab Components salary structure. Mock `FormulaStudio.vue` dihapus.
+- Backfill: formula lama yang sekarang tidak lolos validasi tetap dimigrasi apa adanya dan dicatat di log.
+
 **Tujuan:** perubahan formula tidak mengubah hasil periode yang sudah lewat; formula bisa berbeda per structure.
 
 **Migrasi**

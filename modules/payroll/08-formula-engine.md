@@ -129,6 +129,19 @@ Formula yang gagal validasi ditolak dengan pesan spesifik — mencegah error saa
 
 ---
 
+## 7a. Versioning Formula (P3)
+
+Formula adalah entitas sendiri (`payroll_formulas`) dengan versi (`payroll_formula_versions`):
+
+- **Versi published tidak bisa diubah.** Mengubah formula = membuat versi baru dengan `effective_from`. Versi berlaku untuk periode run yang **berakhir pada/sesudah** tanggal itu; yang dipakai adalah versi terbaru yang sudah mulai. Akibatnya menghitung ulang periode lama tetap memakai versi lama.
+- **Timeline hanya maju:** versi baru wajib mulai setelah versi published terakhir; hanya satu draft per formula; draft bisa dihapus, published tidak.
+- **Validasi saat publish** (dan live di editor, `POST /payroll/formulas/validate`): kompilasi dengan nama yang ada (kode komponen, konstanta sistem, variabel absensi/cuti termasuk per kode), fungsi whitelist, hasil numerik, ukuran dibatasi; **cek siklus** di katalog (tiap komponen formula dengan versi terbarunya) **dan** di setiap salary structure yang mengganti formula komponennya.
+- Nama yang dirujuk dicatat di `payroll_formula_variables` (source `component` / `attendance` / `leave` / `system`).
+- Komponen formula menunjuk formulanya lewat `pay_components.formula_id`; kolom `formula` hanya cermin versi terbaru. Mengubah teks formula lewat edit komponen otomatis membuat versi baru mulai `formula_effective_from` (default hari ini). Komponen formula baru otomatis mendapat formula dengan kode sama, versi 1 berlaku dari awal (2000-01-01).
+- **Override per structure:** `salary_structure_components.formula_id` mengganti formula komponen di dalam structure itu; versinya tetap mengikuti periode.
+- **Saat calculate:** formula = override structure kompensasi karyawan (bila ada) → formula komponen → versi yang berlaku pada hari terakhir periode → (fallback) teks `pay_components.formula`. `payslip_lines.formula_version_id` mencatat versi yang dipakai.
+- **Coba hitung:** `POST /payroll/formulas/evaluate` menjalankan ekspresi dengan nilai contoh (nama yang tidak diisi = 0).
+
 ## 8. Keamanan Evaluasi
 
 > **Catatan:** detail keamanan akan diperdalam terpisah. Prinsip dasar yang dipegang:
