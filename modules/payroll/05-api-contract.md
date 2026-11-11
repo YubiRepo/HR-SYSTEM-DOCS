@@ -32,11 +32,11 @@ Validasi gagal → `422 INVALID_SALARY_STRUCTURE_ARGUMENT`. Assign komponen tida
 ### Kompensasi Karyawan (P2)
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| GET | `/payroll/compensations` | Semua karyawan aktif (nama/nomor/cabang dari Core HR) + versi yang berlaku hari ini + `has_draft`, `has_payroll_profile`, `has_tax_profile`, `bpjs_incomplete`. Filter `search`, `branch_id`, `structure_id`, `missing=compensation\|payroll_profile\|tax_profile\|bpjs` | `payroll:read` |
+| GET | `/payroll/compensations` | Semua karyawan aktif (nama/nomor/cabang dari Core HR) + versi yang berlaku hari ini + `has_draft`, `has_tax_profile`, `bpjs_incomplete`, `employment_type` (kontrak aktif Core HR, P15). Filter `search`, `branch_id`, `structure_id`, `missing=compensation\|tax_profile\|bpjs` | `payroll:read` |
 | POST | `/payroll/compensations/bulk` | `{ employee_ids, structure_id, effective_from, reason, activate }` — satu versi per karyawan; hasil per karyawan (`compensation_id` / `error`) | `payroll:config` |
 | GET | `/payroll/employees/{id}/compensations` | Semua versi (terbaru dulu) dengan nilai komponennya | `payroll:read` |
 | POST | `/payroll/employees/{id}/compensations` | `{ structure_id, branch_id?, effective_from, reason, notes?, overrides: [{ component_id, amount }], activate }`. Komponen terkunci tidak bisa di-override; satu draft per karyawan; harus mulai setelah versi aktif | `payroll:config` |
-| POST | `/payroll/employees/{id}/compensations/{compId}/activate` | Draft → active; versi aktif sebelumnya `superseded`. Butuh payroll profile | `payroll:config` |
+| POST | `/payroll/employees/{id}/compensations/{compId}/activate` | Draft → active; versi aktif sebelumnya `superseded` | `payroll:config` |
 | DELETE | `/payroll/employees/{id}/compensations/{compId}` | Hapus draft | `payroll:config` |
 | GET | `/payroll/employees/{id}/payslips` | Semua slip karyawan (semua status run) dengan periode & status run | `payroll:read` |
 | POST | `/payroll/bpjs-enrollments/bulk` | `{ employee_ids, program, effective_from, is_enrolled?, risk_class? }` — baris program yang berlaku dipotong sehari sebelumnya, baris baru mulai `effective_from` (nomor kepesertaan ikut); hasil per karyawan | `payroll:config` |
@@ -70,10 +70,10 @@ Error: `422 INVALID_COMPENSATION_ARGUMENT`, `409 INVALID_COMPENSATION_STATE` (mi
 
 Semua tabel konfigurasi pajak/BPJS **append-only**: perubahan = baris baru dengan `effective_from` baru, tidak ada edit/hapus, sehingga run lama tetap bisa direproduksi.
 
-`PUT /payroll/employees/{id}/tax-profile`: `ptkp_status` divalidasi terhadap master PTKP yang berlaku hari ini dan `ter_category` diisi dari master. Status tidak ada di master → `INVALID_TAX_PROFILE_ARGUMENT`; tenant belum punya master → `CONFIG_NOT_FOUND`.
-- `tax_treatment`: `subject` (default) / `dtp` / `exempt` (P11). `dtp_eligible: true` masih diterima bila `tax_treatment` kosong (→ `dtp`); response tetap mengirim `dtp_eligible` turunan.
+`PUT /payroll/employees/{id}/tax-profile`: `ptkp_status` divalidasi terhadap master PTKP yang berlaku hari ini. `ter_category` (dari master hari ini) dan `has_npwp` (dari Core HR) di response dihitung saat dibaca, tidak disimpan (P15). Status tidak ada di master → `INVALID_TAX_PROFILE_ARGUMENT`; tenant belum punya master → `CONFIG_NOT_FOUND`.
+- `tax_treatment`: `subject` (default) / `dtp` / `exempt` (P11). `dtp_eligible` sudah dihapus dari request & response (P15).
 - `pph21_method`: `gross` (default) / `nett` (P12). `gross_up` → `422 INVALID_TAX_PROFILE_ARGUMENT` (belum didukung).
-- `has_npwp` di request diabaikan: nilainya diturunkan dari NPWP karyawan di Core HR. Response menambah `npwp` (read-only).
+- `has_npwp` bukan input: diturunkan dari NPWP karyawan di Core HR. Response menambah `npwp` (read-only).
 - Simpan pertama membuat kepesertaan BPJS awal dari default tenant bila karyawan belum punya.
 
 ### Kepesertaan BPJS (P11)
@@ -127,12 +127,11 @@ Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `f
     "grade_id": null,
     "salary_type": "monthly",
     "employment_type": null,
-    "pay_cycle": "monthly",
     "employee_ids": []
   }
 }
 ```
-`type`: `regular` | `thr` | `bonus` | `final`. `target` = filter peserta fleksibel (semua opsional; kosong = semua karyawan aktif dalam scope). Kombinasi filter menentukan siapa yang masuk run.
+`type`: `regular` | `thr` | `bonus` | `final`. `target` = filter peserta fleksibel (semua opsional; kosong = semua karyawan dengan kompensasi berlaku di akhir periode, P15). `pay_cycle` masih diterima tetapi tidak difilter (diganti schedule P4). Kombinasi filter menentukan siapa yang masuk run.
 **Response `201 Created`** → run status `draft`.
 
 ---

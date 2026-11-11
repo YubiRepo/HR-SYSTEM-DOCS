@@ -92,7 +92,7 @@ approval_requests (document_type = payroll_run) ──< approval_request_steps �
 | Structure Formula Assignment | `salary_structure_component_formulas` | Baru | `salary_structure_component_formulas` |
 | Payroll Schedule | `payroll_schedules` | Baru | `payroll_schedules` |
 | Schedule Rules | `payroll_schedule_rules` | Baru | `payroll_schedule_rules` |
-| Employee Schedule Assignment | `employee_payroll_assignments` | Baru | `employee_payroll_assignments` (menggantikan `payroll_employee_profiles.pay_cycle`) |
+| Employee Schedule Assignment | `employee_payroll_assignments` | Adaptasi | `employee_compensations.schedule_id` (P15/P4): schedule ikut versi kompensasi |
 | Payroll Period | `payroll_periods` | Baru | `payroll_periods` |
 | Payroll Run | `payroll_runs` | Sudah ada | `payroll_runs` (+`period_id`, `parent_run_id`, type `adjustment`) |
 | Payroll Run Employee | `payroll_run_employees` | Adaptasi | `payslips` (+`status`, `error_message`, snapshot id) |
@@ -148,10 +148,10 @@ Engine approval (plan 2026-11-05 Fase 1) ──> P7 Approval Berjenjang
 P9 Policy Versioning (opsional, lepas)
 P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesertaan BPJS & Perlakuan Pajak ──> P12 Metode PPh 21 ──> P13 Laporan Setoran BPJS & PPh 21
                                                                     (P4, P6 memperbaiki pengelompokan periode P13)
-P4 Schedule & Period ──> P14 PPh 21 Pegawai Tidak Tetap & Rekonsiliasi Desember Selektif
+P2 Employee Compensation ──> P15 Konsolidasi Data Payroll Karyawan ──> P4 Schedule & Period ──> P14 PPh 21 Pegawai Tidak Tetap & Rekonsiliasi Desember Selektif
 ```
 
-Urutan disarankan: **P10 → P11 → P12 → P13 → P1 → P2 → P4 → P14 → P5 → P3 → P8 → P6 → P7**. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4. P10 kecil dan berdiri sendiri, jadi dikerjakan lebih dulu agar rekonsiliasi Desember 2026 sudah memakai master. P11 menyusul karena menyentuh tax profile yang sama, P12 menyusul karena menyentuh perhitungan PPh dan kolom payslip yang sama, lalu P13 agar laporan setoran sudah tersedia sebelum masa Desember 2026. Jalur P1–P2 dan P4–P5 bisa dikerjakan paralel oleh orang berbeda.
+Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P14 → P5 → P8 → P6 → P7**. P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4.
 
 ---
 
@@ -329,6 +329,70 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 ---
 
+### P15 — Konsolidasi Data Payroll Karyawan
+
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Migrasi `20261111000005_drop_payroll_employee_profiles` ditulis, **belum dijalankan**. Tidak ada backfill (data di-fresh). Catatan implementasi:
+- Core HR: contract baru `GetActiveContractTypes`; sinkronisasi cabang ke payroll saat mutasi (`PayrollBranchSyncer` / `SyncEmployeeBranch`) dihapus — cabang payroll kini hanya dari versi kompensasi.
+- Backfill `backfill_bpjs_enrollments_for_tenant` (`20261110090002`) dan `backfill_legacy_compensations_for_tenant` (`20261111090000`) dihapus dari kode & registry. Bila sudah tercatat di tabel backfill DB, catatannya tidak berpengaruh.
+- Peserta run: versi kompensasi non-draft yang berlaku di hari terakhir periode; `employee_ids` yang tidak punya kompensasi membuat run gagal (`BUSINESS_RULE_VIOLATED`). `pay_cycle` di `target_filter` masih diterima API tetapi diabaikan (dipakai ulang / diganti schedule di P4); form run Backoffice tidak lagi mengirimnya.
+- Akses payslip scope cabang & nama cabang di PDF slip memakai cabang karyawan **saat ini** di Core HR.
+- Daftar Compensations menambah kolom `employment_type` (kode kontrak aktif Core HR).
+- `SalaryType*` konstanta pindah ke `domain/salarystructure/constant`.
+
+Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas dengan data lama (tanpa backfill).
+
+**Masalah:** informasi payroll yang melekat pada karyawan tersebar dan sebagian dobel:
+
+| Data | Tempat sekarang |
+|---|---|
+| Cabang | Core HR, `payroll_employee_profiles.branch_id`, `employee_compensations.branch_id` |
+| Salary type | `payroll_employee_profiles.salary_type`, `salary_structures.salary_type` |
+| Pay cycle | `payroll_employee_profiles.pay_cycle`, (rencana P4) schedule |
+| Employment type | `payroll_employee_profiles.employment_type` (input ulang), Core HR kontrak |
+| Base rate | `payroll_employee_profiles.base_rate` (tidak dipakai calculator) |
+| Ikut payroll | ada/tidaknya `payroll_employee_profiles` |
+| TER category, has NPWP | cache di `employee_tax_profiles` (sumber: master PTKP, Core HR) |
+
+**Prinsip:** fakta kepegawaian milik **Core HR** dan tidak disalin; fakta gaji milik **payroll**; yang berubah dari waktu ke waktu disimpan **berversi di satu tempat**.
+
+**Model akhir — data payroll karyawan = 3 hal** (+ komponen manual / one-time di luar structure, seperti sekarang):
+
+| # | Data | Isi | Versi |
+|---|---|---|---|
+| 1 | **Kompensasi** (`employee_compensations`) | structure, cabang (pemilih override tarif; default cabang Core HR), **schedule** (P4), nilai komponen | Ya — promosi, mutasi, ganti siklus bayar = versi baru |
+| 2 | **Pajak** (`employee_tax_profiles`) | PTKP, metode PPh 21, perlakuan pajak, (P14) status pegawai tetap/tidak tetap | Tidak — riwayat ada di snapshot payslip (P11) |
+| 3 | **BPJS** (`employee_bpjs_enrollments`) | kepesertaan per program | Ya, per program |
+
+**Yang dihapus**
+
+- Tabel **`payroll_employee_profiles`** beserta subdomain `payrollprofile` (domain, application, HTTP `GET/PUT /payroll/employees/:id/profile`, composable & form Backoffice).
+  - Cabang → kompensasi. Salary type → structure. Pay cycle → schedule (P4). Base rate → komponen `rate` (P1).
+  - Employment type → **kontrak aktif di Core HR** (jenis kontrak, common code `contract_type`); butuh method contract Core HR baru, mis. `GetActiveContractTypes(ctx, tenantID, employeeIDs) map[employeeID]contractType`.
+  - "Ikut payroll" → punya versi kompensasi yang berlaku.
+- `employee_tax_profiles`: kolom `ter_category` (selalu dari master PTKP), `has_npwp` (selalu dari Core HR) dan `dtp_eligible` dihapus.
+- Rencana P4 **`employee_payroll_assignments` tidak dibuat**: schedule menjadi kolom `employee_compensations.schedule_id` (diisi di P4).
+
+**API**
+
+- **Peserta run** (`resolveTargetEmployees`) ditulis ulang: karyawan yang punya versi kompensasi (bukan draft) berlaku pada hari terakhir periode run; filter `target_filter` tetap jalan dengan sumber baru — `branch_id` dari kompensasi, `salary_type` dari structure, `employment_type` dari kontrak Core HR, `pay_cycle` dihapus dari filter (diganti schedule di P4). Karyawan tanpa kompensasi **tidak ikut** run (jalur pra-P2 dihapus).
+- **Calculator**: jalur "karyawan tanpa kompensasi = semua komponen manual" dihapus; komponen manual tetap dihitung bersama versi kompensasi.
+- **Aktivasi kompensasi** tidak lagi butuh / menyalin payroll profile.
+- Pengguna lain `payroll_employee_profiles` disesuaikan: daftar Compensations (`has_payroll_profile` dihapus), backfill/ensure BPJS (kandidat = karyawan dengan kompensasi), backfill LEGACY P2 (dihapus — data di-fresh), slip PDF/payslip query bila memakai profil untuk cabang.
+- Tax profile response: `ter_category` dan `has_npwp` dihitung saat dibaca.
+- Migrasi: drop `payroll_employee_profiles`; drop kolom `ter_category`, `has_npwp`, `dtp_eligible` di `employee_tax_profiles`. Backfill yang mengacu payroll profile (P11 enrollment, P2 legacy) dihapus dari registry.
+
+**Backoffice**
+
+- Panel karyawan (`PayrollEmployeePanel`): sub-tab **Compensation** tanpa form Payroll Profile; employment type tampil read-only dari Core HR.
+- Menu Compensations: filter "No payroll profile" dihapus (P4 menambah "No schedule").
+- Form buat run: filter pay cycle dihapus.
+
+**Docs:** `06-data-model.md` (hapus §2 payroll profile, ubah §2.3), `04-payroll-run.md` (peserta run), `07-integration.md` (employment type dari Core HR), `05-api-contract.md`.
+
+**Kriteria selesai:** tidak ada lagi tabel / endpoint payroll profile; run hanya menghitung karyawan dengan kompensasi berlaku; filter cabang / salary type / employment type run tetap benar; tidak ada data karyawan yang diinput di dua tempat.
+
+---
+
 ### P4 — Schedule & Period
 
 **Tujuan:** periode gajian sebagai entitas nyata dengan cutoff absensi dan tanggal bayar, mendukung siklus selain bulanan.
@@ -337,7 +401,7 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 
 - `payroll_schedules` — `code`, `name`, `pay_cycle`, `is_default`, `is_active`.
 - `payroll_schedule_rules` — `schedule_id`, `period_start_day` (mis. 1 atau 26), `attendance_cutoff_day`, `pay_day`, `pay_day_holiday_shift` (`before` / `after` / `none`), `effective_from`.
-- `employee_payroll_assignments` — `employee_id`, `schedule_id`, `effective_from`, `effective_to`; tanpa overlap per karyawan.
+- ~~`employee_payroll_assignments`~~ (diganti P15): `employee_compensations` + `schedule_id UUID REFERENCES payroll_schedules` — ganti schedule = versi kompensasi baru.
 - `payroll_periods` — `schedule_id`, `code` (`2026-11`, `2026-W45`), `start_date`, `end_date`, `cutoff_from`, `cutoff_to`, `pay_date`, `status` (`open` / `locked` / `closed`); UNIQUE `(schedule_id, code)`.
 - `payroll_runs` + `period_id UUID NULL REFERENCES payroll_periods`. Kolom `period` tetap (kompatibilitas & laporan PPh 21 per bulan).
 
@@ -346,15 +410,14 @@ Constraint: tidak boleh ada dua versi `active` yang rentang tanggalnya bertumpuk
 - Domain baru `domain/schedule`, `domain/period`.
 - `GeneratePeriods(schedule, year)` — endpoint manual; job harian di modul `scheduler` opsional.
 - `CreateRunUseCase`: menerima `period_id`; `period` (YYYY-MM) diturunkan dari `pay_date` periode untuk kebutuhan pajak.
-- Target karyawan run = karyawan dengan assignment ke schedule periode tersebut (digabung dengan `target_filter` yang ada).
+- Target karyawan run = karyawan yang versi kompensasinya (berlaku di akhir periode) memakai schedule periode tersebut (digabung dengan `target_filter` yang ada; lihat P15).
 - `periodvars.Open` memakai `cutoff_from/cutoff_to` periode, bukan menurunkan dari string `YYYY-MM`.
 - Period `closed` menolak run baru selain `adjustment`.
-- `payroll_employee_profiles.pay_cycle` deprecated (dibaca dari schedule).
-- Endpoint: `GET/POST/PATCH /payroll/schedules`, `PUT /payroll/schedules/:id/rules`, `POST /payroll/schedules/:id/periods/generate`, `GET /payroll/periods`, `POST /payroll/periods/:id/lock|close`, `PUT /payroll/employees/:employeeId/schedule`.
+- Endpoint: `GET/POST/PATCH /payroll/schedules`, `PUT /payroll/schedules/:id/rules`, `POST /payroll/schedules/:id/periods/generate`, `GET /payroll/periods`, `POST /payroll/periods/:id/lock|close`. Schedule karyawan diisi lewat versi kompensasi (`schedule_id` di `POST /payroll/employees/:id/compensations` dan bulk).
 
 **Backoffice:** halaman Schedules & Periods; dropdown periode di form buat run; field schedule di sub-tab **Payroll › Compensation** Employee Info (§5.3).
 
-**Backfill:** schedule `MONTHLY` default per tenant (start day 1, cutoff = akhir bulan); assignment untuk semua karyawan yang punya `payroll_employee_profiles`; satu `payroll_periods` per `payroll_runs.period` distinct; isi `payroll_runs.period_id`.
+**Seed / backfill:** schedule `MONTHLY` default per tenant (start day 1, cutoff = akhir bulan) di seed tenant baru; kompensasi tanpa schedule memakai schedule default tenant. Data di-fresh, sehingga backfill periode untuk run lama tidak diperlukan.
 
 **Docs:** `04-payroll-run.md` (§5 anatomi run + bagian baru "Schedule & Period"), `06-data-model.md`, `07-integration.md` (cutoff absensi), `05-api-contract.md`.
 
@@ -947,7 +1010,7 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 |---|---|---|
 | 1 | Hasil calculate berubah setelah backfill P2/P3 | Wajib test perbandingan sebelum/sesudah backfill pada data tenant nyata (staging). |
 | 2 | Run lama tanpa `period_id` | Backfill P4; kode tetap toleran `period_id` NULL. |
-| 3 | Karyawan tanpa kompensasi | Jalur lama tetap aktif sampai semua tenant di-backfill; setelah itu bisa diwajibkan. |
+| 3 | Karyawan tanpa kompensasi | **Diputuskan (P15):** karyawan tanpa versi kompensasi tidak ikut run; jalur pra-P2 dihapus (data di-fresh). |
 | 4 | Siklus `weekly` / `biweekly` | **Diputuskan 2026-11-11: wajib didukung** (karyawan harian / per jam, dibayar mingguan, dua mingguan, dst.). Schedule berbasis hari di P4; PPh 21 TER harian & rekonsiliasi Desember selektif di P14; plafon BPJS per bulan di P4 (usulan). |
 | 5 | Hubungan structure ↔ `job_grade` | 1:1 (doc 09 §6) atau bebas (banyak structure per grade, mis. beda cabang)? Rencana ini memakai `grade_code` nullable dan **tidak** memaksa 1:1. |
 | 6 | Split payment & banyak rekening | Core HR menyimpan banyak rekening; perlu flag rekening utama di Core HR bila belum ada. |

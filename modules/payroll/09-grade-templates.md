@@ -142,7 +142,7 @@ Mengganti grade karyawan (mis. promosi Staff → Manager) memperbarui struktur &
 - Saat dibuat, nilai tiap komponen structure disalin ke `employee_components` (`compensation_id` terisi): input HR untuk karyawan ini (`source = override`, ditolak bila komponen `is_locked`) → override cabang → default structure (`source = structure`). Komponen formula tanpa nilai.
 - Mengaktifkan versi baru mengakhiri versi aktif sebelumnya (dan baris komponennya) sehari sebelum `effective_from` versi baru. Versi baru wajib mulai setelah versi aktif; hanya satu draft per karyawan.
 - Aktivasi pertama mengakhiri baris manual lama (sebelum P2) untuk komponen yang sama, agar tidak terbayar dobel; komponen manual lain (one-time, tunjangan pribadi) tetap.
-- Aktivasi menyalin cabang dan `salary_type` structure ke payroll profile karyawan; payroll profile (jenis kepegawaian) harus sudah ada.
+- Versi kompensasi adalah sumber cabang dan `salary_type` (lewat structure) karyawan untuk payroll; jenis kepegawaian dari kontrak Core HR (P15, payroll profile dihapus).
 - Mengubah nilai structure dilakukan lewat versi baru, bukan revoke baris komponen.
 
 ---

@@ -72,15 +72,16 @@ Run tidak harus mencakup semua karyawan — pesertanya ditentukan **filter fleks
 | `grade_id` | Hanya grade tertentu |
 | `salary_type` | Hanya `daily` (buruh harian) atau `monthly` (staff) |
 | `employment_type` | Tetap / kontrak / magang |
-| `pay_cycle` | Hanya yang siklus mingguan (untuk run mingguan) |
 | `employee_ids` | Pilih manual (kasus khusus) |
 
 **Contoh:**
 ```
-Run "Mingguan Buruh Harian" → filter: salary_type=daily, pay_cycle=weekly
-Run "Bulanan Staff"          → filter: salary_type=monthly, pay_cycle=monthly
+Run "Buruh Harian" → filter: salary_type=daily
+Run "Bulanan Staff" → filter: salary_type=monthly, employment_type=permanent
 ```
-Filter bisa dikombinasi. Ini memungkinkan satu tenant menjalankan beberapa run berbeda untuk kelompok karyawan berbeda — sesuai `pay_cycle` yang diwarisi dari grade (lihat `09-grade-templates.md`).
+Filter bisa dikombinasi. Ini memungkinkan satu tenant menjalankan beberapa run berbeda untuk kelompok karyawan berbeda. Siklus bayar (mingguan / dua mingguan) mengikuti schedule payroll (P4), bukan filter.
+
+**Implementasi peserta run (P15):** karyawan ikut run bila punya versi kompensasi (bukan draft) yang berlaku pada **hari terakhir periode** run. Karyawan tanpa kompensasi tidak ikut. Sumber tiap filter: `branch_id` (dan cabang run) = cabang versi kompensasi; `salary_type` = structure versi tersebut; `employment_type` = jenis kontrak aktif di Core HR. `employee_ids` (off-cycle) mengabaikan filter lain, tetapi setiap karyawan yang disebut wajib punya kompensasi berlaku — bila tidak, run gagal (`BUSINESS_RULE_VIOLATED`), tidak dilewati diam-diam. `department_id` / `grade_id` belum diimplementasikan.
 
 ---
 

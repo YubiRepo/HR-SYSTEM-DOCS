@@ -55,11 +55,12 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 |---|---|---|
 | `employee_id` | string (PK, FK) | |
 | `ptkp_status` | enum | `TK/0`, `K/0`, `K/1`, `K/2`, `K/3`, ... |
-| `ter_category` | enum | `A` / `B` / `C` — cache tampilan, diisi dari master `pph21_ptkp_rates` saat simpan. Calculate selalu membaca ulang dari master tahun pajak run |
-| `has_npwp` | boolean | Cache dari NPWP Core HR saat simpan (P11); calculate membaca Core HR langsung |
 | `pph21_method` | enum | `gross` (default) / `nett`. `gross_up` hanya data lama, ditolak saat simpan (P12) |
 | `tax_treatment` | enum | `subject` / `dtp` / `exempt` (P11), default `subject` |
-| `dtp_eligible` | boolean | **Deprecated** — disinkronkan dengan `tax_treatment = dtp`, tidak dibaca lagi |
+
+Kategori TER tidak disimpan: selalu dari master `pph21_ptkp_rates` (response API memakai versi hari ini, calculate memakai versi tahun pajak run). `has_npwp` juga tidak disimpan: diturunkan dari NPWP karyawan di Core HR (P15).
+
+> Data payroll per karyawan (P15) = **kompensasi** (`employee_compensations`: structure, cabang, nilai komponen; nanti schedule di P4) + **tax profile** + **kepesertaan BPJS**, ditambah komponen manual / one-time. Tabel `payroll_employee_profiles` sudah dihapus: cabang dari kompensasi, `salary_type` dari structure, jenis kepegawaian dari kontrak aktif Core HR, dan "ikut payroll" = punya versi kompensasi yang berlaku.
 
 ### 2.3a `employee_bpjs_enrollments` (P11)
 Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per (karyawan, program) — divalidasi aplikasi; `PUT` mengganti seluruh baris karyawan dalam satu transaksi.
@@ -81,7 +82,7 @@ Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per
 | `id` | string (PK) | `run_...` |
 | `tenant_id` | string (FK) | |
 | `branch_id` | string (FK, nullable) | null = seluruh tenant |
-| `target_filter` | json (nullable) | Filter peserta: grade/dept/salary_type/employment_type/pay_cycle/employee_ids |
+| `target_filter` | json (nullable) | Filter peserta: branch/salary_type/employment_type/employee_ids (P15: `pay_cycle` tidak lagi difilter, diganti schedule P4) |
 | `period` | string | `YYYY-MM` |
 | `type` | enum | `regular`, `thr`, `bonus`, `final` |
 | `status` | enum | `draft`, `calculated`, `in_review`, `approved`, `paid`, `closed` |

@@ -94,7 +94,7 @@ Tarif progresif Pasal 17 (lapisan PKP tahunan): 5% / 15% / 25% / 30% / 35%.
 
 ### 4.3 Status PTKP
 Menentukan kategori TER & besaran PTKP. Contoh kode: `TK/0` (tidak kawin, 0 tanggungan), `K/0` (kawin), `K/2` (kawin, 2 tanggungan).
-- Disimpan per karyawan (di Core HR / payroll profile).
+- Disimpan per karyawan di tax profile payroll (`employee_tax_profiles`).
 - **Ditetapkan berdasar kondisi 1 Januari tahun berjalan** (mis. menikah Februari → tetap dianggap TK/0 untuk tahun itu).
 - **Daftar status, nominal PTKP tahunan, dan kategori TER adalah data master** (`pph21_ptkp_rates`, HR Setting › Tax and BPJS › PTKP), bukan konstanta kode. Default seed: PMK 101/PMK.010/2016 (TK/0 = Rp54 jt, +Rp4,5 jt per tanggungan/kawin) dan mapping PP 58/2023 (A = TK/0, TK/1, K/0; B = TK/2, TK/3, K/1, K/2; C = K/3).
 - Calculate memakai versi master yang berlaku pada **1 Januari tahun pajak** run, sejalan dengan aturan di atas: perubahan master di tengah tahun baru berlaku tahun berikutnya. Kategori TER diambil dari master saat calculate (kolom `employee_tax_profile.ter_category` hanya cache tampilan).
