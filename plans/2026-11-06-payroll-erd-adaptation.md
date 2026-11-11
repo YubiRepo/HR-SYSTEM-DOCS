@@ -148,10 +148,10 @@ Engine approval (plan 2026-11-05 Fase 1) ──> P7 Approval Berjenjang
 P9 Policy Versioning (opsional, lepas)
 P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesertaan BPJS & Perlakuan Pajak ──> P12 Metode PPh 21 ──> P13 Laporan Setoran BPJS & PPh 21
                                                                     (P4, P6 memperbaiki pengelompokan periode P13)
-P2 Employee Compensation ──> P15 Konsolidasi Data Payroll Karyawan ──> P4 Schedule & Period ──> P14 PPh 21 Pegawai Tidak Tetap & Rekonsiliasi Desember Selektif
+P2 Employee Compensation ──> P15 Konsolidasi Data Payroll Karyawan ──> P4 Schedule & Period ──> P14 PPh 21 Pegawai Tidak Tetap & Rekonsiliasi Desember Selektif ──> P16 Masa Pajak Terakhir & Data Pajak Tahunan Karyawan
 ```
 
-Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P14 → P5 → P8 → P6 → P7**. P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4.
+Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P14 → P16 → P5 → P8 → P6 → P7**. P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4. P16 (masa pajak terakhir selain Desember, karyawan masuk di tengah tahun, penyetahunan, bukti potong pemberi kerja sebelumnya) memperluas jalur rekonsiliasi P14; P14 dan P16 sama-sama menunggu konfirmasi tim pajak.
 
 ---
 
@@ -477,7 +477,7 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
   1. karyawan `permanent`;
   2. run `type = regular` (bukan bonus / THR / adjustment — itu tetap TER bulanan di masa yang sama, lalu ikut dijumlahkan di rekonsiliasi);
   3. run ini adalah **run regular terakhir** karyawan itu dalam masa Desember: untuk schedule bulanan = run periode Desember; untuk schedule non-bulanan = periode yang `pay_date`-nya paling akhir di Desember. Periode sebelumnya di Desember tetap TER bulanan.
-  4. Atau: masa terakhir karyawan yang berhenti bekerja di tengah tahun (tanggal keluar dari Core HR) — rekonsiliasi di run terakhirnya, bukan menunggu Desember.
+  4. Atau: masa pajak terakhir selain Desember (berhenti bekerja, pensiun, meninggal di tengah tahun) — dirinci di **P16**.
 - Run reconciliation menandai payslip `ter_method = annual`; run lain di masa Desember memakai TER dan ikut dihitung sebagai "sudah dibayar" pada YTD.
 
 **API / Backoffice:** field **Employment tax status** di tax profile; tab **TER Harian** di HR Setting › Tax and BPJS; laporan bukti potong (P13) menambah kolom status dan metode.
@@ -485,6 +485,59 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 **Dependensi:** P4 (schedule non-bulanan, `pay_date` periode), P10–P13. Dikerjakan sebelum P5.
 
 **Kriteria selesai:** simulasi §11: Dodi PPh 0 (rata-rata 172.023/hari), Eka 22.622 dan 24.130; pegawai tetap bulanan tidak berubah; run THR/bonus Desember tidak memicu Pasal 17; hanya run regular terakhir Desember yang `ter_method = annual`.
+
+---
+
+### P16 — Masa Pajak Terakhir & Data Pajak Tahunan Karyawan
+
+**Status:** usulan dari diskusi 2026-11-11, **menunggu konfirmasi tim pajak** (aturan di bawah perlu dicek terhadap PMK 168/2023 dan PER Dirjen turunannya). Dikerjakan setelah P14, sebelum P5.
+
+**Masalah** — calculator sekarang:
+1. Hanya menjalankan Pasal 17 setahun bila `period` berakhiran `-12`. Karyawan yang masa pajak terakhirnya bukan Desember (resign, pensiun, meninggal, pindah ke luar negeri) tetap dihitung TER, sehingga kurang/lebih potong tidak pernah dibereskan di masa terakhirnya.
+2. Karyawan yang **masuk di tengah tahun**: YTD Jan–Nov hanya berisi bulan yang dia bekerja (sudah benar), tetapi batas biaya jabatan selalu Rp6 jt setahun. Untuk masa kerja < 12 bulan batasnya diduga **Rp500 rb × jumlah bulan** (perlu konfirmasi).
+3. Karyawan yang **baru menjadi subjek pajak dalam negeri** di tengah tahun (WNA datang) atau **berhenti menjadi subjek** (meninggalkan Indonesia selamanya): penghasilan neto seharusnya **disetahunkan**; belum ada.
+4. Karyawan pindah kerja dalam tahun yang sama dan menyerahkan **bukti potong 1721-A1 pemberi kerja sebelumnya**: tidak ada tempat menyimpan bruto, iuran pensiun/JHT dan PPh 21 yang sudah dipotong, sehingga tidak bisa ikut diperhitungkan (bila aturannya mengizinkan / mewajibkan).
+
+**Aturan yang diusulkan** (konfirmasi tim pajak per butir):
+
+| Kasus | Masa pajak terakhir | Perlakuan |
+|---|---|---|
+| Bekerja sampai Desember | Desember (run regular terakhir masa Desember, P14) | Pasal 17 setahun atas penghasilan di pemberi kerja ini (+ A1 sebelumnya bila digabung) |
+| Berhenti di tengah tahun (resign, PHK, pensiun) | Bulan tanggal keluar | Pasal 17 atas penghasilan Jan s.d. bulan keluar, **tidak** disetahunkan; kelebihan potong dikembalikan / dikompensasikan di slip terakhir |
+| Meninggal dunia | Bulan meninggal | Sama seperti berhenti; dicatat terpisah untuk laporan |
+| Masuk di tengah tahun | Desember (atau bulan keluar) | Tidak disetahunkan; PTKP setahun penuh; batas biaya jabatan proporsional jumlah bulan bekerja |
+| WNA mulai / berhenti menjadi subjek pajak DN di tengah tahun | Desember / bulan berhenti | Penghasilan neto **disetahunkan** (× 12 / jumlah bulan), PPh setahun lalu dikembalikan proporsional |
+| Pindah kerja dengan A1 pemberi kerja sebelumnya | Desember | Opsi: (a) gabung A1 ke YTD (bruto, iuran, PPh dipotong) atau (b) hitung terpisah, karyawan menggabungkan di SPT tahunan. **Keputusan tim pajak**, disimpan sebagai setelan tenant |
+
+**Migrasi**
+
+- `employee_tax_years` (satu baris per karyawan per tahun pajak): `employee_id`, `tax_year`, `start_month` (bulan mulai bekerja / menjadi subjek pajak di tahun itu; default dari tanggal masuk Core HR), `end_month` (nullable; default dari tanggal keluar Core HR), `termination_reason` (`resign` / `retire` / `death` / `leave_indonesia` / `other`, nullable), `annualize` (boolean; true hanya untuk subjek pajak DN yang datang/pergi di tengah tahun), `notes`.
+- `employee_previous_employment_taxes` (A1 pemberi kerja sebelumnya, per tahun pajak, bisa lebih dari satu): `employee_id`, `tax_year`, `employer_name`, `employer_npwp`, `period_from`, `period_to` (bulan), `gross`, `pension_contribution` (iuran pensiun/JHT/THT yang dibayar karyawan), `pph21_withheld`, `document_number`, `attachment` (opsional).
+- `pph21_tax_parameters` + kolom `occupational_expense_monthly_cap` (Rp500.000) dan setelan tenant `payroll_config.include_previous_employer_a1` (boolean).
+- Snapshot payslip + `tax_reconciliation` (`none` / `december` / `termination`), `months_worked`, `annualized` (boolean), `previous_employer_gross`, `previous_employer_pph21`.
+
+**Calculator**
+
+- Penentu **masa pajak terakhir** per karyawan per run (memperluas syarat rekonsiliasi P14): run regular terakhir masa Desember, **atau** run yang masa pajaknya = `end_month` (tanggal keluar Core HR / input manual), **atau** run `type = final`. Run `final` tanpa tanggal keluar ditolak dengan pesan jelas.
+- Pasal 17 setahun memakai:
+  - YTD = slip tenant ini dari `start_month` s.d. masa sebelumnya (+ A1 bila `include_previous_employer_a1`).
+  - Biaya jabatan = min(5% × bruto, `occupational_expense_monthly_cap` × bulan bekerja di pemberi kerja ini) — perlu konfirmasi apakah A1 ikut menambah bulan.
+  - Bila `annualize`: neto × 12 / bulan bekerja → PPh setahun × bulan bekerja / 12.
+  - PPh masa terakhir = PPh setahun − PPh yang sudah dipotong (tenant ini + A1 bila digabung). Hasil negatif = **kelebihan potong**, dikembalikan sebagai earning `PPH21_REFUND` (komponen sistem) di slip itu.
+- Setelah masa terakhir karena berhenti, run berikutnya di tahun yang sama menolak karyawan itu (kecuali dibuat baris tahun pajak baru karena masuk kembali).
+
+**Integrasi Core HR:** contract `GetEmploymentDates(ctx, tenantID, employeeIDs)` → tanggal masuk, tanggal keluar, alasan keluar (bila sudah ada di Core HR). Baris `employee_tax_years` dibuat otomatis saat calculate bila belum ada, lalu bisa dikoreksi manual.
+
+**API / Backoffice**
+
+- `GET/PUT /payroll/employees/:id/tax-years/:year`; `GET/POST/PATCH/DELETE /payroll/employees/:id/previous-employment-taxes` (`?tax_year=`).
+- Panel karyawan (`PayrollEmployeePanel`) sub-tab **Tax & BPJS**: kartu **Tahun Pajak** (bulan mulai / berhenti, alasan, disetahunkan) dan daftar **Bukti Potong Pemberi Kerja Sebelumnya** (input A1, unggah dokumen).
+- HR Setting › Tax and BPJS: setelan "Gabungkan A1 pemberi kerja sebelumnya" dan batas biaya jabatan per bulan.
+- Laporan bukti potong (P13): kolom jenis rekonsiliasi, bulan bekerja, A1 sebelumnya; menjadi dasar 1721-A1 yang diterbitkan untuk karyawan yang berhenti.
+
+**Dependensi:** P14 (penentu run rekonsiliasi, `ter_method`), P4 (masa pajak dari `pay_date`), Core HR tanggal keluar. Dikerjakan sebelum P5.
+
+**Kriteria selesai** (angka dibuat bersama tim pajak dan ditambahkan ke lampiran simulasi): karyawan resign Juni direkonsiliasi di run Juni dan kelebihan potongnya kembali di slip; karyawan masuk Agustus memakai batas biaya jabatan 5 × Rp500 rb; WNA datang Juli disetahunkan; A1 pemberi kerja sebelumnya mengubah PPh Desember hanya bila setelan tenant aktif; karyawan yang bekerja setahun penuh tidak berubah.
 
 ---
 
@@ -1008,6 +1061,7 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | [03-calculation.md](../modules/payroll/03-calculation.md) §4 (PTKP & biaya jabatan dari master) | P10 |
 | [03-calculation.md](../modules/payroll/03-calculation.md) §3, §4.4; [07-integration.md](../modules/payroll/07-integration.md) (NPWP) | P11 |
 | [03-calculation.md](../modules/payroll/03-calculation.md) §4 (metode PPh 21 gross / nett) | P12 |
+| [03-calculation.md](../modules/payroll/03-calculation.md) §4.2 (masa pajak terakhir, penyetahunan, biaya jabatan proporsional, A1 sebelumnya); [07-integration.md](../modules/payroll/07-integration.md) (tanggal masuk/keluar Core HR) | P16 |
 | [04-payroll-run.md](../modules/payroll/04-payroll-run.md) (laporan), [README.md](../modules/payroll/README.md) (cakupan) | P13 |
 | [04-payroll-run.md](../modules/payroll/04-payroll-run.md) | P4–P8 |
 | [03-calculation.md](../modules/payroll/03-calculation.md) | P2, P5, P6 |
@@ -1035,6 +1089,7 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | 14 | Payslip sebelum P11 tanpa snapshot | Laporan periode lama hanya bisa menampilkan total (tanpa rincian per program/PTKP). Backfill dari data saat ini **tidak** dilakukan karena bisa berbeda dengan kondisi saat dihitung. |
 | 15 | Premi BPJS yang dibayar perusahaan sebagai bruto pajak | **Diputuskan:** flag `employer_contribution_taxable` di `bpjs_config`, dikerjakan di P12. Default seed Kesehatan, JKK, JKM = `true`. |
 | 16 | DTP bersama metode `nett` | **Diputuskan:** DTP dibayarkan sebagai earning `PPH21_DTP`. Kombinasi dengan gross-up belum relevan karena gross-up belum disediakan. |
+| 17 | Aturan masa pajak terakhir, penyetahunan, biaya jabatan proporsional, A1 sebelumnya (P16) | **Perlu konfirmasi tim pajak** sebelum P16: (a) batas biaya jabatan Rp500 rb × bulan untuk masa kerja < 12 bulan; (b) penyetahunan hanya untuk subjek pajak DN yang datang/pergi di tengah tahun; (c) A1 pemberi kerja sebelumnya digabung oleh pemberi kerja baru atau oleh karyawan di SPT; (d) pengembalian kelebihan potong di slip terakhir. |
 
 ---
 
