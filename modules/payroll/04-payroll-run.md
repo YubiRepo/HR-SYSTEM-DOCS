@@ -44,6 +44,8 @@ Payroll sensitif, maka **yang menghitung ≠ yang menyetujui**:
 
 Sistem menolak bila aktor yang menyetujui sama dengan yang membuat (escape hatch `PAYROLL_ALLOW_SELF_APPROVAL` hanya untuk testing lokal).
 
+**Pembayaran (P8):** setelah run `approved`, keuangan membuat **payment batch** (transfer bank — opsional per bank — atau tunai / lainnya). Tiap payslip ok dibayar ke rekening utama karyawan atau di-split ke beberapa rekening. File bank diunduh dari batch; hasil transfer dicatat per payment atau sekaligus. Run berubah `paid` otomatis saat seluruh net terbayar.
+
 **Approval berjenjang (P7)** memakai engine approval generik (`document_type = payroll_run`, HR Setting › Approval Policies; policy bisa per cabang):
 - Submit membuat permintaan approval bila tenant punya policy `payroll_run` (cabang run dulu, lalu default). Step yang jatuh ke pengaju dilewati engine; policy yang mengarah ke **pembuat run** ditolak saat submit.
 - Approve memutus **step berjalan** oleh approver step itu (step tanpa approver: pemegang `payroll:approve`); run menjadi `approved` setelah step terakhir, dan tidak bisa dilompati. Reject di step mana pun → run kembali `calculated` dengan alasan.

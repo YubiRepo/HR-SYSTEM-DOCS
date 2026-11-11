@@ -121,6 +121,17 @@ Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bul
 | GET | `/payroll/runs/{id}/payslips/{payslipId}/inputs` | Input periode karyawan: `rows` (snapshot `attendance`/`leave` + `manual`) dan `effective` | `payroll:read` |
 | PUT | `/payroll/runs/{id}/payslips/{payslipId}/inputs` | `{ inputs: [{ variable_name, value, note }] }` — ganti seluruh input manual (kosong = hapus); berlaku di calculate berikutnya | `payroll:run` |
 
+### Pembayaran (P8)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/payroll/runs/{id}/payments` | Batch run + payment per karyawan, total direncanakan / dibayar, jumlah payslip yang belum masuk batch | `payroll:read` |
+| POST | `/payroll/runs/{id}/payment-batches` | `{ method: bank_transfer\|cash\|other, bank_code?, note? }` — run `approved`; satu payment per payslip ok ke rekening utama | `payroll:approve` |
+| GET | `/payroll/payment-batches/{batchId}/file` | File transfer (CSV); unduhan pertama → batch `exported`; ditolak bila ada payment tanpa rekening | `payroll:approve` |
+| PUT | `/payroll/payment-batches/{batchId}/payslips/{payslipId}/split` | `{ items: [{ amount, account_number }] }` — batch draft; Σ = net; rekening milik karyawan | `payroll:approve` |
+| DELETE | `/payroll/payment-batches/{batchId}/payslips/{payslipId}` | Keluarkan payslip dari batch draft | `payroll:approve` |
+| POST | `/payroll/payment-batches/{batchId}/refresh-accounts` · `/mark-paid` · `/cancel` | Baca ulang rekening utama · tandai semua paid (`external_ref?`, `note?`) · batalkan (belum ada yang paid) | `payroll:approve` |
+| POST | `/payroll/payments/{paymentId}/transactions` | `{ status: paid\|failed, external_ref?, note? }` — run otomatis `paid` saat semua net terbayar | `payroll:approve` |
+
 ### Laporan Setoran (P13)
 Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `format=csv` (opsional, unduhan CSV). Hanya run `approved`/`paid`/`closed` dihitung; run lain di `pending` / `runs[].final = false`. Period salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`. Endpoint PPh 21 juga butuh benefit plan `payroll.tax`.
 | Method | Endpoint | Deskripsi |

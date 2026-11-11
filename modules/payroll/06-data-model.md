@@ -268,6 +268,11 @@ Jejak potong pinjaman per periode.
 
 **`payroll_periods`**: `schedule_id`, `code` (`2026-11`, `2026-W45`, `2026-B22`, `2026-P007`), `start_date`, `end_date`, `cutoff_from`, `cutoff_to`, `pay_date`, `status` (`open` → `locked` → `closed`); UNIQUE `(schedule_id, code)`. Masa pajak = bulan `pay_date`.
 
+### 2.13b `payroll_payment_batches` / `payroll_payments` / `payroll_payment_transactions` (P8)
+- **Batch:** `run_id`, `method` (`bank_transfer` / `cash` / `other`), `bank_code` (opsional, satu file per bank), `status` (`draft` → `exported` → `completed`; `cancelled`), `note`, `created_by`, `exported_at`, `completed_at`.
+- **Payment:** `batch_id`, `payslip_id`, `employee_id`, `amount`, snapshot rekening (`bank_code`, `account_number`, `account_name`), `status` (`pending` / `paid` / `failed`), `paid_at`. Split = beberapa payment per payslip, Σ = net.
+- **Transaction (append-only):** `payment_id`, `attempt`, `status` (`paid` / `failed`), `external_ref`, `note`, `created_by`.
+
 ### 2.14 `payroll_formulas` / `payroll_formula_versions` / `payroll_formula_variables` (P3)
 | Tabel | Field utama |
 |---|---|

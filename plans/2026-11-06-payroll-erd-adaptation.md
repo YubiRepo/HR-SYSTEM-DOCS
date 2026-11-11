@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Sedang dikerjakan** — 12 fase selesai (menunggu review), 2 menunggu jawaban tim pajak, 2 belum dikerjakan, 1 opsional. Lihat [Ringkasan Status Fase](#ringkasan-status-fase). |
+| **Status** | **Sedang dikerjakan** — 13 fase selesai (menunggu review), 2 menunggu jawaban tim pajak, 1 belum dikerjakan, 1 opsional. Lihat [Ringkasan Status Fase](#ringkasan-status-fase). |
 | **Tanggal** | 2026-11-06 |
 | **Pemicu** | ERD payroll baru (27 tabel) mendeskripsikan payroll yang lebih lengkap: salary structure, kompensasi berversi, formula berversi, schedule & period, approval berjenjang, dan pembayaran. Sistem payroll sekarang sudah jalan end-to-end, tetapi beberapa bagian masih sederhana (formula tanpa versi, periode hanya string, approval satu langkah, pembayaran hanya flip status) atau masih mock di Backoffice (grade template, adjustment). |
 | **Keputusan user** | (1) **Nama tabel existing dipertahankan.** ERD diadaptasi dengan menambah kolom/tabel, bukan rename massal. (2) Semua area ERD masuk cakupan, dikerjakan **bertahap per fase** yang masing-masing bisa di-merge sendiri. Lihat §2. |
@@ -33,11 +33,11 @@ Diperbarui 2026-11-11. Urutan = urutan pengerjaan. Semua fase yang selesai **bel
 | 12 | [P7](#p7--approval-berjenjang) Approval berjenjang (engine approval generik) | ✅ Selesai, menunggu review | — |
 | 13 | [P14](#p14--pph-21-pegawai-tidak-tetap-ter-harian--rekonsiliasi-desember-selektif) PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif | ⏸ Menunggu jawaban tim pajak (§8a butir 1–6) | — |
 | 14 | [P16](#p16--masa-pajak-terakhir--data-pajak-tahunan-karyawan) Masa pajak terakhir & data pajak tahunan | ⏸ Menunggu jawaban tim pajak (§8a butir 7–12) | — |
-| 15 | [P8](#p8--bank--payment) Bank & payment | ⬜ Belum dikerjakan | — |
+| 15 | [P8](#p8--bank--payment) Bank & payment | ✅ Selesai, menunggu review | `20261111000009` |
 | 16 | [P6](#p6--adjustment-run) Adjustment run | ⬜ Belum dikerjakan | — |
 | 17 | [P9](#p9--policy-versioning-opsional) Policy versioning | ⬜ Opsional, belum diputuskan | — |
 
-Berikutnya yang bisa langsung dikerjakan: **P8** (P14 / P16 menunggu tim pajak).
+Berikutnya yang bisa langsung dikerjakan: **P6** (adjustment) dan run off-cycle THR / bonus / final pay (belum ada fasenya); P14 / P16 menunggu tim pajak.
 
 ---
 
@@ -687,6 +687,16 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 ---
 
 ### P8 — Bank & Payment
+
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Migrasi `20261111000009_create_payroll_payments` ditulis, **belum dijalankan**. Tidak ada backfill. Catatan implementasi:
+- Core HR: `employees.bank_accounts[]` mendapat flag `is_primary` (maks. satu; tanpa flag = rekening pertama); contract `ListBankAccounts` (semua rekening, yang utama ditandai). Employee Info › Bank Accounts menambah toggle "Primary (payroll)".
+- Route: `GET /runs/:id/payments`, `POST /runs/:id/payment-batches`, lalu per batch `/payment-batches/:batchId/...` (`file`, `payslips/:payslipId/split`, `DELETE payslips/:payslipId`, `refresh-accounts`, `mark-paid`, `cancel`) dan `POST /payments/:paymentId/transactions` — bukan di bawah `/runs/:id/` seperti rencana. Baca `payroll:read`, aksi `payroll:approve`.
+- Batch dibuat untuk run `approved`, berisi payslip `ok` (net > 0) yang belum ada di batch aktif; opsi filter bank (satu file per bank). Karyawan tanpa rekening ditandai `missing_account` — **export ditolak** sampai rekening ditambah (lalu *Refresh Accounts*) atau karyawan dikeluarkan dari batch (dibayar via batch cash).
+- Split hanya ke rekening milik karyawan (validasi), Σ = net, saat batch draft. Batch terkunci setelah file pertama diunduh (`exported`).
+- **File bank tidak disimpan ke storage** (berbeda dari rencana): dibangun ulang dari snapshot rekening di `payroll_payments`, jadi unduhan ulang identik. Kolom CSV generik: no, nomor & nama karyawan, bank, nomor & nama rekening, nominal, referensi `PAYROLL <masa pajak>`. Format khusus per bank belum.
+- **Bukti bayar berupa referensi bank + catatan**, belum unggah file. Setiap percobaan tercatat di `payroll_payment_transactions` (append-only).
+- Batch `completed` saat semua payment paid; **run otomatis `paid`** saat net setiap payslip ok sudah terbayar. Tombol manual tetap ada ("Mark Paid Manually", `payroll:approve`) untuk run yang dibayar di luar batch.
+- `GET /runs/:id/bank-file` lama = file batch transfer terakhir.
 
 **Tujuan:** pembayaran tercatat per karyawan, mendukung split payment, dan bank file berisi rekening nyata.
 

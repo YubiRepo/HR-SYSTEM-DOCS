@@ -11,6 +11,7 @@ Payroll bergantung pada beberapa modul & menyediakan data ke beberapa modul lain
 | **Core HR** | Karyawan aktif, gaji pokok, cabang, `user_id` | Menentukan peserta run & nilai dasar |
 | **Core HR** | Status karyawan (aktif/probation) | Hanya karyawan aktif ikut run |
 | **Core HR** (`GetActiveContractTypes`) | Jenis kontrak aktif | Filter `employment_type` run & kolom daftar Compensations (P15) |
+| **Core HR** (`ListBankAccounts`) | Rekening bank karyawan (flag rekening utama) | Payment batch & file bank (P8) |
 | **employee_compensations** | Versi kompensasi berlaku (structure, cabang) | Peserta run, cabang & `salary_type` karyawan (P15) |
 | **Attendance & Leave** | Jam lembur, potongan absen, cuti tak berbayar | Komponen variabel (uang lembur, potongan) |
 | **employee_tax_profile** | PTKP, perlakuan pajak | Perhitungan PPh 21 |
