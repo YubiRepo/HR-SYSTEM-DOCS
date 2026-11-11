@@ -107,11 +107,12 @@ Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bul
 | POST | `/payroll/runs/preview` | Body sama dengan buat run → `{ period, pay_date, count, employee_ids }` (P5a) | `payroll:run` |
 | PUT | `/payroll/runs/{id}` | Ubah run **draft** (P5a) | `payroll:run` |
 | DELETE | `/payroll/runs/{id}` | Hapus run draft / calculated beserta payslip (P5a) | `payroll:run` |
-| POST | `/payroll/runs/{id}/reject` | `{ reason }` — in review → calculated, alasan di `review_note` (P5a) | `payroll:approve` |
+| POST | `/payroll/runs/{id}/reject` | `{ reason }` (atau `{ note }` dari inbox) — in review → calculated, alasan di `review_note` (P5a); dengan policy approval = keputusan step berjalan (P7) | approver step / `payroll:approve` |
+| GET | `/payroll/runs/{id}/approval` | Timeline approval (null bila tidak lewat engine) — P7 | `payroll:read` / peserta approval |
 | GET | `/payroll/runs/{id}` | Detail run + total | `payroll:read` |
 | POST | `/payroll/runs/{id}/calculate` | Hitung run | `payroll:run` |
 | POST | `/payroll/runs/{id}/submit` | Kirim ke review | `payroll:run` |
-| POST | `/payroll/runs/{id}/approve` | Setujui run | `payroll:approve` |
+| POST | `/payroll/runs/{id}/approve` | `{ note? }` — setujui run; dengan policy approval = setujui step berjalan, run `approved` setelah step terakhir (P7). `GET /runs/{id}` menambah `approval` (progres) dan `can_decide` | approver step / `payroll:approve` |
 | POST | `/payroll/runs/{id}/pay` | Eksekusi pembayaran | `payroll:approve` |
 | POST | `/payroll/runs/{id}/close` | Kunci run | `payroll:approve` |
 | GET | `/payroll/runs/{id}/payslips` | Daftar slip dalam run | `payroll:read` |

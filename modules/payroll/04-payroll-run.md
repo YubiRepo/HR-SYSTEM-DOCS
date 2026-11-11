@@ -42,7 +42,13 @@ Payroll sensitif, maka **yang menghitung ≠ yang menyetujui**:
 | **Maker** (payroll officer) | `payroll:run` | Buat & hitung run |
 | **Checker** (finance/HR manager) | `payroll:approve` | Tinjau & setujui |
 
-Sistem menolak bila aktor yang menyetujui sama dengan yang membuat (dapat dikonfigurasi sesuai kebijakan tenant).
+Sistem menolak bila aktor yang menyetujui sama dengan yang membuat (escape hatch `PAYROLL_ALLOW_SELF_APPROVAL` hanya untuk testing lokal).
+
+**Approval berjenjang (P7)** memakai engine approval generik (`document_type = payroll_run`, HR Setting › Approval Policies; policy bisa per cabang):
+- Submit membuat permintaan approval bila tenant punya policy `payroll_run` (cabang run dulu, lalu default). Step yang jatuh ke pengaju dilewati engine; policy yang mengarah ke **pembuat run** ditolak saat submit.
+- Approve memutus **step berjalan** oleh approver step itu (step tanpa approver: pemegang `payroll:approve`); run menjadi `approved` setelah step terakhir, dan tidak bisa dilompati. Reject di step mana pun → run kembali `calculated` dengan alasan.
+- Tanpa policy (atau semua step terlewati) → alur satu langkah lama: pemegang `payroll:approve`.
+- Approver yang tidak punya `payroll:read` tetap bisa membuka detail run & timeline sebagai peserta approval; run muncul di inbox approval.
 
 ---
 

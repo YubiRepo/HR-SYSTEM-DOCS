@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Rencana — belum dikerjakan.** |
+| **Status** | **Sedang dikerjakan** — 12 fase selesai (menunggu review), 2 menunggu jawaban tim pajak, 2 belum dikerjakan, 1 opsional. Lihat [Ringkasan Status Fase](#ringkasan-status-fase). |
 | **Tanggal** | 2026-11-06 |
 | **Pemicu** | ERD payroll baru (27 tabel) mendeskripsikan payroll yang lebih lengkap: salary structure, kompensasi berversi, formula berversi, schedule & period, approval berjenjang, dan pembayaran. Sistem payroll sekarang sudah jalan end-to-end, tetapi beberapa bagian masih sederhana (formula tanpa versi, periode hanya string, approval satu langkah, pembayaran hanya flip status) atau masih mock di Backoffice (grade template, adjustment). |
 | **Keputusan user** | (1) **Nama tabel existing dipertahankan.** ERD diadaptasi dengan menambah kolom/tabel, bukan rename massal. (2) Semua area ERD masuk cakupan, dikerjakan **bertahap per fase** yang masing-masing bisa di-merge sendiri. Lihat §2. |
@@ -11,6 +11,33 @@
 | **Repo terkait** | HR-SYSTEM-API, HR-SYSTEM-BACKOFFICE, HR-SYSTEM-DOCS |
 | **Lampiran** | [2026-11-10-payroll-erd-simulasi-satu-periode.md](./2026-11-10-payroll-erd-simulasi-satu-periode.md) — contoh isi data semua tabel untuk satu periode payroll |
 | **Mengubah keputusan** | [modules/payroll/09-grade-templates.md](../modules/payroll/09-grade-templates.md) §7 (grade template → salary structure), [modules/payroll/06-data-model.md](../modules/payroll/06-data-model.md) §2, [modules/payroll/04-payroll-run.md](../modules/payroll/04-payroll-run.md) §2, §4, §6 (period, approval, adjustment run) |
+
+
+## Ringkasan Status Fase
+
+Diperbarui 2026-11-11. Urutan = urutan pengerjaan. Semua fase yang selesai **belum di-commit**, dan migrasi/backfill-nya **belum dijalankan**.
+
+| # | Fase | Status | Migrasi / backfill |
+|---|---|---|---|
+| 1 | [P10](#p10--master-ptkp--parameter-pajak) Master PTKP & parameter pajak | ✅ Selesai, menunggu review | `20261110000005` + backfill `20261110090001` |
+| 2 | [P11](#p11--kepesertaan-bpjs--perlakuan-pajak-per-karyawan) Kepesertaan BPJS & perlakuan pajak per karyawan | ✅ Selesai, menunggu review | `20261110000006`, `20261110000008` (unique key JKK); backfill `20261110090002` dihapus di P15 |
+| 3 | [P12](#p12--penerapan-metode-pph-21-gross--nett) Metode PPh 21 (gross / nett) | ✅ Selesai, menunggu review | `20261110000009` + backfill `20261110090004` |
+| 4 | [P13](#p13--laporan-setoran-bpjs--pph-21) Laporan setoran BPJS & PPh 21 | ✅ Selesai, menunggu review | — |
+| 5 | [P1](#p1--salary-structure) Salary structure | ✅ Selesai, menunggu review | `20261111000001`, `20261111000002` |
+| 6 | [P2](#p2--employee-compensation-berversi) Kompensasi karyawan berversi | ✅ Selesai, menunggu review | `20261111000003`; backfill legacy dihapus di P15 |
+| 7 | [P3](#p3--formula-versioning) Formula berversi | ✅ Selesai, menunggu review | `20261111000004` + backfill `20261111090001` |
+| 8 | [P15](#p15--konsolidasi-data-payroll-karyawan) Konsolidasi data payroll karyawan | ✅ Selesai, menunggu review | `20261111000005` |
+| 9 | [P4](#p4--schedule--period) Schedule & periode | ✅ Selesai, menunggu review | `20261111000006` + backfill `20261111090002` |
+| 10 | [P5](#p5--run-snapshot-run-employee-input-detail) Run snapshot (input, status per karyawan) | ✅ Selesai, menunggu review | `20261111000007` |
+| 11 | [P5a](#p5a--kelengkapan-payroll-run-crud-reject-preview-ui) Kelengkapan payroll run (CRUD, reject, preview, UI) | ✅ Selesai, menunggu review | `20261111000008_payroll_run_review` |
+| 12 | [P7](#p7--approval-berjenjang) Approval berjenjang (engine approval generik) | ✅ Selesai, menunggu review | — |
+| 13 | [P14](#p14--pph-21-pegawai-tidak-tetap-ter-harian--rekonsiliasi-desember-selektif) PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif | ⏸ Menunggu jawaban tim pajak (§8a butir 1–6) | — |
+| 14 | [P16](#p16--masa-pajak-terakhir--data-pajak-tahunan-karyawan) Masa pajak terakhir & data pajak tahunan | ⏸ Menunggu jawaban tim pajak (§8a butir 7–12) | — |
+| 15 | [P8](#p8--bank--payment) Bank & payment | ⬜ Belum dikerjakan | — |
+| 16 | [P6](#p6--adjustment-run) Adjustment run | ⬜ Belum dikerjakan | — |
+| 17 | [P9](#p9--policy-versioning-opsional) Policy versioning | ⬜ Opsional, belum diputuskan | — |
+
+Berikutnya yang bisa langsung dikerjakan: **P8** (P14 / P16 menunggu tim pajak).
 
 ---
 
@@ -151,7 +178,7 @@ P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesert
 P2 Employee Compensation ──> P15 Konsolidasi Data Payroll Karyawan ──> P4 Schedule & Period ──> P14 PPh 21 Pegawai Tidak Tetap & Rekonsiliasi Desember Selektif ──> P16 Masa Pajak Terakhir & Data Pajak Tahunan Karyawan
 ```
 
-Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P5 → P5a → P14 → P16 → P8 → P6 → P7**. P5 didahulukan dari P14/P16 (keputusan user 2026-11-11) selama menunggu jawaban tim pajak (§8a). P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4. P16 (masa pajak terakhir selain Desember, karyawan masuk di tengah tahun, penyetahunan, bukti potong pemberi kerja sebelumnya) memperluas jalur rekonsiliasi P14; P14 dan P16 sama-sama menunggu konfirmasi tim pajak.
+Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P5 → P5a → P7 → P14 → P16 → P8 → P6**. P5 didahulukan dari P14/P16 (keputusan user 2026-11-11) selama menunggu jawaban tim pajak (§8a). P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4. P16 (masa pajak terakhir selain Desember, karyawan masuk di tengah tahun, penyetahunan, bukti potong pemberi kerja sebelumnya) memperluas jalur rekonsiliasi P14; P14 dan P16 sama-sama menunggu konfirmasi tim pajak.
 
 ---
 
@@ -628,6 +655,14 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 ---
 
 ### P7 — Approval Berjenjang
+
+**Status:** selesai dikerjakan 2026-11-11 (user: pakai approval generik), menunggu review. Tidak ada migrasi / backfill. Catatan implementasi:
+- Modul approval: tipe dokumen baru `payroll_run` (tanpa subject, subtype = cabang run, izin `payroll:approve`) dan contract `HasPolicy`. Policy dibuat di HR Setting › Approval Policies (pilihan cabang ditambahkan); **tidak ada policy default yang di-seed** — tenant tanpa policy tetap memakai alur satu langkah.
+- Submit: bila ada policy, run dirutekan ke engine dalam transaksi yang sama. Semua step terlewati (mis. hanya mengarah ke pengaju) → alur satu langkah. Step yang mengarah ke **pembuat run** (pembuat ≠ pengaju) → submit ditolak `SELF_APPROVAL_FORBIDDEN`.
+- Approve / reject run yang dirutekan: tanpa gerbang izin di route; engine memutuskan (approver step, atau pemegang `payroll:approve` untuk step tanpa approver). Pembuat run tidak pernah memutus step (kecuali `PAYROLL_ALLOW_SELF_APPROVAL` untuk testing lokal — dipertahankan atas permintaan user). Reject menulis alasan ke `review_note` (P5a) dan menjadi catatan step di engine. Inbox mengirim `{ note }`, juga diterima sebagai alasan reject.
+- `GET /payroll/runs/:id` dan `/approval` bisa dibuka peserta approval tanpa `payroll:read`. Respons run menambah `approval` (status, step berjalan / total, approver berjalan) dan `can_decide`.
+- Inbox approval: ringkasan run (periode, tipe, masa pajak, tanggal bayar, cabang, jumlah karyawan, gross, net, pembuat) + tautan ke run.
+- Backoffice: detail run menampilkan bagian Approval (progres + timeline), tombol Approve / Approve Step / Reject mengikuti `can_decide`, approve dengan catatan opsional.
 
 **Tujuan:** approval payroll run multi-level (mis. HR Manager → Finance → Direktur).
 
