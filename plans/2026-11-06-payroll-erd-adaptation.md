@@ -228,6 +228,17 @@ Urutan disarankan: **P10 → P11 → P12 → P13 → P1 → P2 → P4 → P14 �
 
 ### P2 — Employee Compensation (berversi)
 
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Migrasi `20261111000003_create_employee_compensations` dan backfill `backfill_legacy_compensations_for_tenant` (`20261111090000`) ditulis, **belum dijalankan**. Catatan implementasi:
+
+- Calculator memilih versi yang berlaku pada **hari terakhir periode** run; pergantian versi di tengah periode **belum diprorata** (catatan untuk P4/P5).
+- Satu draft per karyawan; versi baru wajib mulai setelah versi aktif. Aktivasi butuh payroll profile (jenis kepegawaian) yang sudah ada, lalu menyalin cabang & `salary_type` structure ke profil, dan membuat kepesertaan BPJS default bila belum ada (limpahan P11).
+- Aktivasi pertama mengakhiri baris manual lama untuk komponen yang sama (hindari bayar dobel). Revoke baris yang berasal dari kompensasi ditolak.
+- Backfill LEGACY: `base_rate` → BASIC **tidak** dikerjakan (calculator memang tidak memakai `base_rate`). Karyawan tanpa payroll profile dilewati dan dicatat di log.
+- Backoffice: menu **Salary › Compensations** (list + bulk assign structure) dan detail per karyawan; komponen bersama `PayrollEmployeePanel` (sub-tab Compensation + Payroll Profile, Pay Components manual, Tax & BPJS, Payslips) juga dipasang sebagai tab **Payroll** di Employee Info (butuh fitur payroll + `payroll:read`). Halaman `salary/employees.vue` dihapus.
+- Limpahan P11: `POST /payroll/bpjs-enrollments/bulk` dan filter "BPJS belum lengkap" selesai; bulk BPJS **belum ada UI**.
+- Endpoint baru `GET /payroll/employees/{id}/payslips` untuk sub-tab Payslips.
+- Simulator gaji per structure tidak dibuat terpisah; Preview structure (P1) dipakai.
+
 > **Limpahan dari P11:** endpoint `POST /payroll/bpjs-enrollments/bulk` (mis. set kelas risiko JKK satu cabang), filter "BPJS belum lengkap" di menu Compensations, dan pemindahan form tax profile + kepesertaan BPJS dari `salary/employees.vue` ke sub-tab Payroll › Tax & BPJS (`PayrollEmployeePanel`). Enrollment awal juga dibuat saat karyawan pertama kali punya kompensasi.
 
 **Tujuan:** setiap perubahan gaji karyawan (promosi, kenaikan) tercatat sebagai versi dengan tanggal berlaku, dan nilai komponennya diambil dari structure.

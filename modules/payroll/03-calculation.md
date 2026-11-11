@@ -17,6 +17,8 @@ Inti perhitungan payroll. **Urutan langkah tidak boleh dibalik** karena tiap lan
 7. Gaji bersih  = gaji kotor − iuran BPJS (karyawan) − PPh 21 − potongan lain − cicilan hutang
 ```
 
+> **Sumber komponen (P2):** karyawan yang punya versi kompensasi (`employee_compensations`, bukan draft) dihitung dari baris `employee_components` milik versi yang **berlaku pada hari terakhir periode run**, ditambah baris manual / one-time (`compensation_id` NULL). Baris milik versi lain (draft, sudah digantikan, atau belum berlaku) diabaikan. Karyawan tanpa versi kompensasi tetap memakai semua baris manual seperti sebelum P2. Pergantian versi di tengah periode **belum diprorata** — versi yang berlaku di akhir periode dipakai penuh. Komponen `rate` hanya mengisi variabel formula dan tidak dibayar.
+
 > **Kenapa BPJS sebelum PPh 21?** Iuran BPJS yang ditanggung karyawan (JHT, JP) menjadi pengurang penghasilan dalam perhitungan PPh 21. Jika pajak dihitung lebih dulu, hasilnya salah.
 
 > **Potongan hutang & cap:** cicilan pinjaman dipotong dari gaji bersih, dibatasi `max_deduction_percent` (configurable) agar gaji tak habis. Bila melewati cap, cicilan periode itu dikurangi (tenor memanjang). Detail: `10-loan-deduction.md`.

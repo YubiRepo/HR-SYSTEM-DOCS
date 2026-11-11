@@ -29,6 +29,20 @@ Prefix `/api/v1/payroll`. Envelope standar HRMS. Semua endpoint dijaga **Entitle
 
 Validasi gagal → `422 INVALID_SALARY_STRUCTURE_ARGUMENT`. Assign komponen tidak aktif ke karyawan → `422 INVALID_EMPLOYEE_COMPONENT_ARGUMENT`.
 
+### Kompensasi Karyawan (P2)
+| Method | Endpoint | Deskripsi | Izin |
+|---|---|---|---|
+| GET | `/payroll/compensations` | Semua karyawan aktif (nama/nomor/cabang dari Core HR) + versi yang berlaku hari ini + `has_draft`, `has_payroll_profile`, `has_tax_profile`, `bpjs_incomplete`. Filter `search`, `branch_id`, `structure_id`, `missing=compensation\|payroll_profile\|tax_profile\|bpjs` | `payroll:read` |
+| POST | `/payroll/compensations/bulk` | `{ employee_ids, structure_id, effective_from, reason, activate }` — satu versi per karyawan; hasil per karyawan (`compensation_id` / `error`) | `payroll:config` |
+| GET | `/payroll/employees/{id}/compensations` | Semua versi (terbaru dulu) dengan nilai komponennya | `payroll:read` |
+| POST | `/payroll/employees/{id}/compensations` | `{ structure_id, branch_id?, effective_from, reason, notes?, overrides: [{ component_id, amount }], activate }`. Komponen terkunci tidak bisa di-override; satu draft per karyawan; harus mulai setelah versi aktif | `payroll:config` |
+| POST | `/payroll/employees/{id}/compensations/{compId}/activate` | Draft → active; versi aktif sebelumnya `superseded`. Butuh payroll profile | `payroll:config` |
+| DELETE | `/payroll/employees/{id}/compensations/{compId}` | Hapus draft | `payroll:config` |
+| GET | `/payroll/employees/{id}/payslips` | Semua slip karyawan (semua status run) dengan periode & status run | `payroll:read` |
+| POST | `/payroll/bpjs-enrollments/bulk` | `{ employee_ids, program, effective_from, is_enrolled?, risk_class? }` — baris program yang berlaku dipotong sehari sebelumnya, baris baru mulai `effective_from` (nomor kepesertaan ikut); hasil per karyawan | `payroll:config` |
+
+Error: `422 INVALID_COMPENSATION_ARGUMENT`, `409 INVALID_COMPENSATION_STATE` (mis. aktivasi bukan draft). Revoke komponen yang berasal dari kompensasi ditolak (`422 INVALID_EMPLOYEE_COMPONENT_ARGUMENT`).
+
 ### Konfigurasi Pajak & BPJS
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|

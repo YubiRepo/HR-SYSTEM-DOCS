@@ -216,6 +216,19 @@ Jejak potong pinjaman per periode.
 
 `salary_structure_branch_overrides`: `structure_component_id`, `branch_id` (UNIQUE bersama), `default_amount`.
 
+### 2.13 `employee_compensations` (P2)
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` / `tenant_id` / `employee_id` | uuid | |
+| `branch_id` | uuid | Cabang yang override-nya dipakai |
+| `structure_id` | uuid (FK) | `salary_structures` |
+| `effective_from` / `effective_to` | date | `effective_to` diisi saat versi berikutnya diaktifkan |
+| `status` | enum | `draft` / `active` / `superseded` |
+| `reason` | enum | `hire` / `promotion` / `adjustment` / `transfer` / `legacy` / `other` |
+| `notes`, `created_by`, `activated_at` | | |
+
+`employee_components` + `compensation_id` (nullable, FK, `ON DELETE CASCADE` — baris draft ikut terhapus) dan `source` (`structure` / `override` / `manual`). `compensation_id` NULL = komponen manual / one-time.
+
 ## 3. Indeks
 
 | Tabel | Indeks | Alasan |
