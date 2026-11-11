@@ -98,6 +98,9 @@ Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per
 | `id` | string (PK) | `slip_...` |
 | `run_id` | string (FK) | |
 | `employee_id` | string (FK) | |
+| `status` | enum | `ok` / `error` / `excluded` (P5). Hanya `ok` yang masuk total run, file bank, laporan, YTD pajak, dan slip karyawan |
+| `error_message` | text (nullable) | Alasan karyawan tidak bisa dihitung (tetap tersimpan saat di-exclude) |
+| `compensation_id` / `schedule_id` | uuid (nullable) | Versi kompensasi & schedule yang dipakai (P5) |
 | `gross` | int | |
 | `bpjs_employee` | int | |
 | `bpjs_employer` | int | |
@@ -121,6 +124,22 @@ Rincian tiap komponen pada slip (untuk transparansi & audit).
 | `name` | string | |
 | `type` | enum | `earning` / `deduction` |
 | `amount` | int | |
+| `component_id` | uuid (nullable) | Pay component (P5) |
+| `source` | enum (nullable) | `fixed` / `formula` / `system` (mis. `PPH21_DTP`) — P5 |
+| `formula_version_id` | uuid (nullable) | Versi formula yang menghasilkan nilai (P3) |
+| `sequence` | int | Urutan di slip (sequence pay component) — P5 |
+
+### 2.6a `payroll_run_inputs` (P5)
+Snapshot variabel periode per run per karyawan — dikunci ke `run_id + employee_id` (bukan payslip) agar bertahan saat hitung ulang.
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `run_id` (FK, cascade) / `employee_id` | uuid | |
+| `variable_name` | string | Nama variabel formula (mis. `present_days`, `leave_days_annual`) |
+| `value` | numeric | |
+| `source` | enum | `attendance` / `leave` (snapshot) / `manual` (override HR) |
+| `note`, `created_by` | | Catatan input manual |
+
+UNIQUE `(run_id, employee_id, variable_name, source)`; nilai efektif = `manual` bila ada, selain itu snapshot.
 
 ### 2.7 `tax_ter_rates` (config, versioned)
 | Field | Tipe | Keterangan |

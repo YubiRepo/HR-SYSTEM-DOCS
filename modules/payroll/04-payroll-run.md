@@ -46,6 +46,8 @@ Sistem menolak bila aktor yang menyetujui sama dengan yang membuat (dapat dikonf
 
 ---
 
+**Kelengkapan (P5a):** maker bisa mengubah run selama **draft** dan menghapus run **draft / calculated**. Checker bisa **reject** run `in_review` dengan alasan → kembali `calculated`; alasan tampil ke maker sampai run disetujui. Sebelum membuat run, form menampilkan pratinjau jumlah karyawan yang akan dihitung.
+
 ## 5. Anatomi Run
 
 ```
@@ -60,6 +62,14 @@ Payroll Run "Januari 2026" (status: calculated)
 ```
 
 Satu run = kumpulan **payslip** karyawan terpilih untuk periode itu + ringkasan total.
+
+**Snapshot & status per karyawan (P5):**
+- Calculate pertama membaca absensi/cuti tiap karyawan lalu menyimpannya sebagai **snapshot input** (`payroll_run_inputs`). Hitung ulang memakai snapshot itu, sehingga perubahan data absensi setelahnya tidak mengubah hasil — kecuali diminta `refresh_inputs` ("Recalculate with Fresh Attendance Data"). Item absensi yang masih pending hanya dicek saat data dibaca.
+- HR bisa memberi **input manual** per variabel per karyawan (mis. `present_days = 15` + catatan) saat run `calculated`; nilai manual mengalahkan snapshot, juga setelah refresh. Berlaku pada calculate berikutnya.
+- Karyawan yang tidak bisa dihitung (tax profile kosong, PTKP tidak ada di master, JKK tidak jelas, item absensi pending, formula sirkular, ...) mendapat payslip **`error`** dengan pesannya; run tetap `calculated`. Hanya error internal (DB) yang menggagalkan seluruh run.
+- **Exclude / include** per karyawan saat run `calculated`. Karyawan `excluded` tetap dihitung ulang tetapi tidak masuk total, file bank, laporan, YTD pajak, maupun slip karyawan; status exclude bertahan saat hitung ulang.
+- **Submit ditolak** selama masih ada payslip `error` (perbaiki lalu hitung ulang, atau exclude).
+- Total run: `count` (ok), `error_count`, `excluded_count`. Baris slip mencatat `source` (fixed / formula / system), versi formula, dan urutan komponen.
 
 ### 5.1 Target Peserta (Filter Fleksibel)
 

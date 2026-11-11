@@ -151,7 +151,7 @@ P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesert
 P2 Employee Compensation ──> P15 Konsolidasi Data Payroll Karyawan ──> P4 Schedule & Period ──> P14 PPh 21 Pegawai Tidak Tetap & Rekonsiliasi Desember Selektif ──> P16 Masa Pajak Terakhir & Data Pajak Tahunan Karyawan
 ```
 
-Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P14 → P16 → P5 → P8 → P6 → P7**. P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4. P16 (masa pajak terakhir selain Desember, karyawan masuk di tengah tahun, penyetahunan, bukti potong pemberi kerja sebelumnya) memperluas jalur rekonsiliasi P14; P14 dan P16 sama-sama menunggu konfirmasi tim pajak.
+Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P5 → P5a → P14 → P16 → P8 → P6 → P7**. P5 didahulukan dari P14/P16 (keputusan user 2026-11-11) selama menunggu jawaban tim pajak (§8a). P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P14 (PPh 21 pegawai tidak tetap & rekonsiliasi Desember selektif) butuh schedule non-bulanan dari P4. P16 (masa pajak terakhir selain Desember, karyawan masuk di tengah tahun, penyetahunan, bukti potong pemberi kerja sebelumnya) memperluas jalur rekonsiliasi P14; P14 dan P16 sama-sama menunggu konfirmasi tim pajak.
 
 ---
 
@@ -449,7 +449,7 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 
 ### P14 — PPh 21 Pegawai Tidak Tetap (TER Harian) & Rekonsiliasi Desember Selektif
 
-**Status:** usulan dari review 2026-11-11, **menunggu keputusan** (lihat simulasi [lampiran §11](./2026-11-10-payroll-erd-simulasi-satu-periode.md) temuan #3–#4).
+**Status:** usulan dari review 2026-11-11, **menunggu keputusan** — pertanyaan untuk tim pajak di §8a butir 1–6 (lihat simulasi [lampiran §11](./2026-11-10-payroll-erd-simulasi-satu-periode.md) temuan #3–#4).
 
 **Masalah:**
 1. Calculator selalu memakai TER **bulanan** per run. Untuk pegawai tidak tetap yang dibayar harian / mingguan / per jam, hasilnya salah: bruto dua mingguan Rp4,5 jt masuk TER A 0%, padahal per hari ±Rp565 rb dan seharusnya kena TER harian 0,5%.
@@ -482,7 +482,7 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 
 **API / Backoffice:** field **Employment tax status** di tax profile; tab **TER Harian** di HR Setting › Tax and BPJS; laporan bukti potong (P13) menambah kolom status dan metode.
 
-**Dependensi:** P4 (schedule non-bulanan, `pay_date` periode), P10–P13. Dikerjakan sebelum P5.
+**Dependensi:** P4 (schedule non-bulanan, `pay_date` periode), P10–P13. Menunggu jawaban tim pajak (§8a); P5 dikerjakan lebih dulu.
 
 **Kriteria selesai:** simulasi §11: Dodi PPh 0 (rata-rata 172.023/hari), Eka 22.622 dan 24.130; pegawai tetap bulanan tidak berubah; run THR/bonus Desember tidak memicu Pasal 17; hanya run regular terakhir Desember yang `ter_method = annual`.
 
@@ -490,7 +490,7 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 
 ### P16 — Masa Pajak Terakhir & Data Pajak Tahunan Karyawan
 
-**Status:** usulan dari diskusi 2026-11-11, **menunggu konfirmasi tim pajak** (aturan di bawah perlu dicek terhadap PMK 168/2023 dan PER Dirjen turunannya). Dikerjakan setelah P14, sebelum P5.
+**Status:** usulan dari diskusi 2026-11-11, **menunggu konfirmasi tim pajak** — pertanyaan di §8a butir 7–12 (aturan di bawah perlu dicek terhadap PMK 168/2023 dan PER Dirjen turunannya). Dikerjakan setelah P14.
 
 **Masalah** — calculator sekarang:
 1. Hanya menjalankan Pasal 17 setahun bila `period` berakhiran `-12`. Karyawan yang masa pajak terakhirnya bukan Desember (resign, pensiun, meninggal, pindah ke luar negeri) tetap dihitung TER, sehingga kurang/lebih potong tidak pernah dibereskan di masa terakhirnya.
@@ -543,6 +543,15 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 
 ### P5 — Run Snapshot (run employee, input, detail)
 
+**Status:** selesai dikerjakan 2026-11-11, menunggu review. Migrasi `20261111000007_payroll_run_snapshot` ditulis, **belum dijalankan**. Tidak ada backfill. Catatan implementasi:
+- `payroll_run_inputs` dikunci ke `run_id + employee_id` (bukan `payslip_id` seperti rencana) karena hitung ulang membangun ulang payslip; snapshot dan input manual tetap utuh. Unik per `(run, employee, variable, source)`; nilai manual menang, juga setelah `refresh_inputs`.
+- Semua variabel katalog absensi/cuti disimpan (termasuk nol), sumber `attendance` / `leave`.
+- Error per karyawan = semua error bukan internal: tax profile kosong, PTKP tidak di master, JKK ambigu, TER kosong, **item absensi pending** (sebelumnya memblokir seluruh run), formula sirkular. Error internal (DB) tetap menggagalkan run.
+- Exclude dibawa saat hitung ulang (karyawan tetap dihitung, status tetap `excluded`). Include → `ok`, atau `error` bila ada `error_message`.
+- Slip `error` / `excluded` dikecualikan dari total run, file bank, laporan P13, YTD Desember, plafon BPJS bulanan (P4), daftar slip karyawan (ESS & tab Payroll).
+- Input manual hanya bisa diubah saat run `calculated` dan baru berlaku setelah calculate (Backoffice menyediakan "Save & Recalculate").
+- Backoffice: inspector run menampilkan daftar karyawan (status, pesan error, exclude/include, panel input); menu run menambah "Recalculate with Fresh Attendance Data"; halaman Payslips menandai slip error/excluded dan baris formula.
+
 **Tujuan:** hasil run bisa ditelusuri dan direproduksi; kegagalan satu karyawan tidak menggagalkan seluruh run.
 
 **Migrasi**
@@ -567,6 +576,27 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 **Docs:** `04-payroll-run.md`, `03-calculation.md` §6 (jejak audit), `06-data-model.md` §2.5–§2.6.
 
 **Kriteria selesai:** mengubah data absensi setelah calculate tidak mengubah hasil recalculate tanpa `refresh_inputs`; run dengan satu karyawan error tetap bisa di-review setelah karyawan itu di-exclude.
+
+---
+
+### P5a — Kelengkapan Payroll Run (CRUD, reject, preview, UI)
+
+**Status:** selesai dikerjakan 2026-11-11 (permintaan user setelah review UI Payroll Runs), menunggu review. Migrasi `20261111000008_payroll_run_review` ditulis, **belum dijalankan**. Tidak ada backfill.
+
+**Masalah:** run draft tidak bisa diubah / dihapus; checker hanya bisa approve (tidak bisa mengembalikan run); peserta baru terlihat setelah calculate; halaman Payroll Runs masih gaya lama (kartu statistik, label mock, pencarian ID batch, maker/checker berupa potongan ID) dan form buat run tidak bisa memilih karyawan (final pay menghitung semua karyawan).
+
+**API**
+- `PUT /payroll/runs/:id` — ubah run **draft** (tipe, periode / masa pajak, tanggal bayar, cabang, filter peserta); validasi sama dengan buat run.
+- `DELETE /payroll/runs/:id` — hapus run **draft / calculated** beserta payslip dan input; audit `payroll_run.deleted`.
+- `POST /payroll/runs/:id/reject` `{ reason }` (`payroll:approve`) — `in_review` → `calculated`; alasan disimpan di `payroll_runs.review_note` (+ `reviewed_by`, `reviewed_at`), dihapus saat approve; audit `payroll_run.rejected`.
+- `POST /payroll/runs/preview` — body sama dengan buat run → `{ period, pay_date, count, employee_ids }` (peserta yang akan dihitung, tanpa membuat run).
+- Respons run menambah `created_by_name`, `approved_by_name`, `reviewed_by_name` (username / email dari auth, best effort), `review_note`, `reviewed_at`.
+
+**Backoffice**
+- **Payroll Runs** (`salary/runs/index.vue`) memakai `AppListPage` tanpa kartu statistik: filter status, tipe, schedule, tahun pajak; kolom run (periode · schedule atau tipe · masa pajak), status (+ tanda "Rejected"), karyawan ok/error/excluded, net, tanggal bayar, pembuat; aksi Open / Edit (draft) / Delete (draft, calculated).
+- **Detail run** (`salary/runs/[id].vue`): tombol sesuai status & izin (Edit, Calculate, Recalculate / dengan data absensi baru, Submit, Delete — maker; Reject, Approve, Bank File, Mark as Paid, Close — checker), semua dengan konfirmasi; peringatan rejected / error; ringkasan total; detail run; daftar karyawan P5.
+- **Form run** (`PayrollRunForm`): 1) tipe; 2) regular = schedule → periode (yang berjalan / berikutnya di atas, info cutoff absensi & masa pajak, tanggal bayar bisa diubah), off-cycle = masa pajak + tanggal bayar; 3) peserta = semua (opsional dipersempit cabang / salary type / employment type) atau karyawan terpilih (wajib untuk final pay); pratinjau jumlah karyawan langsung; tombol Create Draft / Create & Calculate.
+- Halaman lama `salary/runs.vue` dihapus.
 
 ---
 
@@ -1090,6 +1120,39 @@ Halaman mock di `/tenants/payroll/*` dihapus setelah penggantinya live.
 | 15 | Premi BPJS yang dibayar perusahaan sebagai bruto pajak | **Diputuskan:** flag `employer_contribution_taxable` di `bpjs_config`, dikerjakan di P12. Default seed Kesehatan, JKK, JKM = `true`. |
 | 16 | DTP bersama metode `nett` | **Diputuskan:** DTP dibayarkan sebagai earning `PPH21_DTP`. Kombinasi dengan gross-up belum relevan karena gross-up belum disediakan. |
 | 17 | Aturan masa pajak terakhir, penyetahunan, biaya jabatan proporsional, A1 sebelumnya (P16) | **Perlu konfirmasi tim pajak** sebelum P16: (a) batas biaya jabatan Rp500 rb × bulan untuk masa kerja < 12 bulan; (b) penyetahunan hanya untuk subjek pajak DN yang datang/pergi di tengah tahun; (c) A1 pemberi kerja sebelumnya digabung oleh pemberi kerja baru atau oleh karyawan di SPT; (d) pengembalian kelebihan potong di slip terakhir. |
+
+---
+
+### 8a. Pertanyaan untuk Tim Pajak (P14, P16)
+
+Dicatat 2026-11-11. P14 dan P16 baru dikerjakan setelah semua butir dijawab. Mohon sertakan 1–2 contoh angka untuk butir 1, 7, 8 dan 10; contoh itu menjadi kriteria uji di [lampiran simulasi](./2026-11-10-payroll-erd-simulasi-satu-periode.md).
+
+**P14 — PPh 21 pegawai tidak tetap & rekonsiliasi Desember**
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 1 | Pegawai tidak tetap yang dibayar harian / mingguan / per jam / borongan memakai **TER harian** atas rata-rata penghasilan per hari: ≤ Rp450.000 → 0%; > Rp450.000 s.d. Rp2.500.000 → 0,5%; > Rp2.500.000 → Pasal 17 atas 50% bruto. Benar? | |
+| 2 | Pegawai tidak tetap yang dibayar **bulanan** memakai TER bulanan **tanpa** rekonsiliasi Pasal 17 akhir tahun. Benar? | |
+| 3 | Jumlah hari untuk rata-rata per hari: hari hadir + cuti berbayar dalam periode, hari kalender, atau hari kerja terjadwal? | |
+| 4 | Karyawan dengan beberapa run di masa Desember (mingguan / dua mingguan): Pasal 17 setahun hanya di **run regular terakhir** (tanggal bayar paling akhir di Desember), run Desember sebelumnya tetap TER. Benar? | |
+| 5 | Run THR / bonus di Desember tetap TER dan hanya ikut dijumlahkan di rekonsiliasi (tidak memicu Pasal 17 sendiri). Benar? | |
+| 6 | Masa pajak = **bulan penghasilan dibayarkan** (periode 23–29 Nov dibayar 2 Des → masa Desember), termasuk adjustment yang membayar selisih bulan lalu. Benar? | |
+
+**P16 — Masa pajak terakhir & data pajak tahunan**
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 7 | Karyawan berhenti di tengah tahun (resign, PHK, pensiun, meninggal): Pasal 17 dihitung di **bulan keluar** atas penghasilan Jan s.d. bulan keluar, tidak disetahunkan? Kelebihan potong dikembalikan langsung di slip terakhir, atau mekanisme lain? | |
+| 8 | Karyawan masuk di tengah tahun: tidak disetahunkan, PTKP setahun penuh, dan batas biaya jabatan = **Rp500.000 × jumlah bulan bekerja** (bukan Rp6 jt)? | |
+| 9 | Penyetahunan hanya untuk yang **mulai / berhenti menjadi subjek pajak dalam negeri** di tengah tahun (WNA datang, meninggalkan Indonesia selamanya)? Ada kasus lain? | |
+| 10 | Bukti potong 1721-A1 pemberi kerja sebelumnya (pindah kerja dalam tahun yang sama): pemberi kerja baru **wajib / boleh / tidak boleh** menggabungkannya di perhitungan Desember, atau digabung karyawan di SPT tahunan? Bila digabung: komponen A1 apa saja (bruto, iuran pensiun/JHT, PPh dipotong), dan apakah bulan di pemberi kerja lama menambah batas biaya jabatan? | |
+| 11 | Karyawan keluar lalu masuk kembali di perusahaan yang sama dalam tahun yang sama: satu masa kerja atau dua? | |
+
+**Umum**
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| 12 | Setelah NIK berlaku sebagai NPWP, apakah tarif lebih tinggi untuk karyawan tanpa NPWP (dulu +20%) masih perlu diterapkan dalam kasus tertentu? (lihat Risiko #9) | |
 
 ---
 

@@ -104,6 +104,10 @@ Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bul
 |---|---|---|---|
 | GET | `/payroll/runs` | Daftar run | `payroll:read` |
 | POST | `/payroll/runs` | Buat run (draft) | `payroll:run` |
+| POST | `/payroll/runs/preview` | Body sama dengan buat run → `{ period, pay_date, count, employee_ids }` (P5a) | `payroll:run` |
+| PUT | `/payroll/runs/{id}` | Ubah run **draft** (P5a) | `payroll:run` |
+| DELETE | `/payroll/runs/{id}` | Hapus run draft / calculated beserta payslip (P5a) | `payroll:run` |
+| POST | `/payroll/runs/{id}/reject` | `{ reason }` — in review → calculated, alasan di `review_note` (P5a) | `payroll:approve` |
 | GET | `/payroll/runs/{id}` | Detail run + total | `payroll:read` |
 | POST | `/payroll/runs/{id}/calculate` | Hitung run | `payroll:run` |
 | POST | `/payroll/runs/{id}/submit` | Kirim ke review | `payroll:run` |
@@ -112,6 +116,9 @@ Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bul
 | POST | `/payroll/runs/{id}/close` | Kunci run | `payroll:approve` |
 | GET | `/payroll/runs/{id}/payslips` | Daftar slip dalam run | `payroll:read` |
 | GET | `/payroll/runs/{id}/bank-file` | Unduh file transfer bank | `payroll:approve` |
+| POST | `/payroll/runs/{id}/payslips/{payslipId}/exclude` · `/include` | Exclude / include karyawan (run `calculated`); respons = run dengan total baru (P5) | `payroll:run` |
+| GET | `/payroll/runs/{id}/payslips/{payslipId}/inputs` | Input periode karyawan: `rows` (snapshot `attendance`/`leave` + `manual`) dan `effective` | `payroll:read` |
+| PUT | `/payroll/runs/{id}/payslips/{payslipId}/inputs` | `{ inputs: [{ variable_name, value, note }] }` — ganti seluruh input manual (kosong = hapus); berlaku di calculate berikutnya | `payroll:run` |
 
 ### Laporan Setoran (P13)
 Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `format=csv` (opsional, unduhan CSV). Hanya run `approved`/`paid`/`closed` dihitung; run lain di `pending` / `runs[].final = false`. Period salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`. Endpoint PPh 21 juga butuh benefit plan `payroll.tax`.
@@ -153,6 +160,7 @@ Run regular (P4): `{ "period_id": "...", "type": "regular" }` — `period` ditur
 ---
 
 ## 2. POST /payroll/runs/{id}/calculate
+Body opsional `{ "refresh_inputs": true }` (atau `?refresh_inputs=true`): baca ulang absensi/cuti alih-alih snapshot input run (P5). Karyawan yang gagal dihitung tidak menggagalkan run: payslip-nya `status = error` + `error_message`, dan `totals.error_count` bertambah; submit ditolak selama `error_count > 0`. Payslip menambah `status`, `error_message`, `compensation_id`, `schedule_id`; baris slip menambah `component_id`, `source`, `sequence`.
 Menghitung semua karyawan dalam scope (async untuk jumlah besar).
 **Response `202 Accepted`**
 ```json

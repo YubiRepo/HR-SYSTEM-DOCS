@@ -136,4 +136,4 @@ Gaji bersih          = 10.500.000 − BPJS − PPh21 − potongan lain
 
 - Uang disimpan sebagai integer minor unit (konsisten API Response Architecture).
 - Aturan pembulatan (per komponen / total) ditetapkan konsisten & terdokumentasi agar hasil reproducible.
-- Setiap angka pada slip harus dapat ditelusuri asal-usulnya (audit).
+- Setiap angka pada slip harus dapat ditelusuri asal-usulnya (audit). Sejak P5: tiap baris slip menyimpan pay component, sumber nilai (`fixed` / `formula` / `system`) dan versi formula; variabel absensi/cuti yang dipakai tersimpan di `payroll_run_inputs` (snapshot + input manual), serta versi kompensasi dan schedule tercatat di payslip.
