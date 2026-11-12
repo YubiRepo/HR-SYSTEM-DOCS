@@ -94,7 +94,7 @@ idempotency_key = sha256( lower(vendor) | device_serial | employee_ref | occurre
 | `INVALID_OCCURRED_AT` | Kosong atau > 5 menit di masa depan |
 | `INVALID_DIRECTION` / `INVALID_VERIFICATION` | Di luar enum |
 | `RAW_TOO_LARGE` | `raw` > 4 KB |
-| `UNKNOWN_DEVICE` | Serial tidak terdaftar ke agent ini |
+| `UNKNOWN_DEVICE` | Serial tidak terdaftar (aktif) ke agent ini. Agent **tidak** membuang event ini: event ditahan di antrean sampai serial didaftarkan (lihat "Punch dari mesin yang belum terdaftar" di §5) |
 
 > `employee_ref` yang belum dikenal **tidak** ditolak saat ingest. Event disimpan dengan status `unmatched` dan diproses ulang setelah mapping ditambahkan.
 
@@ -225,7 +225,10 @@ Banyak mesin dikelola software bawaan vendor yang menyedot log mesin lalu menuli
          c.VERIFYCODE AS verifycode, c.SENSORID AS sensorid
   FROM CHECKINOUT c INNER JOIN USERINFO u ON u.USERID = c.USERID
   ```
-- **Filter mesin (opsional):** bila satu tabel berisi banyak mesin, pilih kolom mesin + nilainya (mis. `sensorid = 1`). Daftarkan satu "mesin" per nilai, masing-masing dengan serial-nya sendiri di backoffice.
+- **Mesin dalam sumber ini** (`machine_mode`):
+  - **One machine** (`single`, default): satu sumber = satu mesin dengan serial dari form. Bila tabel berisi banyak mesin, boleh diberi filter kolom mesin + nilainya (mis. `sensorid = 1`).
+  - **Several machines** (`multi`): satu sumber melayani semua mesin di tabel. **Machine column** wajib diisi (kolom SN). Setiap punch dikirim dengan serial dari kolom itu, dan baris dengan SN kosong dilewati. Serial pada form agent hanya menjadi **ID sumber** (mis. `DB-HQ`): dipakai untuk checkpoint dan log, dan tidak perlu didaftarkan di backoffice. Status koneksi sumber dilaporkan sebagai status setiap mesin yang dilayaninya.
+  - Dengan mode `multi`, koneksi dan mapping kolom cukup diatur sekali untuk N mesin. Mesin baru muncul sendiri di backoffice sebagai **detected machines**.
 
 **Mapping kolom** ditampilkan sebagai tabel 3 kolom: **field sistem HR** | **kolom database** | **tipe data / format**. Tombol **Load columns** mengisi pilihan kolom sekaligus menampilkan tipe data tiap kolom dari database (mis. `DB: datetime`). **Preview rows** menampilkan 5 baris mentah.
 
@@ -266,6 +269,18 @@ Contoh isi field **Logs** di form mesin:
 
 `occurred_at` tidak boleh lebih dari 5 menit di masa depan (aturan kontrak §2); punch dengan `employee_ref` yang sudah dipetakan (§6) akan ter-resolve ke karyawan tersebut.
 
+### Punch dari mesin yang belum terdaftar
+
+Agent mengambil daftar mesin aktif miliknya (`GET /agent/config`) saat start, lalu tiap 1 menit.
+
+- **Ditahan, tidak dikirim:** punch yang serial-nya tidak ada di daftar itu tetap `pending` di antrean lokal (kolom `queue.event_serial`).
+- **Hasil `UNKNOWN_DEVICE`:** kalau server tetap menjawab `UNKNOWN_DEVICE` (misalnya mesin baru dinonaktifkan), event dikembalikan ke status tahanan, tidak menjadi dead.
+- **Dilaporkan sebagai detected:** setiap heartbeat mengirim `detected_devices`, yaitu ringkasan per serial: jumlah punch tertahan serta kapan pertama dan terakhir terlihat. Backoffice (Machines & Agents → pilih agent) menampilkannya sebagai **Detected Machines**. Pengguna bisa mencentang, memberi nama, memilih branch dan tipe, lalu klik **Register Selected**.
+- **Terkirim setelah didaftarkan:** dalam ±1 menit setelah serial didaftarkan, punch yang tertahan ikut terkirim. Tidak ada punch yang hilang.
+- **Web UI agent:** halaman Status menampilkan daftar "Waiting for registration".
+
+Serial yang sudah terdaftar tetapi nonaktif atau milik agent lain tetap muncul sebagai detected, dengan keterangan `registered_device`. Perbaiki device itu (aktifkan atau pindahkan agent-nya); jangan mendaftarkannya ulang.
+
 ## 6. Endpoint
 
 **Dipanggil agent** (tanpa JWT, auth `X-Agent-Key`, body maks. 4 MB):
@@ -273,7 +288,7 @@ Contoh isi field **Logs** di form mesin:
 | Method | Endpoint | Keterangan |
 |---|---|---|
 | POST | `/api/v1/attendance/agent/events/batch` | Kirim batch event (§2) |
-| POST | `/api/v1/attendance/agent/heartbeat` | `{agent_version, devices:[{device_serial, online, error?, last_fetch_at?}]}` → 204 |
+| POST | `/api/v1/attendance/agent/heartbeat` | `{agent_version, devices:[{device_serial, online, error?, last_fetch_at?}], detected_devices?:[{device_serial, pending_events, first_seen_at, last_seen_at}]}` → 204. `detected_devices` adalah set lengkap. Server mengganti isi `attendance_detected_devices` milik agent itu (maks. 500 serial), tanpa serial yang sudah terdaftar aktif ke agent tersebut |
 | GET | `/api/v1/attendance/agent/config` | Mesin aktif milik agent: `{agent_id, agent_name, devices:[{device_serial, vendor, name}]}` |
 
 Semua response memakai envelope standar `{success, data, meta}`.
@@ -289,6 +304,8 @@ Semua response memakai envelope standar `{success, data, meta}`.
 | GET | `/attendance/devices?agent_id=&branch_id=` | `attendance:read` | Daftar mesin + status koneksi |
 | POST | `/attendance/devices` | `attendance:config` | `{agent_id, branch_id, vendor, serial, name}` |
 | PATCH | `/attendance/devices/{id}` | `attendance:config` | Ubah field / `active: false` |
+| GET | `/attendance/devices/detected?agent_id=` | `attendance:read` | Serial yang ditahan agent karena belum terdaftar: `[{agent_id, serial, pending_events, first_seen_at, last_seen_at, registered_device?}]` |
+| POST | `/attendance/devices/bulk` | `attendance:config` | `{agent_id, branch_id, vendor, items:[{serial, name?}]}` (1–200 item). Agent dan branch dicek sekali; bila salah, seluruh request gagal. Setiap serial mendapat hasil sendiri: `created` / `exists` / `error` (`code`, `message`). Nama default: `Machine <serial>`. Kuota `max_devices` dicek per item. Serial yang berhasil dihapus dari detected |
 | GET | `/attendance/raw-events?status=&device_id=&employee_ref=` | `attendance:read` | Audit raw event, mis. `status=unmatched` |
 
 | GET | `/attendance/employee-mappings?device_id=&employee_id=&employee_ref=` | `attendance:read` | Daftar mapping |
