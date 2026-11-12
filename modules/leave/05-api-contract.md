@@ -30,7 +30,7 @@ Prefix `/api/v1/leave`. Envelope standar HRMS. Dijaga Entitlement (fitur `leave`
 |---|---|---|---|
 | POST | `/leave/requests` | Ajukan cuti | `leave:self` |
 | GET | `/leave/me/requests` | Riwayat pengajuan sendiri | `leave:self` |
-| GET | `/leave/requests` | Daftar pengajuan (manajer/HR) | `leave:read` |
+| GET | `/leave/requests` | Daftar pengajuan (manajer/HR). Filter: `employee_id`, `status`, `type_code`, `date_from`/`date_to` (overlap) | `leave:read` |
 | POST | `/leave/requests/{id}/approve` | Setujui (step berjalan) | — (hanya approver step aktif; `leave:approve` untuk step *any approver*) |
 | POST | `/leave/requests/{id}/reject` | Tolak | — (sama dengan approve) |
 | POST | `/leave/requests/{id}/cancel` | Batalkan (karyawan) | `leave:self` |
