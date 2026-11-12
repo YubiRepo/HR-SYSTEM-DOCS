@@ -1,14 +1,14 @@
 <!-- 📁 modules/mobile/api/core-hr.md -->
 # Mobile API · Core HR
 
-Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dan direktori. Prefix `/api/v1/core-hr`. Pengelolaan karyawan, katalog, dan master data tetap di web.
+Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, direktori, serta riwayat/work policy/kontrak diri. Prefix `/api/v1/core-hr`. Pengelolaan karyawan, katalog, dan master data tetap di web.
 
 > Referensi lengkap: [`../../core-hr/04-api-contract.md`](../../core-hr/04-api-contract.md).
 
 ---
 
 ## 1. Profil Saya — `GET /core-hr/me/employee`
-**Permission:** `employees:self`. Mengembalikan record karyawan lengkap milik user login, antara lain:
+**Permission:** `employees:self` atau `employees:read`. Mengembalikan record karyawan lengkap milik user login, antara lain:
 - identitas: `id`, `employee_number`, `full_name`, `email`, `phone`, `address`, `emergency_contact`
 - penempatan: `position_name`, `org_unit_name`, `branch_name`, `status`
 - lainnya: `custom_fields`, `avatar_url`
@@ -29,7 +29,7 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dan
 - Response `200` berisi profil terbaru. Perubahan langsung berlaku; approval HR untuk perubahan kontak belum ada.
 
 ## 3. Dokumen Saya — `GET /core-hr/me/documents` · `GET /core-hr/me/documents/{doc_id}`
-**Permission:** `employees:self`.
+**Permission:** `employees:self` atau `employees:read`.
 ```json
 { "success": true, "data": [ { "id": "…", "type": "contract", "type_name": "Contract", "file_name": "Kontrak_2024.pdf", "file_url": "https://…", "uploaded_at": "…" } ] }
 ```
@@ -59,6 +59,13 @@ GET /core-hr/regions/villages?district=31.71.01
 }
 ```
 Hanya karyawan aktif yang ditampilkan, dengan `per_page` maksimal 50. Data pribadi (NIK, alamat, kontak pribadi) tidak pernah muncul di sini.
+
+## 6. Riwayat, Work Policy & Kontrak Saya
+**Permission:** `employees:self` atau `employees:read`. Read-only, selalu untuk karyawan milik user login (tanpa `{id}`).
+
+- `GET /core-hr/me/history` — bentuk sama dengan `GET /employees/{id}/history` (`assignments`, `status_history`, `employment_history`). Tiap assignment juga membawa `branch_name`, `org_unit_name`, `position_name` (opsional; kosong bila lookup gagal), karena karyawan tidak punya izin memanggil endpoint lookup branch/org unit/posisi.
+- `GET /core-hr/me/work-policies` — bentuk sama dengan `GET /employees/{id}/work-policies`, plus `pattern_name` (opsional) untuk nama schedule pattern dari modul attendance.
+- `GET /core-hr/me/contracts?status=&type=&page=1&per_page=20` — bentuk dan filter sama dengan `GET /employees/{id}/contracts` (paginated, `type_name` sebagai label).
 
 ---
 
