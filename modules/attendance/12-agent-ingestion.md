@@ -349,9 +349,7 @@ Mapping eksplisit selalu menang, termasuk atas `employee_number` yang kebetulan 
 
 ## 7. Pemrosesan Raw Event → `attendance_records`
 
-**Pemicu:**
-- Ingest (dan reprocess) menulis pesan `attendance.raw_event.ready` `{tenant_id, raw_event_ids}` ke outbox **dalam transaksi yang sama** dengan insert. Worker memprosesnya.
-- Sweep `attendance.raw_event.process_sweep` tiap 5 menit memproses raw event yang masih `pending` (pesan hilang, worker sempat mati).
+**Pemicu:** hanya **Evaluate Attendance** (`POST /attendance/records/evaluate`, juga dipanggil payroll). Ingest dan reprocess hanya menyimpan punch sebagai `pending`; tidak ada consumer atau sweep yang membuat record. Evaluate memproses punch `pending` milik tenant yang hari kerjanya masuk rentang tanggal (dan branch) yang diminta, **sebelum** mengisi hari kosong dengan `absent`/libur/cuti. Punch dimuat dengan kelonggaran 1 hari di kedua sisi (timezone, shift lintas tengah malam); punch yang hari kerjanya di luar rentang tetap `pending`. Hasilnya ada di field `machine_punches` pada response evaluate.
 
 **Langkah per raw event:**
 1. Resolusi `employee_ref` → karyawan (§6). Tidak cocok → `unmatched`.
@@ -361,16 +359,40 @@ Mapping eksplisit selalu menang, termasuk atas `employee_number` yang kebetulan 
    - record hari itu milik sumber lain (`mobile`/`web`/`kiosk`/`manual`, atau record `machine` yang sudah **dikoreksi HR**) → record tidak disentuh, punch `superseded`;
    - selain itu (belum ada record, record `system` hasil Evaluator, atau record `machine`) → **hitung ulang dari semua punch hari itu** dan simpan sebagai `source: machine`, `verification` dari punch masuk.
 
-**Pemasangan punch** (punch diurutkan; scan ulang < 1 menit diabaikan):
-- Masuk = punch pertama yang bukan `out`.
-- Pulang = punch terakhir sesudahnya yang bukan `in`, asalkan bertanda `out` **atau** minimal 30 menit setelah masuk. Kalau tidak ada → `incomplete`.
-- Auto clock-out sistem tetap dipertahankan sampai ada punch pulang yang asli.
+**Pemasangan punch** (`entity.PairPunches`, per karyawan per hari):
+1. Punch diurutkan. Scan < 1 menit setelah punch sebelumnya yang dipakai → `duplicate`.
+2. Kalau tersisa ≥ 2 punch dan **semuanya** `in` (atau semuanya `out`), mesin dianggap tidak punya tombol mode → direction diabaikan untuk hari itu.
+3. Masuk = punch pertama yang bukan `out`.
+4. Pulang = punch **terakhir** sesudah masuk yang bertanda `out`, atau tanpa direction dan minimal 30 menit setelah masuk.
+5. Tidak ada punch yang layak jadi masuk (satu `out` saja) → record **tanpa clock-in**, clock-out = `out` terakhir, status `incomplete`.
+6. Sisanya `ignored`, dengan catatan alasan.
+
+Auto clock-out sistem tetap dipertahankan sampai ada punch pulang yang asli.
+
+| # | Punch hari itu | Masuk | Pulang | Record | Punch lain |
+|---|---|---|---|---|---|
+| 1 | in 08:00, out 17:00 | 08:00 | 17:00 | present (+late/early/overtime) | – |
+| 2 | 08:00, 17:00 (tanpa direction) | 08:00 | 17:00 | present | – |
+| 3 | satu punch in / tanpa direction | punch itu | – | incomplete | – |
+| 4 | satu punch `out` | – | punch itu | incomplete (tanpa clock-in) | – |
+| 5 | in 08:00, in 12:00, in 17:00 | 08:00 | 17:00 | present (direction diabaikan) | 12:00 ignored: between clock-in and clock-out |
+| 6 | out 08:00, out 17:00 | 08:00 | 17:00 | present (direction diabaikan) | – |
+| 7 | in 08:00, in 08:10 | 08:00 | – | incomplete | 08:10 ignored: too soon after the clock-in |
+| 8 | out 07:00, in 08:00, out 17:00 | 08:00 | 17:00 | present | 07:00 ignored: out punch before the clock-in |
+| 9 | in 08:00, out 12:00, in 13:00, out 17:00 | 08:00 | 17:00 | present | 12:00, 13:00 ignored: between |
+| 10 | in 08:00, out 17:00, in 17:30 | 08:00 | 17:00 | present | 17:30 ignored: after the clock-out |
+| 11 | in 08:00, out 16:00, out 17:00 | 08:00 | 17:00 | present | 16:00 ignored: between |
+| 12 | in 08:00, out 08:05, 08:20 | 08:00 | 08:05 | present, early leave | 08:20 ignored: after the clock-out |
+| 13 | 08:00:10, 08:00:40 | 08:00:10 | – | incomplete | 08:00:40 duplicate |
+| 14 | 08:00, 08:20 (tanpa direction) | 08:00 | – | incomplete | 08:20 ignored: too soon after the clock-in |
+
+**Role punch** (`punch_role` + `role_note` di `attendance_raw_events`, hanya untuk status `processed`): `clock_in`, `clock_out`, `duplicate`, `ignored`. Ditulis ulang untuk **semua** punch hari itu setiap kali hari itu dihitung ulang, karena punch yang telat bisa menggeser peran. `GET /attendance/raw-events` menerima filter `punch_role`. Tabel kasus ini juga tampil di backoffice (Machine Punches → *How punches are paired*).
 
 Karena selalu dihitung ulang dari semua punch, punch yang telat datang (agent offline berhari-hari) otomatis memperbaiki record, dan memproses ulang aman (idempotent). Berbeda dengan clock-in mobile, clock window dan `NO_SCHEDULE` **tidak** menolak punch mesin: punch tetap dicatat dan statusnya dihitung apa adanya.
 
 **Status raw event:** `pending` → `processed` / `unmatched` / `superseded` / `skipped_locked` / `error`.
 
-**Reprocess:** `POST /attendance/raw-events/reprocess` (`attendance:config`) `{statuses:[unmatched|error|superseded|skipped_locked], device_id?, employee_ref?}` → `{requeued}`. Membuat mapping baru otomatis me-reprocess punch `unmatched` dengan ref tersebut (response mapping berisi `requeued`).
+**Reprocess:** `POST /attendance/raw-events/reprocess` (`attendance:config`) `{statuses:[unmatched|error|superseded|skipped_locked], device_id?, employee_ref?}` → `{requeued}`. Punch hanya dikembalikan ke `pending`; record baru terbentuk di Evaluate Attendance berikutnya yang mencakup harinya. Membuat mapping baru otomatis me-reprocess punch `unmatched` dengan ref tersebut (response mapping berisi `requeued`).
 
 ## 8. Versi Kontrak
 
