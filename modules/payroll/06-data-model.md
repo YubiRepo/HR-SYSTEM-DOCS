@@ -59,7 +59,7 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `tax_treatment` | enum | `subject` / `dtp` / `exempt` (P11), default `subject` |
 | `employment_tax_status` | enum | `permanent` / `non_permanent` (P17), default `permanent`; hanya `permanent` yang direkonsiliasi |
 
-Kategori TER tidak disimpan: selalu dari master `pph21_ptkp_rates` (response API memakai versi hari ini, calculate memakai versi tahun pajak run). `has_npwp` juga tidak disimpan: diturunkan dari NPWP karyawan di Core HR (P15).
+Kategori TER tidak disimpan: selalu dari master `pph21_ptkp_rates` (response API memakai versi hari ini, calculate memakai versi tahun pajak run). Identitas pajak juga tidak disimpan di tax profile: dibaca dari Core HR (`employees.tax_identity_*`, P18).
 
 > Data payroll per karyawan (P15) = **kompensasi** (`employee_compensations`: structure, cabang, nilai komponen; nanti schedule di P4) + **tax profile** + **kepesertaan BPJS**, ditambah komponen manual / one-time. Tabel `payroll_employee_profiles` sudah dihapus: cabang dari kompensasi, `salary_type` dari structure, jenis kepegawaian dari kontrak aktif Core HR, dan "ikut payroll" = punya versi kompensasi yang berlaku.
 
@@ -116,6 +116,10 @@ Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per
 | `tax_reconciliation_override` | enum (nullable) | Pilihan HR per karyawan di run: `none` / `year_end` / `termination`; null = ikut run. Bertahan saat hitung ulang (P17) |
 | `tax_reconciliation`, `employment_tax_status` | snapshot (nullable) | Rekonsiliasi yang dipakai slip dan status pajak karyawan saat calculate (P17) |
 | `tax_note` | text (nullable) | Peringatan rekonsiliasi: pegawai tidak tetap dilewati, rekonsiliasi ulang, atau dibayar TER setelah direkonsiliasi (P17) |
+| `months_worked`, `annualized`, `previous_employer_gross`, `previous_employer_pph21` | snapshot (nullable) | Slip rekonsiliasi saja: bulan bekerja, disetahunkan, total A1 yang dipakai (P16) |
+| `pph21_refund` | int | Kelebihan potong yang dikembalikan oleh rekonsiliasi (P16); earning `PPH21_REFUND` bila dipotong dari karyawan |
+| `tax_identity_type`, `tax_identity_number`, `tax_identity_status`, `pph21_surcharge_pct` | snapshot (nullable) | Identitas pajak saat calculate & tarif tambahan yang diterapkan (P18). Menggantikan `has_npwp` / `npwp` untuk slip baru |
+| `ter_method`, `taxable_days` | snapshot (nullable) | Metode PPh 21 (`monthly` / `daily` / `annual`) dan hari hadir pembagi TER harian (P14). Null sebelum P14 dan untuk `exempt` |
 | `bpjs_details` | json (nullable) | Per program: `program`, `institution` (`kesehatan`/`ketenagakerjaan`), `membership_number`, `risk_class`, `base`, `employee_rate`, `employer_rate`, `employee_amount`, `employer_amount` (P11), `employer_taxable` (P12) |
 
 ### 2.6 `payslip_lines`
@@ -149,8 +153,8 @@ UNIQUE `(run_id, employee_id, variable_name, source)`; nilai efektif = `manual` 
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | |
-| `category` | enum | `A` / `B` / `C` |
-| `income_from` / `income_to` | int | Rentang bruto bulanan |
+| `category` | enum | `A` / `B` / `C` (TER bulanan) / `D` (TER harian, P14) |
+| `income_from` / `income_to` | int | Rentang bruto bulanan (A/B/C) atau rata-rata per hari (D) |
 | `rate_pct` | number | Tarif efektif |
 | `effective_from` | date | Versi berlaku |
 
@@ -173,7 +177,33 @@ Parameter skalar PPh 21, satu baris per versi (UNIQUE `(tenant_id, effective_fro
 | `id` | string (PK) | |
 | `occupational_expense_pct` | number | Biaya jabatan, % bruto setahun |
 | `occupational_expense_annual_cap` | int | Batas biaya jabatan setahun |
+| `daily_above_cap_bruto_pct` | number | TER harian: rata-rata per hari di atas tabel `D` → Pasal 17 atas % bruto ini (default 50, P14) |
+| `no_tax_identity_surcharge_enabled`, `no_tax_identity_surcharge_pct` | bool, number | Tarif tambahan tanpa identitas pajak valid (default off / 20, P18) |
+| `occupational_expense_monthly_cap` | int | Batas biaya jabatan per bulan bekerja (default 500.000, P16) |
 | `effective_from` | date | Versi berlaku |
+
+### 2.7c `employee_tax_years` (P16)
+Koreksi HR atas tahun pajak karyawan; tanpa baris → diturunkan dari tanggal masuk / keluar Core HR. PK `(employee_id, tax_year)`.
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `tax_year` | int | Tahun pajak |
+| `start_month` / `end_month` | int (1–12) | Bulan pertama / terakhir bekerja di tahun itu; `end_month` null = masih bekerja |
+| `termination_reason` | enum (nullable) | `resign` / `retire` / `death` / `leave_indonesia` / `other`; butuh `end_month` |
+| `annualize` | bool | Disetahunkan (hanya WNA datang / pergi di tengah tahun) |
+| `notes` | text (nullable) | |
+
+### 2.7d `employee_previous_employment_taxes` (P16)
+Bukti potong 1721-A1 pemberi kerja sebelumnya di tahun yang sama (bisa > 1). Angka diambil apa adanya dari A1.
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | string (PK) | |
+| `tax_year` | int | |
+| `employer_name`, `employer_npwp` | string | |
+| `period_from` / `period_to` | int (1–12) | Masa kerja di pemberi kerja itu |
+| `gross`, `occupational_expense`, `pension_contribution`, `net_income`, `pph21_withheld` | int | Sesuai A1 |
+| `document_number`, `notes` | string (nullable) | |
 
 ### 2.8 `bpjs_config` (config, versioned)
 | Field | Tipe | Keterangan |

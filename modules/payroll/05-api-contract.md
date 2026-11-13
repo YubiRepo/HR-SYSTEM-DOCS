@@ -66,14 +66,22 @@ Error: `422 INVALID_COMPENSATION_ARGUMENT`, `409 INVALID_COMPENSATION_STATE` (mi
 | GET / POST | `/payroll/config/pph21-ter-rates` | Tabel TER A/B/C | `payroll:read` / `payroll:config` |
 | GET / POST | `/payroll/config/pph21-brackets` | Tarif progresif Pasal 17 (rekonsiliasi Desember) | `payroll:read` / `payroll:config` |
 | GET / POST | `/payroll/config/pph21-ptkp-rates` | Master PTKP: status, PTKP tahunan, kategori TER. `GET ?as_of=YYYY-MM-DD` = hanya versi yang berlaku pada tanggal itu (dipakai dropdown PTKP tax profile). POST duplikat `(ptkp_status, effective_from)` → `409 CONFLICT` | `payroll:read` / `payroll:config` |
-| GET / POST | `/payroll/config/pph21-tax-parameters` | Biaya jabatan (`occupational_expense_pct`, `occupational_expense_annual_cap`). POST duplikat `effective_from` → `409 CONFLICT` | `payroll:read` / `payroll:config` |
+| GET / POST | `/payroll/config/pph21-tax-parameters` | Biaya jabatan (`occupational_expense_pct`, `occupational_expense_annual_cap`) `daily_above_cap_bruto_pct` (TER harian di atas batas, default 50 — P14) `occupational_expense_monthly_cap` (batas biaya jabatan per bulan bekerja, default 500.000 — P16), `no_tax_identity_surcharge_enabled` (default false) dan `no_tax_identity_surcharge_pct` (default 20) — P18. POST duplikat `effective_from` → `409 CONFLICT` | `payroll:read` / `payroll:config` |
 
 Semua tabel konfigurasi pajak/BPJS **append-only**: perubahan = baris baru dengan `effective_from` baru, tidak ada edit/hapus, sehingga run lama tetap bisa direproduksi.
 
-`PUT /payroll/employees/{id}/tax-profile`: `ptkp_status` divalidasi terhadap master PTKP yang berlaku hari ini. `ter_category` (dari master hari ini) dan `has_npwp` (dari Core HR) di response dihitung saat dibaca, tidak disimpan (P15). Status tidak ada di master → `INVALID_TAX_PROFILE_ARGUMENT`; tenant belum punya master → `CONFIG_NOT_FOUND`.
+**Tahun pajak & A1 karyawan (P16)** — `payroll:read` (GET) / `payroll:config` (tulis):
+
+| Method | Path | Keterangan |
+|---|---|---|
+| GET / PUT / DELETE | `/payroll/employees/{id}/tax-years/{year}` | Body PUT: `start_month`, `end_month`, `termination_reason`, `annualize`, `notes`. GET tanpa koreksi → turunan Core HR (`saved: false`). DELETE = kembali ke turunan Core HR |
+| GET / POST | `/payroll/employees/{id}/previous-employment-taxes` (`?tax_year=`) | A1 pemberi kerja sebelumnya: `tax_year`, `employer_name`, `employer_npwp`, `period_from`, `period_to`, `gross`, `occupational_expense`, `pension_contribution`, `net_income`, `pph21_withheld`, `document_number`, `notes` |
+| PATCH / DELETE | `/payroll/employees/{id}/previous-employment-taxes/{taxId}` | PATCH = ganti seluruh field A1 |
+
+`PUT /payroll/employees/{id}/tax-profile`: `ptkp_status` divalidasi terhadap master PTKP yang berlaku hari ini. `ter_category` (dari master hari ini) dan identitas pajak (dari Core HR) di response dihitung saat dibaca, tidak disimpan (P15). Status tidak ada di master → `INVALID_TAX_PROFILE_ARGUMENT`; tenant belum punya master → `CONFIG_NOT_FOUND`.
 - `tax_treatment`: `subject` (default) / `dtp` / `exempt` (P11). `dtp_eligible` sudah dihapus dari request & response (P15).
 - `pph21_method`: `gross` (default) / `nett` (P12). `gross_up` → `422 INVALID_TAX_PROFILE_ARGUMENT` (belum didukung).
-- `has_npwp` bukan input: diturunkan dari NPWP karyawan di Core HR. Response menambah `npwp` (read-only).
+- Identitas pajak bukan input: response berisi `tax_identity_type`, `tax_identity_number`, `tax_identity_status` (read-only, dari Core HR — P18; menggantikan `has_npwp` / `npwp`).
 - Simpan pertama membuat kepesertaan BPJS awal dari default tenant bila karyawan belum punya.
 
 ### Kepesertaan BPJS (P11)

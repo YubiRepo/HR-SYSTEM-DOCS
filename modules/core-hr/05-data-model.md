@@ -39,7 +39,10 @@ Model data konseptual (stack-agnostic). Entitas `users` & `tenants` dimiliki mod
 | `employee_number` | string | Nomor induk karyawan; unik per tenant (jembatan ke absensi, dll) |
 | `full_name` | string | Nama lengkap |
 | `national_id` | string | NIK; unik per tenant |
-| `npwp` | string (nullable) | NPWP (pajak) |
+| `tax_identity_type` | enum (nullable) | `npwp` / `nik` (payroll P18; menggantikan kolom `npwp`) |
+| `tax_identity_number` | string (nullable) | Digit saja. NIK: 16 digit & sama dengan `national_id`; NPWP: 16 digit (15 = format lama) |
+| `tax_identity_status` | enum | `valid` / `unverified` (default). Nomor / jenis berubah → `unverified` |
+| `tax_identity_verified_at`, `tax_identity_verified_by`, `tax_identity_note` | | Verifikasi manual HR terakhir (tanpa API DJP), dicatat juga di audit log |
 | `email` | string | Email kerja |
 | `phone` | string (nullable) | Telepon |
 | `birth_date` | date (nullable) | Tanggal lahir |

@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Sedang dikerjakan** — 14 fase selesai (menunggu review), 4 belum dikerjakan (P14, P16, P18, P6), 1 opsional. Lihat [Ringkasan Status Fase](#ringkasan-status-fase). |
+| **Status** | **Sedang dikerjakan** — 17 fase selesai (menunggu review), 1 belum dikerjakan (P6), 1 opsional. Lihat [Ringkasan Status Fase](#ringkasan-status-fase). |
 | **Tanggal** | 2026-11-06 |
 | **Pemicu** | ERD payroll baru (27 tabel) mendeskripsikan payroll yang lebih lengkap: salary structure, kompensasi berversi, formula berversi, schedule & period, approval berjenjang, dan pembayaran. Sistem payroll sekarang sudah jalan end-to-end, tetapi beberapa bagian masih sederhana (formula tanpa versi, periode hanya string, approval satu langkah, pembayaran hanya flip status) atau masih mock di Backoffice (grade template, adjustment). |
 | **Keputusan user** | (1) **Nama tabel existing dipertahankan.** ERD diadaptasi dengan menambah kolom/tabel, bukan rename massal. (2) Semua area ERD masuk cakupan, dikerjakan **bertahap per fase** yang masing-masing bisa di-merge sendiri. Lihat §2. |
@@ -32,14 +32,14 @@ Diperbarui 2026-11-11. Urutan = urutan pengerjaan. Semua fase yang selesai **bel
 | 11 | [P5a](#p5a--kelengkapan-payroll-run-crud-reject-preview-ui) Kelengkapan payroll run (CRUD, reject, preview, UI) | ✅ Selesai, menunggu review | `20261111000008_payroll_run_review` |
 | 12 | [P7](#p7--approval-berjenjang) Approval berjenjang (engine approval generik) | ✅ Selesai, menunggu review | — |
 | 13 | [P17](#p17--rekonsiliasi-pajak-dipilih-hr) Rekonsiliasi pajak dipilih HR (tanpa deteksi bulan) | ✅ Selesai, menunggu review | `20261113000001` (tanpa backfill) |
-| 13a | [P14](#p14--pph-21-pegawai-tidak-tetap-ter-harian) PPh 21 pegawai tidak tetap (TER harian) | ⬜ Belum dikerjakan — aturan dikonfirmasi 2026-11-13 | — |
-| 14 | [P16](#p16--masa-pajak-terakhir--data-pajak-tahunan-karyawan) Masa pajak terakhir & data pajak tahunan | ⬜ Belum dikerjakan — aturan dikonfirmasi 2026-11-13 (butir 11 diblok sementara) | — |
-| 14a | [P18](#p18--identitas-pajak--validitas-npwp) Identitas pajak & validitas NPWP | ⬜ Belum dikerjakan — diputuskan 2026-11-13 | migrasi Core HR (tanpa backfill) |
+| 13a | [P14](#p14--pph-21-pegawai-tidak-tetap-ter-harian) PPh 21 pegawai tidak tetap (TER harian) | ✅ Selesai, menunggu review | `20261113000002` + backfill `20261113090001` |
+| 14 | [P16](#p16--masa-pajak-terakhir--data-pajak-tahunan-karyawan) Masa pajak terakhir & data pajak tahunan | ✅ Selesai, menunggu review (butir 11 diblok sementara) | `20261113000003` + backfill `20261113090002` |
+| 14a | [P18](#p18--identitas-pajak--validitas-npwp) Identitas pajak & validitas NPWP | ✅ Selesai, menunggu review | `20261113000004` (tanpa backfill; kolom `employees.npwp` di-drop) |
 | 15 | [P8](#p8--bank--payment) Bank & payment | ✅ Selesai, menunggu review | `20261111000009` |
 | 16 | [P6](#p6--adjustment-run) Adjustment run | ⬜ Belum dikerjakan | — |
 | 17 | [P9](#p9--policy-versioning-opsional) Policy versioning | ⬜ Opsional, belum diputuskan | — |
 
-Berikutnya yang bisa langsung dikerjakan: **P14** (TER harian), **P16**, **P18**, **P6** (adjustment) dan run off-cycle THR / bonus / final pay (belum ada fasenya).
+Berikutnya yang bisa langsung dikerjakan: **P6** (adjustment) dan run off-cycle THR / bonus / final pay (belum ada fasenya).
 
 ---
 
@@ -180,7 +180,7 @@ P10 Master PTKP & Parameter Pajak (lepas, tanpa dependensi) ──> P11 Kepesert
 P2 Employee Compensation ──> P15 Konsolidasi Data Payroll Karyawan ──> P4 Schedule & Period ──> P5 Run Snapshot ──> P17 Rekonsiliasi Pajak Dipilih HR ──> P14 PPh 21 Pegawai Tidak Tetap ──> P16 Masa Pajak Terakhir & Data Pajak Tahunan Karyawan
 ```
 
-Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P5 → P5a → P7 → P8 → P17 → P14 → P16 → P18 → P6**. P5 didahulukan dari P14/P16 (keputusan user 2026-11-11) selama menunggu jawaban tim pajak (§8a). P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P17 (2026-11-13) mengganti deteksi bulan Desember dengan pilihan rekonsiliasi HR di run; tidak menunggu tim pajak. P14 (PPh 21 pegawai tidak tetap, TER harian) butuh schedule non-bulanan dari P4. P16 (masa pajak terakhir selain Desember, karyawan masuk di tengah tahun, penyetahunan, bukti potong pemberi kerja sebelumnya) mengisi aturan hitung rekonsiliasi `termination` dari P17; Aturan P14 dan P16 dikonfirmasi user 2026-11-13 (§8a).
+Urutan disarankan (diperbarui 2026-11-11): **P10 → P11 → P12 → P13 → P1 → P2 → P3 → P15 → P4 → P5 → P5a → P7 → P8 → P17 → P14 → P16 → P18 → P6**. P14 selesai 2026-11-13. P5 didahulukan dari P14/P16 (keputusan user 2026-11-11) selama menunggu jawaban tim pajak (§8a). P3 dikerjakan lebih awal atas keputusan user. P15 merapikan data payroll karyawan (hapus payroll profile, schedule ikut kompensasi) sebelum P4 menambah schedule. P17 (2026-11-13) mengganti deteksi bulan Desember dengan pilihan rekonsiliasi HR di run; tidak menunggu tim pajak. P14 (PPh 21 pegawai tidak tetap, TER harian) butuh schedule non-bulanan dari P4. P16 (masa pajak terakhir selain Desember, karyawan masuk di tengah tahun, penyetahunan, bukti potong pemberi kerja sebelumnya) mengisi aturan hitung rekonsiliasi `termination` dari P17; Aturan P14 dan P16 dikonfirmasi user 2026-11-13 (§8a).
 
 ---
 
@@ -478,7 +478,7 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 
 ### P14 — PPh 21 Pegawai Tidak Tetap (TER Harian)
 
-**Status:** aturan dikonfirmasi user 2026-11-13 (§8a butir 1–3); **siap dikerjakan** setelah P17. Butir 6 (masa pajak adjustment) hanya menyangkut P6. Sebelumnya: pertanyaan di §8a butir 1–3 dan 6 (lihat simulasi [lampiran §11](./2026-11-10-payroll-erd-simulasi-satu-periode.md) temuan #3–#4). **Diubah 2026-11-13:** bagian "rekonsiliasi Desember selektif" (deteksi run regular terakhir di masa Desember) **dihapus** dan diganti **P17** — rekonsiliasi dipilih HR di run, tanpa deteksi bulan.
+**Status:** ✅ **selesai 2026-11-13**, menunggu review (lihat "Implementasi" di akhir bagian ini). Aturan dikonfirmasi user 2026-11-13 (§8a butir 1–3). Butir 6 (masa pajak adjustment) hanya menyangkut P6. Sebelumnya: pertanyaan di §8a butir 1–3 dan 6 (lihat simulasi [lampiran §11](./2026-11-10-payroll-erd-simulasi-satu-periode.md) temuan #3–#4). **Diubah 2026-11-13:** bagian "rekonsiliasi Desember selektif" (deteksi run regular terakhir di masa Desember) **dihapus** dan diganti **P17** — rekonsiliasi dipilih HR di run, tanpa deteksi bulan.
 
 **Masalah:**
 1. Calculator selalu memakai TER **bulanan** per run. Untuk pegawai tidak tetap yang dibayar harian / mingguan / per jam, hasilnya salah: bruto dua mingguan Rp4,5 jt masuk TER A 0%, padahal per hari ±Rp565 rb dan seharusnya kena TER harian 0,5%.
@@ -510,6 +510,15 @@ Dikerjakan **sebelum P4**. Data akan di-fresh, jadi tidak perlu kompatibilitas d
 **Dependensi:** P4 (schedule non-bulanan, `pay_date` periode), P10–P13, P17.
 
 **Kriteria selesai:** simulasi §11: Dodi PPh 0 (rata-rata 172.023/hari), Eka 22.622 dan 24.130; pegawai tetap bulanan tidak berubah; pegawai tidak tetap tidak direkonsiliasi walau run-nya ditandai rekonsiliasi.
+
+**Implementasi (2026-11-13)** — berbeda dari rencana di atas:
+- Tabel TER harian **tidak** dibuat sebagai tabel baru `pph21_ter_daily_rates`, melainkan kategori **`D`** di `tax_ter_rates` (bentuk bracket berversi yang sama, UI tab TER Rates yang sama). PTKP tetap hanya memetakan ke A/B/C.
+- Batas Rp2.500.000 **tidak** disimpan sebagai kolom `daily_ter_max_daily_income`: batasnya = bracket terakhir tabel `D`. Hanya satu kolom baru di `pph21_tax_parameters`: `daily_above_cap_bruto_pct` (default 50, diisi di HR Setting › Tax and BPJS › Tax Parameters).
+- Pemilihan metode: `non_permanent` + salary type (dari salary structure versi kompensasi yang berlaku) `daily` / `hourly` → TER harian; selain itu TER bulanan; rekonsiliasi P17 → `annual`.
+- Hari hadir dari variabel `present_days` snapshot run (bisa dikoreksi lewat input P5). Hari hadir 0 dengan penghasilan kena pajak → payslip error, run tidak gagal.
+- Payslip: `ter_method`, `taxable_days`. Laporan bukti potong (withholdings + CSV) menambah kolom `ter_method`. Backoffice: badge "Daily TER · n days" di daftar Employees run, metode di detail payslip dan laporan.
+- Migrasi `20261113000002_payroll_daily_ter` (CHECK kategori `D`, kolom parameter, kolom payslip) + backfill `seed_daily_ter_for_tenant` (`20261113090001`) yang mengisi baris `D` untuk tenant lama (idempoten; tenant yang sudah punya baris `D` dilewati).
+- Test: `daily_ter_test.go` (Eka 22.622, Dodi 0, di atas batas, pegawai tetap / gaji bulanan tetap TER bulanan, tidak direkonsiliasi, hari hadir 0 → error) dan `TestDailyPPh21Boundaries`.
 
 ---
 
@@ -577,7 +586,7 @@ Rekonsiliasi efektif per karyawan = override per karyawan bila ada, selain itu p
 
 ### P18 — Identitas Pajak & Validitas NPWP
 
-**Status:** diputuskan user 2026-11-13 (§8a butir 12). Belum dikerjakan. Bisa dikerjakan lepas dari P14 / P16.
+**Status:** ✅ **selesai 2026-11-13**, menunggu review (lihat "Implementasi" di akhir bagian ini). Diputuskan user 2026-11-13 (§8a butir 12).
 
 **Masalah:** Core HR menyimpan `employees.npwp` sebagai teks bebas tanpa validasi; payroll menurunkan `has_npwp` = NPWP terisi (P15) dan menyimpannya di snapshot payslip, tetapi calculator belum memakainya. Sejak NIK berlaku sebagai NPWP, "punya NPWP" tidak bisa lagi dinilai dari satu kolom teks, dan sistem tidak tahu apakah nomornya sudah tervalidasi.
 
@@ -620,11 +629,20 @@ Diputuskan user 2026-11-13: status belum tervalidasi diperlakukan sama dengan ti
 
 **Kriteria selesai:** NPWP 15 / 16 digit dan NIK 16 digit tervalidasi formatnya; nomor salah ditolak dengan pesan jelas; ubah nomor mereset status; karyawan tanpa identitas pajak / belum tervalidasi dikenai tarif tambahan sesuai persentase hanya bila setelan aktif; setelan tidak aktif → PPh normal + peringatan; karyawan `valid` tidak berubah.
 
+**Implementasi (2026-11-13)** — berbeda dari rencana di atas:
+- Verifikasi lewat satu endpoint `PUT /core-hr/employees/{id}/tax-identity/status` (`valid` / `unverified` + catatan), dicatat di audit log (`employee.tax_identity_status_changed`) dan di kolom `tax_identity_verified_at/by/note`. UI: badge Verified / Unverified + aksi "Mark as verified / unverified" di form Personal Details karyawan (nonaktif selama nomor belum disimpan).
+- Request create / PATCH karyawan: `tax_identity_type` + `tax_identity_number` (keduanya "" = hapus). Field lama `npwp` tetap diterima sebagai alias tipe `npwp` (bulk import & script e2e); template bulk import memakai kolom baru. Ubah NIK karyawan dengan identitas tipe `nik` → nomor ikut berubah dan status kembali `unverified`.
+- Setelan tarif tambahan **tidak** dibuat kartu terpisah: dua field ikut versi `pph21_tax_parameters` di modal Tax Parameters (checkbox + persentase) dan kolom "No Tax ID Surcharge" di tabelnya.
+- Tarif tambahan: TER bulanan / harian → PPh bulan itu × (100 + pct)%; rekonsiliasi → PPh setahun × (100 + pct)% sebelum dikurangi yang sudah dipotong. `exempt` tidak terkena. Snapshot `pph21_surcharge_pct` (null = tidak ada) dan `tax_note` (peringatan / keterangan tarif tambahan).
+- Payroll membaca identitas lewat `FindEmployeeTaxIdentity` (diperluas, tanpa contract baru). Slip baru tidak lagi mengisi `has_npwp` / `npwp`; laporan bukti potong memakai identitas baru dengan fallback NPWP slip lama (CSV: `tax_identity_type`, `tax_identity_number`, `tax_identity_status`, `pph21_surcharge_pct`).
+- Peringatan payroll: badge "No valid tax ID" (+ persen bila dikenakan) di daftar Employees run; kolom Tax ID di laporan menandai `unverified`. **Belum dibuat:** filter "Tax ID not verified" di daftar kompensasi.
+- Test: `tax_identity_test.go` Core HR (format NPWP 15/16, NIK 16 & sama dengan NIK, huruf ditolak, ubah nomor mereset status, verifikasi butuh nomor), `TestTaxIdentitySurcharge` (valid tidak berubah, aktif +20%, tidak aktif normal + peringatan), `TestDecemberPPh21_Surcharge`.
+
 ---
 
 ### P16 — Masa Pajak Terakhir & Data Pajak Tahunan Karyawan
 
-**Status:** aturan dikonfirmasi user 2026-11-13 (§8a butir 7–10); **siap dikerjakan** setelah P17 / P14. Masih terbuka: butir 11 (keluar lalu masuk lagi di tahun yang sama → diblok sementara).
+**Status:** ✅ **selesai 2026-11-13**, menunggu review (lihat "Implementasi" di akhir bagian ini). Aturan dikonfirmasi user 2026-11-13 (§8a butir 7–10). Masih terbuka: butir 11 (keluar lalu masuk lagi di tahun yang sama → diblok sementara).
 
 **Masalah** — calculator sekarang:
 1. ~~Hanya menjalankan Pasal 17 setahun bila `period` berakhiran `-12`~~ → **P17**: HR memilih rekonsiliasi `termination` di run final / run bulan keluar. P16 tinggal mengisi aturan perhitungannya (bulan bekerja, penyetahunan, A1).
@@ -673,6 +691,18 @@ Diputuskan user 2026-11-13: status belum tervalidasi diperlakukan sama dengan ti
 **Dependensi:** P17 (pilihan rekonsiliasi di run), P14 (`ter_method`), P4 (masa pajak dari `pay_date`), Core HR tanggal keluar.
 
 **Kriteria selesai** (angka dibuat bersama tim pajak dan ditambahkan ke lampiran simulasi): karyawan resign Juni direkonsiliasi di run Juni dan kelebihan potongnya kembali di slip; karyawan masuk Agustus memakai batas biaya jabatan 5 × Rp500 rb; WNA datang Juli disetahunkan; karyawan dengan A1 pemberi kerja sebelumnya: neto & biaya jabatan A1 dipakai apa adanya, biaya jabatan di sini dihitung atas masa kerja di sini; karyawan tanpa A1 dihitung atas penghasilan di sini saja; karyawan yang bekerja setahun penuh tidak berubah.
+
+**Implementasi (2026-11-13)** — berbeda dari rencana di atas:
+- Baris `employee_tax_years` **tidak** dibuat otomatis saat calculate: tanpa koreksi HR, tahun pajak diturunkan saat dibaca dari Core HR (bulan masuk bila masuk di tahun itu, bulan keluar = `effective_date` status `resigned` / `terminated` terakhir; alasan `resign` / `other`). HR menyimpan koreksi lewat PUT; DELETE mengembalikan ke turunan Core HR. Core HR contract `FindEmployeeTaxIdentity` menambah `ExitDate` / `ExitStatus` (tidak ada contract baru).
+- A1 tanpa unggah dokumen (hanya nomor bukti potong); `period_from` / `period_to` berupa bulan 1–12.
+- Snapshot payslip tidak menambah kolom `tax_reconciliation` (sudah ada dari P17); kolom baru `months_worked`, `annualized`, `previous_employer_gross`, `previous_employer_pph21`, `pph21_refund`.
+- Kelebihan potong: `pph21_refund`; dibayarkan sebagai earning `PPH21_REFUND` hanya untuk metode `gross` + treatment `subject`; `nett` / `dtp` dicatat saja. Laporan PPh 21: `refund` mengurangi `due` dan `payable` (kecuali DTP). YTD rekonsiliasi berikutnya = Σ (pph21 + borne + dtp − refund).
+- Validasi `termination`: bulan terakhir tahun pajak karyawan harus = bulan masa pajak run, selain itu payslip error.
+- Blokir setelah `termination`: slip karyawan di periode run ≥ periode slip `termination` (run lain) pada tahun itu → payslip error (termasuk masuk kembali, §8a butir 11).
+- Penyetahunan berlaku atas neto total (termasuk A1) — kasus WNA + A1 jarang; tinjau bila tim pajak memberi contoh.
+- Backoffice: kartu **Tax Year** + daftar **Previous Employer Withholding Slips (1721-A1)** di panel karyawan › Tax & BPJS; field "Cap per Month Worked" di Tax Parameters; detail payslip menampilkan bulan bekerja, A1, refund; laporan bukti potong menambah kolom Months, Previous Employer A1, Refund (CSV: `months_worked`, `previous_employer_gross`, `previous_employer_pph21`, `refund`).
+- Migrasi `20261113000003_payroll_tax_years` + backfill `seed_pph21_refund_component_for_tenant` (`20261113090002`, komponen sistem `PPH21_REFUND`; tanpa backfill refund tetap dibayar dengan nama default "PPh 21 Refund").
+- Test: `TestDecemberPPh21_TaxYear` (masuk Agustus 5 × 500 rb, setahun penuh tetap, A1, WNA disetahunkan, refund), `TestCalculate_RefundEarning`, `tax_year_test.go` (refund resign + baris earning, `termination` tanpa bulan keluar → error, snapshot A1 / bulan bekerja, blokir setelah termination), `TestDefaultTaxYear`.
 
 ---
 

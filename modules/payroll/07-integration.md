@@ -15,7 +15,7 @@ Payroll bergantung pada beberapa modul & menyediakan data ke beberapa modul lain
 | **employee_compensations** | Versi kompensasi berlaku (structure, cabang) | Peserta run, cabang & `salary_type` karyawan (P15) |
 | **Attendance & Leave** | Jam lembur, potongan absen, cuti tak berbayar | Komponen variabel (uang lembur, potongan) |
 | **employee_tax_profile** | PTKP, perlakuan pajak | Perhitungan PPh 21 |
-| **Core HR** (`FindEmployeeTaxIdentity`) | NPWP, NIK, tanggal masuk | `has_npwp` & snapshot NPWP di slip; tanggal mulai kepesertaan BPJS awal (P11) |
+| **Core HR** (`FindEmployeeTaxIdentity`) | Identitas pajak (jenis, nomor, status), NIK, tanggal masuk, tanggal keluar | Snapshot & tarif tambahan tanpa identitas valid (P18); tahun pajak default (P16); tanggal mulai kepesertaan BPJS awal (P11) |
 | **employee_bpjs_enrollments** | Program yang diikuti, nomor kepesertaan, kelas risiko JKK | Iuran BPJS per karyawan (P11) |
 | **Config (TER, BPJS)** | Tarif & plafon berlaku | Perhitungan pajak & iuran |
 

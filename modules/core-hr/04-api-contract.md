@@ -15,6 +15,7 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | PATCH | `/employees/{id}` | Ubah sebagian data | `employees:write` |
 | DELETE | `/employees/{id}` | Soft-delete / arsip | `employees:delete` |
 | POST | `/employees/{id}/transition` | Ubah status lifecycle | `employees:write` |
+| PUT | `/employees/{id}/tax-identity/status` | Verifikasi manual identitas pajak (payroll P18): `{status: valid / unverified, note}` | `employees:write` |
 | POST | `/employees/{id}/assignments` | Mutasi/promosi (assignment baru) | `employees:write` |
 | GET | `/employees/{id}/assignments` | Daftar assignment (aktif+historis) | `employees:read` |
 | POST | `/employees/{id}/offboarding` | Mulai proses keluar | `employees:write` |
