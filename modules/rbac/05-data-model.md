@@ -73,4 +73,4 @@ Model data RBAC. Entitas `users` & `tenants` dimiliki modul Auth; di sini hanya 
 
 ## 4. Seed Data
 
-Saat provisioning tenant baru, seed peran sistem (`employee`, `manager`, `hr_admin`, `payroll_officer`, `tenant_admin`, `service`) beserta mapping permission bawaannya. Katalog `permissions` bersifat global dan di-seed sekali di level sistem.
+Saat provisioning tenant baru, seed peran sistem (`tenant_admin`, `branch_admin`, `employee`) beserta mapping permission bawaannya dari `role_templates`. Peran lain (mis. `payroll_officer`, `manager`, `hr_admin`) dibuat sebagai peran kustom per tenant — termasuk lewat duplikasi peran sistem. Katalog `permissions` bersifat global dan di-seed sekali di level sistem.

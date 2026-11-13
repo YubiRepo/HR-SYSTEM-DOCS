@@ -2,12 +2,13 @@
 
 ## 1. Peran Bawaan (Default Roles)
 
-**Tiga peran sistem** yang di-seed — satu tingkat platform, dua tingkat tenant. `employee` adalah peran self-service dasar yang otomatis diberikan ke setiap akun yang dibuat lewat onboarding karyawan (lihat core-hr `CreateEmployeeUseCase`), sehingga karyawan yang punya akun langsung bisa mengakses profil & absensi dirinya sendiri tanpa perlu penugasan peran manual. Peran operasional lainnya (manager, hr_admin, branch_admin, payroll_officer, service, dll) tetap **dibentuk sebagai peran kustom per tenant** sesuai kebutuhan, bukan direplikasi sebagai peran sistem.
+**Empat peran sistem** yang di-seed — satu tingkat platform, tiga tingkat tenant. `employee` adalah peran self-service dasar yang otomatis diberikan ke setiap akun yang dibuat lewat onboarding karyawan (lihat core-hr `CreateEmployeeUseCase`), sehingga karyawan yang punya akun langsung bisa mengakses profil & absensi dirinya sendiri tanpa perlu penugasan peran manual. Peran operasional lainnya (manager, hr_admin, payroll_officer, service, dll) tetap **dibentuk sebagai peran kustom per tenant** sesuai kebutuhan, bukan direplikasi sebagai peran sistem.
 
 | Peran | Jenis | Cakupan Izin (ringkas) |
 |---|---|---|
 | **platform_super_admin** | Platform (global, `tenant_id` NULL) | Tertinggi tingkat platform (strict keys): `platform_tenants:read/write`, `platform_billing:read/write`, `platform_entitlement:read/write`, `platform_support:read/write`, `roles:read/write/assign`, `users:write`, `platform_audit:read` |
 | **tenant_admin** | Tenant (di-replikasi per tenant) | Tertinggi tingkat tenant (strict keys): `users:read/write`, `roles:read/write/assign`, `settings:write`, `branch:read/write`, `billing:read` + `billing:write` (kirim bukti bayar), `entitlement:read/manage` |
+| **branch_admin** | Tenant (di-replikasi per tenant) | Sisi operasional tenant_admin, **wajib di-assign ke cabang** (assignment tanpa `branch_id` → `CONTEXT_REQUIRED`); semua grant ikut terbatas ke cabang assignment. Keys: `users:read`, `roles:read`, `branch:read`, `entitlement:read`, `employees:read/directory/write/delete`, `mutation_request:submit/approve`, `contracts:read/write`, `org:read`, `attendance:self/read/write/approve`, `leave:read/approve`, `payroll:read/approve`. **Tanpa** kunci administrasi tingkat tenant (`users:write`, `roles:write/assign`, `settings:write`, `branch:write`, `billing:*`, `entitlement:manage`, `org:write`, `*:config`) agar tidak bisa eskalasi ke tenant_admin |
 | **employee** | Tenant (di-replikasi per tenant) | Peran dasar self-service (scope `self`): `profile:read`, `profile:write`, `employees:self`, `attendance:self`, `leave:self`, `payslip:self` (+ `employees:directory` scope `tenant`) — diberikan otomatis ke akun baru hasil onboarding karyawan |
 
 Peran bawaan ditandai `is_system = true` dan tidak dapat dihapus, hanya dilihat/dirujuk.
@@ -17,6 +18,8 @@ Peran bawaan ditandai `is_system = true` dan tidak dapat dihapus, hanya dilihat/
 ---
 
 ## 2. Kustomisasi per Tenant
+
+**Duplikasi peran:** `POST /rbac/roles/{id}/duplicate {name, description?}` (izin `roles:write`) membuat peran kustom baru berisi salinan permission peran sumber — termasuk peran sistem seperti `tenant_admin`/`branch_admin` — lalu permission salinannya bisa dikurangi lewat `PATCH /rbac/roles/{id}`. Audit: `role.duplicated`.
 
 Definisi peran & permission bersifat **per tenant** — tiap perusahaan mengatur sendiri.
 

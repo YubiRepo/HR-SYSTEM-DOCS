@@ -14,6 +14,7 @@ Endpoint manajemen peran, permission, dan penetapan ke user. Mengikuti envelope 
 | GET | `/rbac/roles/{id}` | Detail peran + permission-nya | `roles:read` |
 | PATCH | `/rbac/roles/{id}` | Ubah peran (nama/permission) | `roles:write` |
 | DELETE | `/rbac/roles/{id}` | Hapus peran kustom (non-sistem) | `roles:write` |
+| POST | `/rbac/roles/{id}/duplicate` | Buat peran kustom dari salinan permission peran sumber (termasuk peran sistem) — body `{name, description?}` | `roles:write` |
 | POST | `/rbac/roles/{id}/permissions` | Tambah permission ke peran | `roles:write` |
 | DELETE | `/rbac/roles/{id}/permissions/{key}` | Cabut permission dari peran | `roles:write` |
 | GET | `/rbac/roles/{id}/users` | User yang memegang peran ini | `roles:read` |
@@ -36,6 +37,8 @@ Endpoint manajemen peran, permission, dan penetapan ke user. Mengikuti envelope 
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
 | POST | `/rbac/assignments/bulk` | Assign/revoke peran massal | `roles:assign` |
+
+> **Guard eskalasi assignment:** bila grant `roles:assign` pemanggil ber-scope `branch` (peran di-assign per cabang, atau sesi dipersempit lewat `POST /auth/switch-branch`), setiap assignment (POST/PUT `/users/{id}/roles`, bulk) wajib menyertakan `branch_id` yang termasuk cabang pemanggil — assignment tenant-wide atau ke cabang lain ditolak `PERMISSION_DENIED`. Peran sistem `branch_admin` tanpa `branch_id` ditolak `CONTEXT_REQUIRED`.
 
 ---
 

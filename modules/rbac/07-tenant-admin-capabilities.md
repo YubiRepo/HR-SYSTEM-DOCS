@@ -59,7 +59,7 @@ Tenant admin tidak harus mengerjakan semua sendiri. Lazimnya didelegasikan:
 
 | Peran | Menerima kewenangan |
 |---|---|
-| `branch_admin` | Kelola operasional 1 cabang (scope branch) |
+| `branch_admin` | **Peran sistem** (di-seed saat provisioning). Kelola operasional cabang yang di-assign (scope branch); lihat [02-roles.md](./02-roles.md) |
 | `hr_admin` | Kelola karyawan, cuti, rekrutmen |
 | `payroll_officer` | Jalankan payroll |
 | Peran kustom | Sesuai kebutuhan tenant |
