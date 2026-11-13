@@ -118,6 +118,8 @@ Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bul
 | GET | `/payroll/runs/{id}/payslips` | Daftar slip dalam run | `payroll:read` |
 | GET | `/payroll/runs/{id}/bank-file` | Unduh file transfer bank | `payroll:approve` |
 | POST | `/payroll/runs/{id}/payslips/{payslipId}/exclude` · `/include` | Exclude / include karyawan (run `calculated`); respons = run dengan total baru (P5) | `payroll:run` |
+| PUT | `/payroll/runs/{id}/payslips/{payslipId}/tax-reconciliation` | `{value: inherit / none / year_end / termination}` — rekonsiliasi karyawan ini di run (run `calculated`, berlaku di hitung ulang) (P17) | `payroll:run` |
+| GET | `/payroll/reports/pph21/unreconciled?year=` | Karyawan tetap yang dibayar di tahun pajak tanpa slip rekonsiliasi (P17) | `payroll:read` |
 | GET | `/payroll/runs/{id}/payslips/{payslipId}/inputs` | Input periode karyawan: `rows` (snapshot `attendance`/`leave` + `manual`) dan `effective` | `payroll:read` |
 | PUT | `/payroll/runs/{id}/payslips/{payslipId}/inputs` | `{ inputs: [{ variable_name, value, note }] }` — ganti seluruh input manual (kosong = hapus); berlaku di calculate berikutnya | `payroll:run` |
 

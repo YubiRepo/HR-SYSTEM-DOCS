@@ -76,6 +76,7 @@ Satu run = kumpulan **payslip** karyawan terpilih untuk periode itu + ringkasan 
 - HR bisa memberi **input manual** per variabel per karyawan (mis. `present_days = 15` + catatan) saat run `calculated`; nilai manual mengalahkan snapshot, juga setelah refresh. Berlaku pada calculate berikutnya.
 - Karyawan yang tidak bisa dihitung (tax profile kosong, PTKP tidak ada di master, JKK tidak jelas, item absensi pending, formula sirkular, ...) mendapat payslip **`error`** dengan pesannya; run tetap `calculated`. Hanya error internal (DB) yang menggagalkan seluruh run.
 - **Exclude / include** per karyawan saat run `calculated`. Karyawan `excluded` tetap dihitung ulang tetapi tidak masuk total, file bank, laporan, YTD pajak, maupun slip karyawan; status exclude bertahan saat hitung ulang.
+- **Rekonsiliasi pajak** (P17): dipilih di run (`tax_reconciliation`: `none` / `year_end` / `termination`, hanya run regular / final; `year_end` hanya masa pajak Desember). Per karyawan bisa dikecualikan / ditambahkan saat run `calculated` (berlaku di hitung ulang). Hanya karyawan tetap yang direkonsiliasi.
 - **Submit ditolak** selama masih ada payslip `error` (perbaiki lalu hitung ulang, atau exclude).
 - Total run: `count` (ok), `error_count`, `excluded_count`. Baris slip mencatat `source` (fixed / formula / system), versi formula, dan urutan komponen.
 

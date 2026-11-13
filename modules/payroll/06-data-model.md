@@ -57,6 +57,7 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `ptkp_status` | enum | `TK/0`, `K/0`, `K/1`, `K/2`, `K/3`, ... |
 | `pph21_method` | enum | `gross` (default) / `nett`. `gross_up` hanya data lama, ditolak saat simpan (P12) |
 | `tax_treatment` | enum | `subject` / `dtp` / `exempt` (P11), default `subject` |
+| `employment_tax_status` | enum | `permanent` / `non_permanent` (P17), default `permanent`; hanya `permanent` yang direkonsiliasi |
 
 Kategori TER tidak disimpan: selalu dari master `pph21_ptkp_rates` (response API memakai versi hari ini, calculate memakai versi tahun pajak run). `has_npwp` juga tidak disimpan: diturunkan dari NPWP karyawan di Core HR (P15).
 
@@ -111,7 +112,10 @@ Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per
 | `pph21_dtp` | int | PPh 21 ditanggung pemerintah — dilaporkan, tidak dipotong (P11) |
 | `pph21_employer_borne` | int | PPh 21 ditanggung perusahaan (`nett`) — P12 |
 | `pph21_method` | string (nullable) | Metode saat calculate (`gross`/`nett`) — P12 |
-| `tax_treatment`, `ptkp_status`, `ter_category`, `ter_rate`, `has_npwp`, `npwp` | snapshot (nullable) | Nilai saat calculate (P11). Null pada slip sebelum P11. `ter_*` null di Desember dan untuk `exempt` |
+| `tax_treatment`, `ptkp_status`, `ter_category`, `ter_rate`, `has_npwp`, `npwp` | snapshot (nullable) | Nilai saat calculate (P11). Null pada slip sebelum P11. `ter_*` null pada slip yang direkonsiliasi dan untuk `exempt` |
+| `tax_reconciliation_override` | enum (nullable) | Pilihan HR per karyawan di run: `none` / `year_end` / `termination`; null = ikut run. Bertahan saat hitung ulang (P17) |
+| `tax_reconciliation`, `employment_tax_status` | snapshot (nullable) | Rekonsiliasi yang dipakai slip dan status pajak karyawan saat calculate (P17) |
+| `tax_note` | text (nullable) | Peringatan rekonsiliasi: pegawai tidak tetap dilewati, rekonsiliasi ulang, atau dibayar TER setelah direkonsiliasi (P17) |
 | `bpjs_details` | json (nullable) | Per program: `program`, `institution` (`kesehatan`/`ketenagakerjaan`), `membership_number`, `risk_class`, `base`, `employee_rate`, `employer_rate`, `employee_amount`, `employer_amount` (P11), `employer_taxable` (P12) |
 
 ### 2.6 `payslip_lines`

@@ -81,13 +81,21 @@ PPh 21 bulan ini = Penghasilan bruto bulan ini × tarif TER
 - **Tarif TER** diambil dari tabel resmi, berdasar **kategori PTKP** (A/B/C) & rentang penghasilan.
 - Tabel TER disimpan sebagai data konfigurasi. Default per tenant di-seed dari Lampiran PP 58/2023 (berlaku 2024-01-01; A=44, B=40, C=41 baris). Batas atas bracket **inklusif** ("di atas X s.d. Y"), sehingga bruto tepat Rp5.400.000 di kategori A kena 0%.
 
-### 4.2 Desember (Pasal 17, rekonsiliasi tahunan)
-Di masa pajak terakhir, hitung pajak setahun yang sebenarnya lalu kurangi yang sudah dipotong Jan–Nov:
+### 4.2 Rekonsiliasi tahunan (Pasal 17) — dipilih HR
+Di masa pajak terakhir, hitung pajak setahun yang sebenarnya lalu kurangi yang sudah dipotong:
 ```
 Bruto setahun − biaya jabatan − iuran (JHT/JP karyawan) − PTKP = PKP
-PPh setahun   = tarif progresif Pasal 17 atas PKP
-PPh Desember  = PPh setahun − total PPh 21 (Jan–Nov)
+PPh setahun        = tarif progresif Pasal 17 atas PKP
+PPh masa terakhir  = PPh setahun − total PPh 21 yang sudah dipotong tahun itu
 ```
+**Kapan dijalankan (P17, 2026-11-13):** tidak dideteksi dari bulan. HR memilih di run `tax_reconciliation`:
+- `none` (default) — semua karyawan TER, termasuk run Desember.
+- `year_end` — hanya bila masa pajak run (bulan tanggal bayar) Desember.
+- `termination` — karyawan yang keluar; Pasal 17 atas Januari s.d. masa pajak run (aturan rinci masa kerja < 12 bulan: P16).
+- Hanya run `regular` / `final`; run THR / bonus selalu TER dan ikut dijumlahkan di rekonsiliasi.
+- Hanya karyawan **tetap** (`employee_tax_profiles.employment_tax_status = permanent`); pegawai tidak tetap selalu TER (dicatat di `payslips.tax_note`).
+- Per karyawan, HR bisa mengecualikan atau menambahkan rekonsiliasi di run (`payslips.tax_reconciliation_override`, bertahan saat hitung ulang).
+- YTD = semua slip `ok` tahun pajak itu s.d. masa pajak run (semua type, termasuk THR / bonus di bulan yang sama) dari run yang sudah **approved / paid / closed**, selain slip run ini. Run draft / calculated tidak ikut (angkanya masih bisa berubah).
 Tarif progresif Pasal 17 (lapisan PKP tahunan): 5% / 15% / 25% / 30% / 35%.
 
 > TER hanya menyederhanakan **cara mencicil** bulanan; total pajak setahun tetap sama dengan perhitungan Pasal 17.
