@@ -63,7 +63,7 @@ Hanya karyawan aktif yang ditampilkan, dengan `per_page` maksimal 50. Data priba
 ## 6. Riwayat, Work Policy & Kontrak Saya
 **Permission:** `employees:self` atau `employees:read`. Read-only, selalu untuk karyawan milik user login (tanpa `{id}`).
 
-- `GET /core-hr/me/history` — bentuk sama dengan `GET /employees/{id}/history` (`assignments`, `status_history`, `employment_history`). Tiap assignment juga membawa `branch_name`, `org_unit_name`, `position_name` (opsional; kosong bila lookup gagal), karena karyawan tidak punya izin memanggil endpoint lookup branch/org unit/posisi.
+- `GET /core-hr/me/history` — bentuk sama dengan `GET /employees/{id}/history` (`assignments`; riwayat status ada di `employee_status` tiap entri). Tiap assignment juga membawa `branch_name`, `org_unit_name`, `position_name` (opsional; kosong bila lookup gagal), karena karyawan tidak punya izin memanggil endpoint lookup branch/org unit/posisi.
 - `GET /core-hr/me/work-policies` — bentuk sama dengan `GET /employees/{id}/work-policies`, plus `pattern_name` (opsional) untuk nama schedule pattern dari modul attendance.
 - `GET /core-hr/me/contracts?status=&type=&page=1&per_page=20` — bentuk dan filter sama dengan `GET /employees/{id}/contracts` (paginated, `type_name` sebagai label).
 

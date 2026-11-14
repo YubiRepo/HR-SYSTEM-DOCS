@@ -14,8 +14,6 @@ Model data konseptual (stack-agnostic). Entitas `users` & `tenants` dimiliki mod
      │  │ 1                                 │ 1 (self ref via parent_id)
      │  │                                   │
      │  │ N                            positions
-     │  └──< employment_history >
-     │  └──< status_history >
      │  └──< mutation_requests >
      │  └──< contracts >──< contract_documents >
      │
@@ -136,27 +134,8 @@ Penempatan karyawan pada unit + posisi (aktif & historis).
 
 > Assignment aktif = yang `end_date` null. Perubahan menutup yang lama & membuat baru.
 
-### 2.4 `employment_history`
-Jejak audit peristiwa kepegawaian yang **bukan** perubahan assignment (unit/posisi — sudah tercakup `assignments`) dan **bukan** transisi status lifecycle (sudah tercakup `status_history`) — mis. pergantian atasan (`manager_change`), atau peristiwa employment lain yang perlu dicatat ke depannya. Dipakai pertama kali oleh `PATCH /employees/{id}`: setiap perubahan `manager_id` menambah satu baris `event_type = "manager_change"`.
-| Field | Tipe | Keterangan |
-|---|---|---|
-| `id` | string (PK) | |
-| `employee_id` | string (FK) | |
-| `event_type` | string | Label bebas, mis. `manager_change` |
-| `description` | string | |
-| `effective_date` | date | |
-| `changed_by` | string | Aktor |
-
-### 2.5 `status_history`
-Jejak perubahan status lifecycle.
-| Field | Tipe | Keterangan |
-|---|---|---|
-| `id` | string (PK) | |
-| `employee_id` | string (FK) | |
-| `status` | enum | Status yang mulai berlaku |
-| `effective_date` | date | |
-| `reason` | string | |
-| `changed_by` | string | Aktor |
+### 2.4 Riwayat status
+Tidak ada tabel riwayat status terpisah. Setiap entri `assignments` menyimpan `employee_status`, dan setiap perubahan status (mutasi, `/transition`, `/offboarding`) menambah entri baru lewat career path applier, jadi `assignments` sekaligus menjadi riwayat status. Tanggal keluar karyawan dibaca dari entri non-aktif (`resigned`/`terminated`/`offboarded`) pertama di ujung riwayat. Pergantian atasan dicatat di audit log (`employee.manager_changed`). Tabel lama `status_history` dan `employment_history` dihapus (migration `20261114000002`).
 
 ### 2.5a `mutation_requests`
 Satu baris = satu perubahan yang menunggu approval untuk satu karyawan, dikelompokkan dalam `mutation_request_batches`. Isi perubahan disimpan di `payload` (JSONB) dengan `kind`: `career_path` (penempatan → `assignments`), `work_policy` (jadwal → `work_policies`), atau `compensation` (versi baru di payroll `compensations`). Payload lama tanpa `kind` dibaca sebagai `career_path` (dan boleh membawa pasangan jadwal).
@@ -249,8 +228,6 @@ Response tiap region node: `{code, parent_code, level, name}` — kode memakai f
 | `job_grades` | `(tenant_id, rank)` | Daftar grade terurut |
 | `positions` | `job_grade_id` | Cek grade dipakai |
 | `assignments` | `(employee_id, end_date)` | Cari assignment aktif |
-| `status_history` | `employee_id` | Riwayat status |
-| `employment_history` | `employee_id` | Riwayat peristiwa kepegawaian |
 | `mutation_requests` | `(tenant_id, status)` | Daftar pengajuan tenant per status |
 | `mutation_requests` | `employee_id` | Riwayat pengajuan per karyawan |
 | `contracts` | `(tenant_id, status)` | Daftar kontrak tenant per status |

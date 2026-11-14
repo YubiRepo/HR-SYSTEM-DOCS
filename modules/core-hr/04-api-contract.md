@@ -220,8 +220,8 @@ Mengubah status lifecycle (lihat `03-employee-lifecycle.md`).
 ```json
 { "to_status": "active", "effective_date": "2026-12-01", "reason": "Lulus masa percobaan" }
 ```
-**Response `200 OK`** — status diperbarui & dicatat di riwayat.
-**Error:** `422 INVALID_TRANSITION`.
+**Response `200 OK`** — dijalankan lewat career path (sama seperti mutasi status): entri career path aktif ditutup sehari sebelum `effective_date` dan entri baru bertipe `status_change` dengan status baru dibuat mulai `effective_date`.
+**Error:** `422 INVALID_TRANSITION` (hanya satu langkah yang diizinkan state machine), `422 VALIDATION_ERROR` bila `effective_date` sebelum tanggal mulai entri career path aktif.
 
 ---
 
@@ -255,7 +255,7 @@ Memulai proses keluar (resign/terminate → offboarded).
   "revoke_access": true
 }
 ```
-**Response `202 Accepted`** — proses berjalan: tutup assignment, nonaktifkan akun (bila `revoke_access`), set tanggal keluar. Dapat memicu job async & webhook `employee.offboarded`.
+**Response `202 Accepted`** — dijalankan lewat career path dengan target `offboarded` per `exit_date` (melewati `resigned` bila karyawan masih bekerja): entri career path aktif ditutup sehari sebelumnya dan entri `status_change` berstatus `offboarded` dibuat, work policy aktif ditutup, akun dinonaktifkan bila `revoke_access`. Tanggal keluar (dipakai payroll untuk tahun pajak) dibaca dari entri career path non-aktif pertama di ujung riwayat.
 
 ---
 
@@ -269,18 +269,11 @@ Memulai proses keluar (resign/terminate → offboarded).
     "assignments": [
       { "org_unit": "Tim AP", "position": "Staff Finance", "from": "2026-09-01", "to": "2026-12-31" },
       { "org_unit": "Tim AR", "position": "Senior Staff", "from": "2027-01-01", "to": null }
-    ],
-    "status_changes": [
-      { "status": "probation", "from": "2026-09-01" },
-      { "status": "active", "from": "2026-12-01" }
-    ],
-    "employment_history": [
-      { "event_type": "manager_change", "description": "manager changed from usr_A to usr_B", "effective_date": "2026-11-15" }
     ]
   }
 }
 ```
-`employment_history` menampung peristiwa kepegawaian di luar assignment/status — mis. `manager_change` saat `PATCH /employees/{id}` mengubah `manager_id`. Pengajuan mutasi yang masih `pending`/`rejected`/`failed` **tidak** ikut di sini — lihat `GET /mutation-requests?employee_id=...` untuk itu.
+Setiap entri `assignments` adalah snapshot penempatan **dan** status lifecycle (`employee_status`), jadi riwayat status dibaca dari sini. Pergantian atasan (`manager_id`) dicatat di audit log (`employee.manager_changed`), bukan di riwayat ini. Pengajuan mutasi yang masih `pending`/`rejected`/`failed` **tidak** ikut di sini — lihat `GET /mutation-requests?employee_id=...` untuk itu.
 
 ---
 
