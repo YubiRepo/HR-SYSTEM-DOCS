@@ -113,8 +113,15 @@ Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lew
 ### Bulk & Export
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| POST | `/employees/import` | Impor massal (async, dry-run + commit) | `employees:write` |
-| GET | `/employees/import/template` | Unduh template impor | `employees:read` |
+| GET | `/employees/import/template` | Unduh template impor `.xlsx` (dinamis per tenant) | `employees:write` |
+| POST | `/employees/import/presign` | URL upload file impor ke storage | `employees:write` |
+| POST | `/employees/import` | Cek file impor (dry-run, sinkron) | `employees:write` |
+| POST | `/bulk/jobs/{id}/commit` | Jalankan impor dari hasil cek (async, worker) | `employees:write` |
+| GET | `/bulk/jobs` | Riwayat impor (`?kind=import`) | `employees:read` |
+| GET | `/bulk/jobs/{id}` | Status/hasil satu job | `employees:read` |
+| GET | `/bulk/jobs/{id}/problems` | Unduh baris bermasalah (`.xlsx`) | `employees:read` |
+| GET | `/bulk/jobs/{id}/file` | Link unduh file asli | `employees:read` |
+| POST | `/bulk/jobs/{id}/invitations` | Kirim undangan ke karyawan hasil impor | `employees:write` |
 | POST | `/employees/invitations/send` | Kirim undangan aktivasi (batch) | `employees:write` |
 | GET | `/employees/export` | Ekspor daftar karyawan | `employees:read` |
 
@@ -494,95 +501,72 @@ Parameter opsional: `?root=org_01H8...` (subtree), `?depth=2` (batasi kedalaman)
 
 ## 14. Bulk Import (Async)
 
-Untuk migrasi/onboarding tenant baru yang sudah punya banyak data karyawan. Dirancang agar aman untuk ratusan–ribuan baris.
+Untuk migrasi/onboarding tenant baru yang sudah punya banyak data karyawan. Satu file maksimal **1.000 baris / 5 MB** (`.xlsx` atau `.csv`). Semua route impor memerlukan benefit paket `core_hr.bulk_import`. Mode yang tersedia saat ini: **tambah karyawan baru saja** — NIK yang sudah terdaftar menjadi baris bermasalah (mode *upsert* belum tersedia).
 
-### 14.1 Template & Mapping
-- **`GET /employees/import/template?format=xlsx`** → unduh template standar berisi kolom yang diharapkan.
-- HR bisa memakai template itu, **atau** memakai file sendiri lalu memetakan kolom (`column_mapping`).
+### 14.1 Template
+**`GET /employees/import/template`** → `employees-import-template.xlsx` dengan tiga sheet:
+- **Employees**: baris judul (kolom wajib bertanda `*`), sel tanggal/NIK berformat teks, drop-down untuk Org Unit, Position, Work Branch, Contract Type, Gender, Marital Status, dan custom field bertipe select/boolean.
+- **Reference**: Org Unit, Position (beserta unitnya), Branch, Contract Type (nama + kode), pilihan Gender/Marital Status, opsi custom field select — diambil dari data tenant saat template diunduh.
+- **Guide**: petunjuk pengisian.
 
-### 14.2 Alur Import (2 fase: validasi → commit)
+Kolom: Employee No, Full Name\*, NIK\*, Work Email\*, Hire Date\*, Org Unit\*, Position\*, Work Branch, Phone / WhatsApp, NPWP, Gender, Marital Status, Date of Birth, Contract Type, Contract Start, Contract End, lalu satu kolom per **custom field aktif** (judul = label field). Org Unit/Position/Branch/Contract Type ditulis dengan **nama** (Contract Type boleh juga kodenya); API menerjemahkannya ke ID. Bila Contract Type diisi, kontrak pertama ikut dibuat (Contract Start kosong = Hire Date, Contract End kosong = tanpa batas). Judul kolom dicocokkan tanpa memedulikan huruf besar/kecil dan tanda `*`; nama key teknis (`full_name`, `national_id`, …) juga diterima.
+
+### 14.2 Alur
 ```
-1) Upload file → POST /employees/import  (dry_run: true)
-        └─ validasi tiap baris, TIDAK menyimpan
-        └─ balikan laporan: baris valid vs baris error (+alasan)
-2) HR perbaiki baris error di file (bila ada)
-3) Jalankan → POST /employees/import  (dry_run: false)
-        └─ commit baris valid (async job)
-        └─ baris gagal DILEWATI, dilaporkan (tidak rollback semua)
+1) POST /employees/import/presign  {file_name, content_type}
+        └─ { upload_url, file_ref }  → browser PUT file ke upload_url
+2) POST /employees/import  (cek / dry-run, sinkron)
+        └─ file dipindah ke imports/{tenant}/{job_id}/…, tiap baris divalidasi, TIDAK ada karyawan dibuat
+        └─ balikan job cek (errors per baris) + pratinjau baris siap
+3) POST /bulk/jobs/{check_job_id}/commit  → 202, job impor baru (pending)
+        └─ worker memproses (one-off scheduler job → antrean core-hr)
+        └─ baris gagal DILEWATI & dicatat (tidak rollback); progres diperbarui tiap 10 baris
+4) GET /bulk/jobs/{id}  (polling) sampai status completed / failed
 ```
+Commit dua kali atas cek yang sama mengembalikan job impor yang sama. Bila worker mengulang job yang terputus, baris yang sudah terbuat akan tercatat sebagai "NIK already exists" (tidak terduplikasi).
 
-### 14.3 Request
+### 14.3 Request cek
 ```json
 {
-  "file_ref": "storage://uploads/employees.xlsx",
-  "mode": "upsert",
-  "dry_run": true,
-  "column_mapping": { "Nama Lengkap": "full_name", "NIK": "national_id", "Divisi": "org_unit" },
-  "auto_create_org_units": false,
-  "create_accounts": true,
-  "send_invites": false
+  "file_ref": "pending/imports/{tenant_id}/7b1c….xlsx",
+  "file_name": "karyawan-november.xlsx",
+  "options": { "create_account": true, "send_invitations": false }
 }
 ```
-
 | Field | Default | Fungsi |
 |---|---|---|
-| `mode` | `upsert` | `insert` (baru saja) / `upsert` (baru + update) |
-| `dry_run` | `true` | Validasi tanpa simpan (fase 1) |
-| `column_mapping` | — | Petakan kolom file → field (bila bukan template standar) |
-| `auto_create_org_units` | `false` | **Strict** (default): unit harus sudah ada. `true` → buat unit yang belum ada otomatis |
-| `create_accounts` | `true` | Buat akun (status `pending`) untuk tiap karyawan (Pola A) |
-| `send_invites` | `false` | **Undangan tidak langsung dikirim**; HR memicunya belakangan |
-
-> **Urutan entitas:** disarankan impor struktur (org unit/posisi) lebih dulu, lalu karyawan. Bila `auto_create_org_units: true`, unit yang belum ada dibuat saat impor (hati-hati typo → unit ganda).
-
-> **Akun massal:** `create_accounts: true` membuat akun berstatus `pending`, tetapi `send_invites: false` menahan undangan. Ini mencegah ratusan email terkirim sebelum data final & sosialisasi. Undangan dikirim kemudian (lihat 14.5).
+| `options.create_account` | `true` | Buat akun login (Pola A) untuk tiap karyawan |
+| `options.send_invitations` | `false` | `true` → undangan dikirim otomatis setelah impor selesai; `false` → ditahan (14.5) |
 
 ### 14.4 Response
-
-**Fase validasi (`dry_run: true`) — `200 OK`**
+**Cek — `200 OK`**
 ```json
 {
   "success": true,
   "data": {
-    "total_rows": 500,
-    "valid": 480,
-    "invalid": 20,
-    "errors": [
-      { "row": 47, "field": "national_id", "issue": "duplikat" },
-      { "row": 89, "field": "hire_date", "issue": "format tanggal salah" }
-    ]
+    "job": {
+      "job_id": "…", "kind": "import", "dry_run": true, "status": "completed",
+      "file_name": "karyawan-november.xlsx", "total": 52, "succeeded": 49, "failed": 3,
+      "errors": [
+        { "row": 12, "field": "NIK", "issue": "Duplicate NIK in row 7", "employee": "Citra Dewi" },
+        { "row": 19, "field": "Position", "issue": "\"Sales Lead\" is not a position in \"Marketing\"", "employee": "Dani" }
+      ]
+    },
+    "ready": [ { "row": 2, "full_name": "Budi Santoso", "national_id": "3175…", "email": "budi@…", "org_unit": "Engineering", "position": "Software Engineer" } ]
   }
 }
 ```
+`row` = nomor baris di Excel (judul = baris 1; `0` = masalah file secara keseluruhan). Pada job cek, `succeeded` = baris siap impor. Masalah pada file itu sendiri (tipe tidak didukung, kolom wajib hilang, > 1.000 baris) → `422`, dan job cek tercatat `failed`.
 
-**Fase commit (`dry_run: false`) — `202 Accepted`**
-```json
-{
-  "success": true,
-  "data": { "job_id": "job_01H8...", "status": "processing", "status_url": "/api/v1/jobs/job_01H8..." }
-}
-```
+**Commit — `202 Accepted`**: job impor (`dry_run: false`, `status: pending`, `source_job_id` = job cek, `status_url`).
 
-**Hasil job (partial success)** — via `status_url`:
-```json
-{
-  "success": true,
-  "data": {
-    "status": "completed",
-    "processed": 500, "succeeded": 480, "failed": 20,
-    "accounts_created": 480, "invites_sent": 0,
-    "error_report_url": "/api/v1/jobs/job_01H8.../errors.csv"
-  }
-}
-```
-Baris yang sukses **di-commit**; yang gagal dikumpulkan di `error_report_url` untuk diperbaiki & diimpor ulang (hanya baris itu). Selesai → webhook `employees.import.completed`.
+**Status job — `GET /bulk/jobs/{id}`**: `status` (`pending` | `processing` | `completed` | `failed`), `total`, `processed`, `succeeded`, `failed`, `errors`, `created_count`, `invitations_sent`, `created_by_label`. Pada job impor, `errors` juga bisa berisi catatan untuk baris yang tetap terimpor (mis. kontrak gagal dibuat).
+
+**Baris bermasalah — `GET /bulk/jobs/{id}/problems`**: `.xlsx` berisi baris bermasalah dari file asli + kolom *Problem*, siap diperbaiki & diunggah ulang.
 
 ### 14.5 Kirim Undangan Setelah Import
-**`POST /employees/invitations/send`** — memicu undangan aktivasi untuk akun `pending`, sekaligus atau per batch.
-```json
-{ "scope": "all_pending", "batch_size": 100 }
-```
-`scope`: `all_pending` | daftar `employee_ids`. Pengiriman aktual dilakukan modul Auth/Notification.
+- **`POST /bulk/jobs/{id}/invitations`** — undangan aktivasi untuk semua karyawan yang dibuat job impor ini dan akunnya masih `pending`. Response `{ "sent": 48 }`.
+- **`POST /employees/invitations/send`** — undangan umum: `{ "scope": "all_pending" }` atau `{ "employee_ids": [...] }`.
 
 ---
 

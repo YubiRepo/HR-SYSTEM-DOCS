@@ -6,15 +6,10 @@ penerimaan karyawan dalam jumlah besar. Prosesnya dua tahap: file **diperiksa
 dulu** tanpa menyimpan apa pun, lalu baris yang valid **diimpor** setelah
 dikonfirmasi.
 
-> **Penting — status: rencana.** Halaman ini **belum tersedia** di aplikasi
-> backoffice. Mesin validasi & impor di API sudah ada, tetapi penyimpanan file
-> unggahan dan halaman UI-nya belum dibangun. Dokumen ini adalah spesifikasi UI
-> & alur yang disepakati. Saat fitur dirilis, perbarui dokumen ini mengikuti
-> label dan perilaku aktual (lihat [RULES §4](../RULES.md)) lalu hapus catatan ini.
-
-**Akses (usulan):** `/tenants/employee/import`, dibuka dari tombol **Import
-Excel** di halaman **Employees Info** · **Permission:** `employees:write`
-· **Paket:** fitur impor massal mengikuti paket langganan tenant
+**Akses:** `/tenants/employee/import`, dibuka dari tombol **Import Excel** di
+halaman **Employees Info** · **Permission:** `employees:write` · **Paket:**
+benefit `core_hr.bulk_import` (tombol & menu tidak tampil tanpa benefit ini).
+Riwayat impor: menu **Employees → Import History**.
 
 ## Gambaran Alur
 
@@ -39,8 +34,8 @@ Klik **Download Template** di langkah 1 untuk mendapatkan file
 
 | Sheet | Isi |
 |---|---|
-| **Employees** | Baris judul kolom (kolom wajib bertanda `*`) + satu baris contoh yang boleh dihapus |
-| **Reference** | Daftar nilai yang boleh dipakai: nama Org Unit, Position (beserta unitnya), Branch, Gender, Marital Status — diambil dari data perusahaan Anda saat template diunduh |
+| **Employees** | Baris judul kolom (kolom wajib bertanda `*`, berwarna kuning). Org Unit, Position, Work Branch, Contract Type, Gender, Marital Status dan custom field pilihan punya drop-down |
+| **Reference** | Daftar nilai yang boleh dipakai: nama Org Unit, Position (beserta unitnya), Branch, Contract Type, Gender, Marital Status, dan opsi custom field — diambil dari data perusahaan Anda saat template diunduh |
 | **Guide** | Petunjuk singkat pengisian dan format tanggal |
 
 ### Kolom sheet Employees
@@ -60,13 +55,17 @@ Klik **Download Template** di langkah 1 untuk mendapatkan file
 | `Gender` | Tidak | `Male` / `Female` | Male |
 | `Marital Status` | Tidak | `Single` / `Married` / `Divorced` / `Widowed` | Single |
 | `Date of Birth` | Tidak | `YYYY-MM-DD` | 1995-04-17 |
+| `Contract Type` | Tidak | Nama (atau kode) tipe kontrak dari sheet **Reference**; bila diisi, kontrak pertama ikut dibuat | Fixed Term |
+| `Contract Start` | Tidak | `YYYY-MM-DD`; kosong = sama dengan Hire Date | 2026-11-02 |
+| `Contract End` | Tidak | `YYYY-MM-DD`; kosong = tanpa batas waktu | 2027-11-01 |
+| *(custom field)* | Sesuai pengaturan field | Satu kolom per custom field aktif (judul = label field). Pilihan: salah satu opsinya; Ya/Tidak: `Yes`/`No`; tanggal: `YYYY-MM-DD`; angka | — |
 
 > **Tip:** Buat dulu seluruh **Org Unit** dan **Position** di menu HR Setting
 > sebelum mengimpor karyawan. Baris yang menyebut unit/posisi yang belum ada
 > akan ditandai error.
 
-> **Catatan:** Data lain (alamat, keluarga, rekening bank, kontrak, custom
-> fields, dll.) tidak termasuk template ini dan dilengkapi lewat halaman detail
+> **Catatan:** Data lain (alamat, keluarga, rekening bank, Work Policy, Direct
+> Manager, dll.) tidak termasuk template ini dan dilengkapi lewat halaman detail
 > karyawan setelah impor.
 
 ## Langkah 1 · Upload File
@@ -137,7 +136,7 @@ Klik **Download Template** di langkah 1 untuk mendapatkan file
 | Penunjuk langkah | **Upload File → Review → Result**; langkah aktif berwarna biru |
 | **Download Template** | Unduh template Excel (lihat bagian Template) |
 | Area unggah | Klik/seret file `.xlsx` atau `.csv`; nama & ukuran file tampil setelah dipilih, ikon ✕ untuk mengganti |
-| **Import mode** | **Add new employees only** (default) — baris dengan NIK yang sudah terdaftar ditandai error. **Add new & update existing** — NIK yang sudah ada diperbarui datanya |
+| **Import mode** | Info: **Add new employees only** — baris dengan NIK yang sudah terdaftar ditandai error (mode update belum tersedia) |
 | **Create login accounts** | Default **nyala**: tiap karyawan dibuatkan akun login dengan email kerjanya |
 | **Send invitations now** | Default **mati**: undangan login ditahan dan dikirim nanti dari langkah 3 |
 | **Cancel** | Kembali ke Employees Info |
@@ -284,7 +283,7 @@ can fix and import them later."* Tombol **Cancel** / **Yes, Import**.
 
 Selama impor berjalan, layar menampilkan *Importing… 23 of 49* dengan bilah
 progres. Pengguna boleh meninggalkan halaman — impor tetap berjalan, dan hasilnya
-muncul sebagai notifikasi saat selesai.
+bisa dibuka lagi dari **Import History**.
 
 | Elemen | Fungsi |
 |---|---|
@@ -300,7 +299,7 @@ muncul sebagai notifikasi saat selesai.
 2. Buka **Employees → Employees Info**, klik **Import Excel**.
 3. Klik **Download Template**, isi sheet **Employees** di Excel (lihat sheet
    **Reference** untuk nilai yang boleh dipakai), lalu simpan.
-4. Unggah file ke area unggah, pilih **Import mode**, dan atur **Create login
+4. Unggah file ke area unggah, lalu atur **Create login
    accounts** / **Send invitations now**.
 5. Klik **Check File**.
 6. Periksa tab **Problems**. Bila ada, perbaiki di Excel lalu **Upload Another
@@ -319,35 +318,33 @@ muncul sebagai notifikasi saat selesai.
   seperti **Add Employee**).
 - Undangan login sengaja **ditahan** secara default agar karyawan tidak
   menerima email sebelum data final dan sosialisasi dilakukan.
-- Mode **Add new & update existing** hanya memperbarui kolom yang **diisi** di
-  file; sel kosong tidak menghapus data yang sudah ada.
-- Satu file maksimal 1.000 baris. Untuk data lebih besar, pecah menjadi beberapa
-  file.
+- Impor dijalankan di latar belakang (worker). Halaman boleh ditinggalkan;
+  hasilnya bisa dibuka lagi dari **Import History**.
+- Bila kontrak gagal dibuat untuk satu baris, karyawannya tetap terimpor dan
+  catatan tampil di daftar *Skipped rows and notes*.
+- Satu file maksimal 1.000 baris / 5 MB. Untuk data lebih besar, pecah menjadi
+  beberapa file.
 
-## Keputusan Terbuka
+## Keputusan
 
-Hal berikut perlu diputuskan sebelum implementasi dan diperbarui di dokumen ini:
-
-1. **Penyimpanan file** — API belum punya penyimpanan file unggahan; impor
-   belum bisa berjalan sampai ini tersedia.
-2. **Format template** — template API saat ini berupa **CSV** dengan kolom
-   teknis (`org_unit_id`, `position_id`, `branch_id`, `manager_id`). Manual ini
-   mengusulkan **Excel (.xlsx)** dengan **nama** unit/posisi/cabang dan sheet
-   **Reference**; perlu penerjemahan nama → ID di sisi API.
-3. **Kolom tambahan** — apakah template ikut memuat kontrak pertama (Contract
-   Type, tanggal), Religion, alamat, Work Policy, dan custom fields.
-4. **Direct Manager** — kolom `manager_id` ada di API tetapi field ini sedang
-   disembunyikan di UI; ikut di template atau tidak.
-5. **Batas file** — angka 1.000 baris / 5 MB masih usulan.
-6. **Export → edit → import ulang** — apakah tombol **Export** di Employees Info
-   ikut disediakan agar data bisa diubah massal di Excel lalu diimpor ulang
-   dengan mode *update*.
+1. **Penyimpanan file** — file diunggah langsung ke object storage (bucket
+   private) dan disimpan per job; file asli bisa diunduh dari Import History.
+2. **Format template** — Excel (.xlsx) dengan **nama** unit/posisi/cabang/tipe
+   kontrak; API menerjemahkan nama → ID. File `.csv` (pemisah `,` atau `;`) juga
+   diterima.
+3. **Kolom tambahan** — kontrak pertama (Contract Type/Start/End) dan semua
+   custom field aktif ikut di template. Religion, alamat dan Work Policy belum.
+4. **Direct Manager** — tidak ikut di template.
+5. **Batas file** — 1.000 baris / 5 MB.
+6. **Mode update & Export → edit → import ulang** — ditunda; saat ini hanya
+   *Add new employees only*.
 
 ## Sumber
 
 | Jenis | Path |
 |---|---|
-| Halaman | *(belum ada — usulan `HR-SYSTEM-BACKOFFICE/app/pages/tenants/employee/import.vue`)* |
-| Pintu masuk | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/employee/index.vue` *(tombol belum ada)* |
+| Halaman | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/employee/import.vue` |
+| Riwayat | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/core-hr/data-operations.vue` (menu **Import History**) |
+| Pintu masuk | `HR-SYSTEM-BACKOFFICE/app/pages/tenants/employee/index.vue` (tombol **Import Excel**) |
 | Endpoint | `modules/core-hr/04-api-contract.md` §14 Bulk Import, §15 Export |
-| API | `HR-SYSTEM-API/internal/modules/core-hr/interfaces/http/bulk/`, `application/bulk/command/import_employees.go` |
+| API | `HR-SYSTEM-API/internal/modules/core-hr/interfaces/http/bulk/`, `application/bulk/` (`command/import_commands.go`, `command/row_resolver.go`), `infrastructure/bulk/` |
