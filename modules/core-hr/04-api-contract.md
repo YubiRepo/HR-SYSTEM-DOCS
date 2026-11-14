@@ -290,37 +290,48 @@ Lapisan approval opsional di atas endpoint #5–#7 di atas — lihat `03-employe
 
 ### POST /employees/{id}/mutation-requests
 
-Ajukan satu dari tiga jenis mutasi untuk disetujui lebih dulu — `kind` menentukan payload mana yang wajib diisi (persis field yang sama dengan endpoint langsung-efektifnya).
+Ajukan satu baris mutasi untuk disetujui lebih dulu. Dalam praktiknya UI selalu mengirim lewat `POST /mutation-request-batches` (body `lines[]` dengan field yang sama + `employee_id`). Setiap baris punya `kind` dan `effective_date` sendiri — perubahan satu karyawan dipecah menjadi maksimal tiga baris (satu per kind), sehingga tiap bagian bisa berlaku di tanggal berbeda dan di-review terpisah.
 
-**Request** (`kind: "transition"`)
+| `kind` | Field wajib | Efek saat diterapkan |
+|---|---|---|
+| `career_path` (default) | `career_path_type` + minimal satu dari `branch_id`/`org_unit_id`/`position_id`/`employee_status` | Entri career path baru (assignment) |
+| `work_policy` | `schedule_type` + `pattern_id` | Entri work policy baru; career path tidak berubah |
+| `compensation` | `compensation.structure_id` | Versi compensation payroll baru dibuat & diaktifkan (versi aktif sebelumnya berakhir sehari sebelum), di branch karyawan per tanggal itu |
+
+Baris `compensation` butuh izin `payroll:config` untuk submit/revise/hapus/approve/reject; isinya hanya terlihat dengan `payroll:read` atau `payroll:config` (selain itu `compensation` dikosongkan dan `compensation_hidden: true`).
+
+**Request** (`kind: "career_path"`)
 ```json
 {
-  "kind": "transition",
-  "transition": { "to_status": "active", "effective_date": "2027-01-01" },
-  "reason": "Lulus masa percobaan"
-}
-```
-**Request** (`kind: "assignment"`)
-```json
-{
-  "kind": "assignment",
-  "assignment": { "org_unit_id": "org_02H8...", "position_id": "pos_02H8...", "type": "promotion", "effective_date": "2027-01-01" },
+  "kind": "career_path",
+  "career_path_type": "promotion",
+  "effective_date": "2027-01-01",
+  "position_id": "pos_02H8...",
   "reason": "Promosi kinerja tahunan"
 }
 ```
-**Request** (`kind: "offboarding"`)
+**Request** (`kind: "work_policy"`)
+```json
+{ "kind": "work_policy", "effective_date": "2026-12-15", "schedule_type": "rotation", "pattern_id": "pat_02H8..." }
+```
+**Request** (`kind: "compensation"`)
 ```json
 {
-  "kind": "offboarding",
-  "offboarding": { "exit_date": "2027-02-28", "revoke_access": true },
-  "reason": "Pindah perusahaan"
+  "kind": "compensation",
+  "effective_date": "2027-02-01",
+  "compensation": {
+    "structure_id": "sst_02H8...",
+    "schedule_id": null,
+    "reason": "promotion",
+    "overrides": [{ "component_id": "pc_02H8...", "amount": 8500000 }]
+  }
 }
 ```
-**Response `201 Created`** — status `pending`; karyawan belum berubah sama sekali.
+**Response `201 Created`** — status `pending`; karyawan belum berubah sama sekali. Satu karyawan hanya boleh punya satu baris terbuka (pending/scheduled) per kind per tanggal efektif.
 
 ### GET /mutation-requests
 
-Daftar pengajuan tenant, terbaru dulu. Query: `status` (`pending`/`approved`/`rejected`/`failed`), `kind` (`transition`/`assignment`/`offboarding`), `employee_id`, `page`, `per_page`.
+Daftar pengajuan tenant, terbaru dulu. Query: `status` (`pending`/`scheduled`/`approved`/`rejected`/`failed`), `employee_id`, `batch_id`, `page`, `per_page`.
 
 ### GET /mutation-requests/{id}
 
@@ -332,7 +343,7 @@ Detail satu pengajuan — termasuk `review_notes`/`failure_reason` bila sudah di
 ```json
 { "notes": "Sudah dikonfirmasi manajer unit" }
 ```
-**Response `200 OK`** — pengajuan dengan status terbaru.
+**Response `200 OK`** — pengajuan dengan status terbaru. Approve dengan `effective_date` di masa depan menjadikan baris `scheduled`; job harian menerapkannya pada tanggalnya (baris yang jatuh di tanggal sama diterapkan berurutan: career path → work policy → compensation).
 - **approve** mengeksekusi use case aslinya (transition/assignment/offboarding). Sukses → `approved`. Gagal (mis. status karyawan sudah berubah sejak diajukan) → `failed` dengan `failure_reason` terisi; **error dari use case aslinya tetap dikembalikan ke caller** (mis. `422 INVALID_TRANSITION`), karyawan tidak berubah.
 - **reject** tidak pernah mengeksekusi apapun; langsung `rejected`.
 - Meninjau pengajuan yang bukan `pending` (sudah direview sebelumnya) mengembalikan `422 MUTATION_REQUEST_NOT_PENDING`.

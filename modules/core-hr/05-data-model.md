@@ -159,15 +159,15 @@ Jejak perubahan status lifecycle.
 | `changed_by` | string | Aktor |
 
 ### 2.5a `mutation_requests`
-Lapisan approval opsional membungkus `assignments`/`status_history` (transisi)/offboarding — lihat `03-employee-lifecycle.md` §4.1. Sebuah baris di sini **tidak** menimpa/menutup baris `assignments`/`status_history` — begitu disetujui, ia hanya memicu use case aslinya (yang menulis ke tabel-tabel itu seperti biasa).
+Satu baris = satu perubahan yang menunggu approval untuk satu karyawan, dikelompokkan dalam `mutation_request_batches`. Isi perubahan disimpan di `payload` (JSONB) dengan `kind`: `career_path` (penempatan → `assignments`), `work_policy` (jadwal → `work_policies`), atau `compensation` (versi baru di payroll `compensations`). Payload lama tanpa `kind` dibaca sebagai `career_path` (dan boleh membawa pasangan jadwal).
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | |
 | `tenant_id` | string | |
+| `batch_id` | string (FK) | `mutation_request_batches` |
 | `employee_id` | string (FK) | |
-| `kind` | enum | `transition`, `assignment`, `offboarding` |
-| `status` | enum | `pending`, `approved`, `rejected`, `failed` — default `pending` |
-| `payload` | jsonb | Field spesifik `kind` (persis payload endpoint langsung-efektifnya) |
+| `status` | enum | `pending`, `scheduled`, `approved`, `rejected`, `failed` — default `pending` |
+| `payload` | jsonb | `kind`, `effective_date`, field sesuai kind (`career_path_type`, `branch_id`, `org_unit_id`, `position_id`, `employee_status`, `revoke_access` / `schedule_type`, `pattern_id` / `compensation{structure_id, schedule_id, reason, notes, overrides[]}`) |
 | `reason` | string | Alasan pengajuan |
 | `requested_by` | string | |
 | `requested_at` | timestamp | |
@@ -175,6 +175,7 @@ Lapisan approval opsional membungkus `assignments`/`status_history` (transisi)/o
 | `reviewed_at` | timestamp (nullable) | |
 | `review_notes` | string (nullable) | |
 | `failure_reason` | string (nullable) | Terisi hanya saat `status = failed` |
+| `applied_at` | timestamp (nullable) | Saat perubahan benar-benar diterapkan |
 
 ### 2.5b `contracts`
 Kontrak kerja karyawan sebagai entity mandiri — berdampingan dengan (bukan pengganti) `employees.contract_terms` yang tetap ada sebagai array JSONB kasar. `contracts` menambah: tipe legal (PKWT/PKWTT/dst), status yang jelas, dan rantai perpanjangan lewat `previous_contract_id` (kontrak baru menautkan ke kontrak lama, yang otomatis berstatus `superseded` — tidak pernah menimpa baris lama). Reminder kadaluarsa (job terjadwal harian) memakai `end_date` di sini, bukan di `contract_terms`.
