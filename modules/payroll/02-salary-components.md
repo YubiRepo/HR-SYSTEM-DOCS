@@ -16,8 +16,7 @@ Setiap baris di slip gaji adalah satu **komponen**. Tiap komponen punya sifat ya
 | **value** | `fixed` / `formula` | Nilai tetap (Rp) atau rumus (mis. 5% × pokok) |
 | **taxable** | ya / tidak | Ikut dihitung dalam PPh 21 atau tidak |
 | **bpjs_base** | ya / tidak | Masuk dasar perhitungan iuran BPJS atau tidak |
-| **fixed_recurring** | ya / tidak | Sama tiap periode, atau variabel per periode |
-| **one_time** | ya / tidak | Komponen sekali-pakai (lihat §2a) |
+| **recurrence** (`one_time` + `one_time_mode`) | recurring / one-time single period / one-time until revoked | Recurring = tiap periode & bagian salary structure; one-time = di-assign per karyawan (lihat §2a). Nilai yang berubah per periode diatur lewat **value** = `formula` |
 
 ---
 
@@ -30,7 +29,7 @@ Tunjangan Transport (Rp500.000)
   ├── type: earning     → menambah gaji kotor
   ├── taxable: ya        → ikut basis PPh 21
   ├── bpjs_base: tidak   → TIDAK masuk dasar iuran BPJS (variabel)
-  └── fixed_recurring: tidak
+  └── recurrence: recurring → dibayar tiap periode lewat salary structure
 ```
 
 Saat perhitungan, sistem cukup memindai semua komponen & membaca flag-nya — tanpa hardcode. Ini yang membuat payroll benar untuk struktur gaji apa pun.
@@ -63,6 +62,8 @@ Komponen "Cicilan Pinjaman"
 **Beda dari komponen biasa:**
 - Komponen katalog/grade = **permanen** (bagian struktur gaji).
 - One-time = **tempelan sementara** ke karyawan untuk periode tertentu, tidak mengubah struktur grade.
+
+**Aturan:** komponen one-time **ditolak** di salary structure (dan komponen yang sudah ada di structure tidak bisa diubah jadi one-time). `effective_period` wajib untuk single-period dan ditolak untuk mode lain.
 
 **Assignment:** one-time ditempel ke karyawan dengan periode berlaku (`effective_period` untuk single, atau `active` + `revoked_at` untuk until-revoked). Saat run periode itu, komponen ikut dihitung; di luar itu, diabaikan.
 

@@ -52,7 +52,7 @@ bila fitur paket **Payroll** aktif dan punya salah satu dari `payroll:run`,
           <div style="padding:9px 10px"><div style="font-family:monospace;font-weight:700;font-size:11px">TUNJ_TRANSPORT</div><div style="color:#71717a;font-size:11px">Tunjangan Transport</div></div>
           <div style="padding:9px 10px"><span style="background:#dcfce7;color:#15803d;border-radius:6px;padding:1px 8px;font-size:10px">↗ Earning</span></div>
           <div style="padding:9px 10px;font-family:monospace;font-size:11px;color:#0369a1">ƒ(x) 25000 * present_days</div>
-          <div style="padding:9px 10px;display:flex;gap:4px;flex-wrap:wrap;font-size:10px"><span style="background:#e0f2fe;color:#0369a1;border-radius:6px;padding:1px 6px">Taxable</span><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:1px 6px">Non-BPJS</span><span style="background:#fef3c7;color:#b45309;border-radius:6px;padding:1px 6px">Variable</span></div>
+          <div style="padding:9px 10px;display:flex;gap:4px;flex-wrap:wrap;font-size:10px"><span style="background:#e0f2fe;color:#0369a1;border-radius:6px;padding:1px 6px">Taxable</span><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:1px 6px">Non-BPJS</span><span style="background:#f4f4f5;color:#52525b;border-radius:6px;padding:1px 6px">Recurring</span></div>
           <div style="color:#71717a">⋯</div>
         </div>
         <div style="display:grid;grid-template-columns:1.3fr 0.8fr 1.6fr 2fr 36px;border-bottom:1px solid #f4f4f5;align-items:center">
@@ -99,7 +99,7 @@ bila fitur paket **Payroll** aktif dan punya salah satu dari `payroll:run`,
 | **Component** | Kode komponen (huruf tebal) + badge **System** bila bawaan aplikasi, dan nama tampilan di bawahnya |
 | **Type** | **Earning** (hijau, pendapatan) atau **Deduction** (kuning, potongan) |
 | **Calculation** | **Fixed amount (per employee)** untuk nominal tetap, atau rumus dengan awalan `ƒ(x)` untuk komponen formula |
-| **Flags** | **Taxable** / **Non-tax**, **BPJS base** / **Non-BPJS**, **Recurring** / **Variable**, dan **One-time (single period)** / **One-time (until revoked)** bila komponen sekali-pakai |
+| **Flags** | **Taxable** / **Non-tax**, **BPJS base** / **Non-BPJS**, dan **Recurring** atau **One-time (single period)** / **One-time (until revoked)** |
 
 ### Arti tiap sifat komponen di slip gaji
 
@@ -111,8 +111,9 @@ bila fitur paket **Payroll** aktif dan punya salah satu dari `payroll:run`,
 | **Formula** | Dihitung otomatis saat payroll run dari rumus — bisa memakai kode komponen lain (mis. `BASIC`) dan data absensi (mis. `present_days`, `overtime_hours`) |
 | **Taxable** | Ikut dijumlahkan sebagai penghasilan yang dikenai PPh 21 |
 | **BPJS base** | Ikut dijumlahkan sebagai upah dasar perhitungan iuran BPJS |
-| **Fixed recurring** | Komponen tetap yang muncul setiap periode; bila tidak dicentang dianggap variabel |
-| **One-time component** | Hanya berlaku untuk periode tertentu (**Single period only**) atau terus berlaku sampai dicabut pada penugasan karyawan (**Recurring until revoked**) |
+| **Recurring** | Dibayar setiap periode; komponen inilah yang dimasukkan ke **Salary Structure** |
+| **One-time · single period** | Ditempel per karyawan untuk **satu periode payroll** (mis. THR, bonus proyek). Tidak bisa masuk Salary Structure |
+| **One-time · until revoked** | Ditempel per karyawan dan dibayar tiap periode **sampai dicabut** (mis. cicilan). Tidak bisa masuk Salary Structure |
 
 ## Modal Add Salary Component / Edit Salary Component
 
@@ -128,8 +129,7 @@ engine."*
 | **Formula Expression** | teks | Tidak | Hanya muncul bila **Formula (computed live)**. Placeholder *e.g. (BASIC / 173) \* overtime_hours \* 1.5*; contoh variabel: `BASIC, present_days, overtime_hours` | `25000 * present_days` |
 | **Taxable** | centang | Tidak | *PPh 21 basis* — default tercentang | ✓ |
 | **BPJS base** | centang | Tidak | *Included in BPJS wage* — default tidak tercentang | — |
-| **Fixed recurring** | centang | Tidak | *Applies every period* — default tercentang | ✓ |
-| **One-time component** | centang | Tidak | *"Only applies for a specific period or until explicitly revoked, per employee assignment"*. Bila dicentang muncul pilihan **Single period only** / **Recurring until revoked** | — |
+| **Recurrence** | pilihan | Ya | **Recurring** (default) / **One-time · single period** / **One-time · until revoked**. Komponen bertipe **Rate** selalu Recurring. Komponen yang sudah ada di Salary Structure tidak bisa diubah jadi one-time — keluarkan dulu dari structure | Recurring |
 
 Tombol: **Cancel** / **Save Component**.
 
@@ -150,8 +150,8 @@ Pesan:
 3. Isi **Component Code** (mis. `TUNJ_MAKAN`), pilih **Type** = **Earning**,
    isi **Display Name** = Tunjangan Makan.
 4. Biarkan **Calculation** = **Fixed amount (set per employee)**.
-5. Atur centang **Taxable**, **BPJS base**, dan **Fixed recurring** sesuai
-   kebijakan perusahaan.
+5. Atur centang **Taxable** dan **BPJS base** sesuai kebijakan perusahaan;
+   biarkan **Recurrence** = **Recurring**.
 6. Klik **Save Component**.
 7. Isi nominal tunjangan (mis. Rp 750.000) untuk tiap karyawan di menu
    **Salary → Employee Payrolls**.

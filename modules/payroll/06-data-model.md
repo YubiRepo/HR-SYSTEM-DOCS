@@ -31,8 +31,7 @@ Entitas milik modul Payroll. `employees` dirujuk dari Core HR. Uang = integer mi
 | `formula` | string (nullable) | Rumus bila `formula` |
 | `taxable` | boolean | Masuk basis PPh 21 |
 | `bpjs_base` | boolean | Masuk dasar iuran BPJS |
-| `fixed_recurring` | boolean | Tetap tiap periode |
-| `one_time` | boolean | Komponen sekali-pakai (single-period / until-revoked) |
+| `one_time` | boolean | `false` = recurring (tiap periode, boleh masuk salary structure); `true` = sekali-pakai, di-assign per karyawan, **tidak boleh** masuk salary structure |
 | `one_time_mode` | enum (nullable) | `single_period` / `until_revoked` |
 | `is_system` | boolean | Komponen dihitung sistem (BPJS/PPh21) |
 | `sequence` | int | Urutan tampil di slip (P1) |
