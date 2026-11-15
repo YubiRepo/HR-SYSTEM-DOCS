@@ -377,6 +377,7 @@ Maks 500 item. `type` (kode `holiday_category` aktif) dan `is_observed` **wajib*
 | `ALREADY_CLOCKED_IN` | 409 | Sudah clock-in & belum clock-out |
 | `NO_SCHEDULE` | 422 | Tidak ada jadwal & tanpa default |
 | `CORRECTION_NOT_ALLOWED` | 409 | Periode sudah dikunci Payroll |
+| `PAYROLL_PERIOD_LOCKED` | 409 | Tanggal ada di periode payroll terkunci — input record manual & pengajuan koreksi ditolak |
 | `VALIDATION_ERROR` | 400/422 | Input tidak valid |
 | `INVALID_HOLIDAY_ARGUMENT` | 422 | Data libur / parameter import tidak valid |
 | `HOLIDAY_SOURCE_UNAVAILABLE` | 502 | Kalender libur eksternal gagal diakses |

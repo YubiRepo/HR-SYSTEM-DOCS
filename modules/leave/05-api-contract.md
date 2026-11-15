@@ -62,7 +62,7 @@ Prefix `/api/v1/leave`. Envelope standar HRMS. Dijaga Entitlement (fitur `leave`
   }
 }
 ```
-**Error:** `422 INSUFFICIENT_BALANCE`, `422 NOT_ELIGIBLE`, `422 DOCUMENT_REQUIRED`, `409 DATE_CONFLICT`.
+**Error:** `422 INSUFFICIENT_BALANCE`, `422 NOT_ELIGIBLE`, `422 DOCUMENT_REQUIRED`, `409 DATE_CONFLICT`, `409 PAYROLL_PERIOD_LOCKED`.
 
 ---
 
@@ -126,5 +126,6 @@ Memproses carry-over akhir periode (job otomatis / manual HR).
 | `NOT_ELIGIBLE` | 422 | Belum memenuhi syarat (masa kerja/gender) |
 | `DOCUMENT_REQUIRED` | 422 | Lampiran wajib (mis. surat dokter) |
 | `DATE_CONFLICT` | 409 | Bentrok cuti lain / tanggal invalid |
+| `PAYROLL_PERIOD_LOCKED` | 409 | Salah satu hari cuti ada di periode payroll terkunci (locked/closed) — berlaku saat submit dan approve; reject & cancel (pending) tetap boleh |
 | `NOT_CURRENT_APPROVER` | 409 | Bukan approver step berjalan |
 | `INVALID_STATE` | 409 | Transisi status tidak valid |

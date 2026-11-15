@@ -144,7 +144,7 @@ Koreksi absensi memengaruhi gaji, jadi terikat siklus Payroll:
 - Setelah payroll run periode itu CLOSED → koreksi masuk run berikutnya
   (sebagai penyesuaian), tidak mengubah run yang sudah dikunci.
 ```
-Sejalan prinsip "closed = terkunci" di Payroll. Endpoint koreksi menolak perubahan pada periode terkunci (`CORRECTION_NOT_ALLOWED`).
+Sejalan prinsip "closed = terkunci" di Payroll. Endpoint koreksi menolak perubahan pada periode terkunci (`CORRECTION_NOT_ALLOWED` saat approve). Pengajuan koreksi dan input record manual HR (`POST /attendance/records`) untuk tanggal di periode terkunci langsung ditolak dengan `409 PAYROLL_PERIOD_LOCKED`.
 
 ### 5.4 Alur Koreksi
 ```
