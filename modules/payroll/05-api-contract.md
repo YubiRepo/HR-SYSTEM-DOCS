@@ -165,6 +165,7 @@ Respons: `{ kind, period{schedule_id, schedule_name, period_id, code, start_date
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
 | GET | `/payroll/payslips/{id}` | Detail slip | `payslip:read` (self/scope) |
+| GET | `/payroll/payslips/{id}/lines` | Baris komponen (snapshot). Baris `source=formula` membawa `formula{code, name, version_no, effective_from, expression, variables[{name, source, value, value_source}]}` — versi formula yang dipakai saat dihitung; `value` = nilai yang dipakai (`value_source`: `payslip` = baris komponen slip ini, `attendance`/`leave` = snapshot input run, `manual` = override HR, `system` = konstanta, `default` = tidak ada input → 0) (hanya view HR; tidak ada di `/me/payslips`) | `payslip:read` (scope) |
 | GET | `/payroll/me/payslips` | Slip milik sendiri | `payslip:read` (self) |
 
 ---
