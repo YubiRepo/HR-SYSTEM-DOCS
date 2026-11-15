@@ -35,7 +35,7 @@ Modul Leave menjawab: **berapa hak cuti tiap karyawan, berapa sisanya, bagaimana
 | Modul | Hubungan |
 |---|---|
 | **Core HR** | Data karyawan, reporting line (rute approval), status `on_leave` |
-| **Attendance** | Hari cuti disetujui → status `on_leave` (bukan alpha) |
+| **Attendance** | Hari cuti disetujui → hari kerja tidak ditandai alpha (cuti bukan status hari) |
 | **Payroll** | Cuti tak berbayar (unpaid) → potongan gaji; cuti berbayar → tidak |
 | **Entitlement/RBAC** | Gerbang fitur & scope (self/branch) |
 | **Notification** | Pengingat approval, notifikasi status cuti (saat modul ada) |
@@ -48,7 +48,7 @@ Modul Leave menjawab: **berapa hak cuti tiap karyawan, berapa sisanya, bagaimana
 karyawan ajukan cuti → cek saldo cukup?
    → approval (sesuai alur jenis cuti)
    → disetujui → saldo berkurang
-   → Attendance ditandai on_leave (hari itu bukan alpha)
+   → Attendance: hari itu tidak ditandai alpha
    → bila unpaid → Payroll potong gaji
 ```
 

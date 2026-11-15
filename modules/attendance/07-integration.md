@@ -42,7 +42,7 @@ Pemetaan ke komponen Payroll:
 ## 3. Dengan Leave
 
 Hubungan dua arah ringan:
-- **Leave → Attendance:** hari cuti yang disetujui menandai status harian `on_leave` (mencegah alpha).
+- **Leave → Attendance:** hari cuti yang disetujui mencegah hari kerja tanpa clock-in ditandai alpha (cuti bukan status harian; jumlah cuti dihitung dari dokumen Leave).
 - **Attendance → Leave:** data kehadiran dapat memvalidasi pengajuan (mis. sakit dengan bukti).
 
 Kontrak: Attendance menanyakan cuti aktif per karyawan/tanggal ke modul Leave sebelum menetapkan status harian.

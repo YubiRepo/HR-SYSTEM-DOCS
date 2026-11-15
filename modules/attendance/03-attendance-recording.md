@@ -50,14 +50,15 @@ Setelah clock & dibandingkan jadwal, status tiap hari disimpan sebagai **array**
 | Hari (`day`) | `workday` | Hari kerja terjadwal |
 | | `holiday` | Libur nasional/perusahaan |
 | | `day_off` | Tidak ada jadwal (libur) |
-| | `on_leave` | Cuti (dari modul Leave — bukan alpha) |
 | Kehadiran (`presence`) | `present` | Clock-in & clock-out ada |
 | | `incomplete` | Sudah clock-in, belum clock-out |
-| | `absent` (alpha) | Hari kerja tanpa clock-in |
+| | `absent` (alpha) | Hari kerja tanpa clock-in **dan tanpa cuti approved** |
 | Masuk (`arrival`) | `on_time` / `late` | Hanya hari kerja terjadwal yang sudah clock-in; `late` = melewati toleransi |
 | Pulang (`departure`) | `left_on_time` / `early_leave` / `overtime` / `auto_clock_out` | Hanya hari kerja terjadwal yang sudah clock-out; `auto_clock_out` didahulukan karena jamnya diisi sistem |
 
-Prioritas dimensi hari: `on_leave` > `holiday` > `day_off` > `workday`.
+Prioritas dimensi hari: `holiday` > `day_off` > `workday`.
+
+Cuti **bukan** status hari. Cuti approved hanya mencegah hari kerja tanpa clock-in ditandai `absent` (record jadi `["workday"]` saja). Jumlah hari cuti dihitung dari dokumen Leave, bukan dari record attendance. Cuti di hari libur tetap `holiday`.
 
 Contoh:
 ```
@@ -66,12 +67,12 @@ Contoh:
 ["workday", "absent"]                        alpha
 ["holiday", "present", "overtime"]           masuk di hari libur dengan SPL / request approved
 ["day_off", "present", "overtime"]           masuk di day off dengan SPL / request approved
-["on_leave"]                                 cuti
+["workday"]                                  hari kerja tertutup cuti (bukan alpha)
 ```
 
 - Menit telat/pulang awal/lembur tetap disimpan terpisah (`late_minutes`, `early_leave_minutes`, `overtime_minutes`).
 - `overtime_minutes` di hari `holiday`/`day_off` = **seluruh** durasi clock in–out, dibulatkan dengan rounding & toleransi shift tanpa threshold (tanpa shift: menit mentah). Ini rumus yang sama dengan overtime processing, jadi angka di record = aktual di transaksi lembur.
-- Koreksi `field=status` berisi **satu nilai**, yang mengganti nilai di dimensi yang sama (mis. `on_leave` mengganti `workday`). `old_value` adalah nilai lama di dimensi itu.
+- Koreksi `field=status` berisi **satu nilai**, yang mengganti nilai di dimensi yang sama (mis. `holiday` mengganti `workday`). `old_value` adalah nilai lama di dimensi itu.
 - Shift `flexible`: `arrival` selalu `on_time`; `departure` dihitung dari total jam kerja vs target.
 
 > **Penting:** sistem membaca data **Leave** sebelum menandai `absent`. Karyawan yang cuti sah tidak boleh dihitung alpha.

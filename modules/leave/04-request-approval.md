@@ -91,7 +91,7 @@ DRAFT → PENDING → (tiap step) → APPROVED → berlaku
 ```
 approved:
   ├─ saldo cuti berkurang (used += durasi)
-  ├─ Attendance: hari itu ditandai on_leave (bukan alpha)
+  ├─ Attendance: hari itu tidak ditandai alpha
   ├─ Core HR: status on_leave bila cuti panjang (mis. melahirkan)
   └─ bila unpaid → info ke Payroll untuk potongan
 ```

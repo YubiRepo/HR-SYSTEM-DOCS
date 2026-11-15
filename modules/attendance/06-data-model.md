@@ -86,7 +86,7 @@ Pola penugasan shift **tenant-wide**; karyawan menempel ke pola lewat `pattern_i
 | `source` | enum | `mobile`, `web`, `machine`, `kiosk`, `manual` |
 | `in_lat` / `in_lng` | number (nullable) | Lokasi clock-in |
 | `photo_ref` | string (nullable) | Bukti |
-| `status` | text[] | Satu nilai per dimensi, urut hari → kehadiran → masuk → pulang (lihat 03 §4). Nilai: `workday`, `holiday`, `day_off`, `on_leave`, `present`, `absent`, `incomplete`, `on_time`, `late`, `left_on_time`, `early_leave`, `overtime`, `auto_clock_out`. Default `{workday,absent}`, index GIN |
+| `status` | text[] | Satu nilai per dimensi, urut hari → kehadiran → masuk → pulang (lihat 03 §4). Nilai: `workday`, `holiday`, `day_off`, `present`, `absent`, `incomplete`, `on_time`, `late`, `left_on_time`, `early_leave`, `overtime`, `auto_clock_out`. Default `{workday,absent}`, index GIN |
 | `late_minutes` | int | |
 | `overtime_minutes` | int | |
 | `geofence_ok` | boolean | |
@@ -154,7 +154,7 @@ Pola penugasan shift **tenant-wide**; karyawan menempel ke pola lewat `pattern_i
 ## 3. Catatan Desain
 
 - **Status harian dihitung** dari clock vs schedule vs rules; disimpan agar rekap cepat.
-- **Cek Leave sebelum alpha** — status `on_leave` diisi dari data modul Leave.
+- **Cek Leave sebelum alpha** — cuti approved (modul Leave) mencegah hari kerja tanpa clock-in ditandai `absent`; cuti bukan status hari.
 - **Rekap** (`GET /attendance/summary`) diagregasi dari `attendance_records` + `overtime_requests` untuk periode.
 - **Config versioned bila perlu** — perubahan aturan tidak mengubah perhitungan periode lampau.
 - Semua koreksi & approval tercatat (audit).

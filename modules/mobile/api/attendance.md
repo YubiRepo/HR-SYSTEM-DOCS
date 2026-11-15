@@ -77,7 +77,7 @@ Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`,
   }
 }
 ```
-- `day_kind`: `workday` / `day_off` / `holiday` / `on_leave`.
+- `day_kind`: `workday` / `day_off` / `holiday`. Cuti **bukan** jenis hari: hari kerja yang tertutup cuti tetap `workday`. Untuk menampilkan info cuti hari ini, panggil `GET /leave/me/requests?status=approved` (lihat [leave.md](./leave.md) §5) lalu cari ajuan yang `date_from` ≤ hari ini ≤ `date_to` (endpoint itu belum punya filter tanggal).
 - Di hari libur, `overtime_required: true` dan `overtime_access` berisi dokumen lembur yang membuka hari itu (`source`, `label`, `start`, `end`). Bila `overtime_access` tidak ada, clock-in akan ditolak.
 
 ## 4. Jadwal Saya — `GET /attendance/me/schedule?date_from=2026-09-01&date_to=2026-09-07`

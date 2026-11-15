@@ -27,11 +27,11 @@ Attendance (termasuk lembur) dan Leave adalah **sumber variabel** utama: kehadir
 
 | Variabel | Sumber | Arti | Contoh pemakaian |
 |---|---|---|---|
-| `work_days` | Attendance | Hari kerja (workday + cuti + day off yang tetap masuk; libur tidak dihitung) | pro-rata gaji |
+| `work_days` | Attendance | Semua hari `workday` (termasuk yang tertutup cuti) + day off & libur yang dimasuki (present) | pro-rata gaji |
 | `scheduled_days` | Attendance | Hari yang punya shift terjadwal (termasuk pola fixed) | pembagi pro-rata |
-| `present_days` | Attendance | Hari hadir (present/incomplete) | tunjangan harian (transport/makan) |
-| `absent_days` | Attendance | Workday tanpa clock-in (alpha) | **potongan alpha** |
-| `incomplete_days` | Attendance | Hari lupa clock-out | sanksi/administrasi |
+| `present_days` | Attendance | Hari `present` (clock-in & clock-out lengkap) di workday, day off, maupun libur. `incomplete` tidak dihitung sampai dikoreksi | tunjangan harian (transport/makan) |
+| `absent_days` | Attendance | Workday tanpa clock-in dan tanpa cuti approved (alpha) | **potongan alpha** |
+| `incomplete_days` | Attendance | Hari lupa clock-out (bukan hari hadir sampai dikoreksi) | sanksi/administrasi |
 | `late_count`, `late_minutes` | Attendance | Telat setelah toleransi shift | potongan telat |
 | `early_leave_count`, `early_leave_minutes` | Attendance | Pulang cepat (status `early_leave`) | potongan pulang cepat |
 | `auto_clock_out_count` | Attendance | Clock-out diisi sistem | sanksi/administrasi |
@@ -43,7 +43,6 @@ Attendance (termasuk lembur) dan Leave adalah **sumber variabel** utama: kehadir
 | `overtime_hours` | Attendance (OT transaction `validated`) | Menit lembur eligible / 60 | uang lembur |
 | `overtime_weighted_hours` | Attendance (OT transaction) | Σ menit × multiplier tier / 60 | uang lembur gaya Kepmen 102 |
 | `ot_min_<KODE>`, `ot_wmin_<KODE>` | Attendance (OT transaction) | Menit (biasa / terbobot) per komponen OT | tarif berbeda per tier |
-| `attendance_leave_days` | Attendance | Hari berstatus `on_leave` (untuk rekonsiliasi) | — |
 | `paid_leave_days`, `unpaid_days` | Leave | Hari cuti berbayar / tak berbayar di dalam rentang (pro-rata per hari kerja) | **potongan cuti tak berbayar** |
 | `leave_days_<KODE_CUTI>` | Leave | Hari cuti per jenis cuti | aturan per jenis (mis. sakit) |
 

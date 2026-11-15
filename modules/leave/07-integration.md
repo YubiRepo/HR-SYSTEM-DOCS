@@ -21,7 +21,7 @@ Hubungan dua arah:
 
 **Leave → Attendance:**
 ```
-cuti disetujui (10–12 Feb) → Attendance tandai hari itu `on_leave`
+cuti disetujui (10–12 Feb) → Attendance tidak menandai hari itu alpha
    → TIDAK dihitung alpha
 ```
 
@@ -83,7 +83,7 @@ Leave bisa berada di plan yang berbeda dari Payroll. Bila keduanya aktif, cuti t
 Core HR (karyawan, reporting line)
       │
       ▼
-   LEAVE  ──approved──▶ Attendance (on_leave, bukan alpha)
+   LEAVE  ──approved──▶ Attendance (bukan alpha)
       │
       └──unpaid/encashment──▶ Payroll (potongan / kompensasi)
 ```
