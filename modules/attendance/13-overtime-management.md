@@ -70,11 +70,11 @@ Overtime tidak menentukan sendiri jenis harinya. Modul sumber memberikan klasifi
 |---|---|---|
 | Schedule | `WORKING_DAY` | Jadwal karyawan punya shift di tanggal itu (fixed pattern, atau baris jadwal rotasi/manual) |
 | Schedule | `REST_DAY` | Jadwal libur di tanggal itu |
-| Holiday Calendar | `PUBLIC_HOLIDAY` | Ada holiday yang *observed* untuk cabang/tenant |
+| Holiday Calendar | `HOLIDAY` | Ada holiday yang *observed* untuk cabang/tenant |
 
 Catatan perilaku:
 - Karyawan **rotasi** tanpa jadwal ter-generate tidak mendapat klasifikasi schedule. Processing akan menolak tanggal itu ("no schedule"), bukan menebak.
-- **Pencocokan** dilakukan langsung antara kode klasifikasi dan `code` day type. Bila satu tanggal punya beberapa klasifikasi (mis. `REST_DAY` + `PUBLIC_HOLIDAY`), day type dengan `sequence` **terkecil** yang dipakai.
+- **Pencocokan** dilakukan langsung antara kode klasifikasi dan `code` day type. Bila satu tanggal punya beberapa klasifikasi (mis. `REST_DAY` + `HOLIDAY`), day type dengan `sequence` **terkecil** yang dipakai.
 - Klasifikasi tanpa pasangan day type menghasilkan error eksplisit `OVERTIME_DAY_TYPE_NOT_MATCHED`.
 
 ---

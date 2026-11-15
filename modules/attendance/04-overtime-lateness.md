@@ -26,7 +26,7 @@ Pembagian ke komponen (OT1, OT2, …) dan multiplier diatur di **Overtime Rule**
 
 ## 2. Lembur Hari Libur / Nasional
 
-Kerja di rest day atau hari libur: seluruh durasi kerja adalah lembur (pembulatan & toleransi berlaku, ambang tidak). Jenis hari ditentukan klasifikasi modul sumber (`REST_DAY` dari jadwal, `PUBLIC_HOLIDAY` dari kalender libur) dan dicocokkan ke day type Overtime Rule — lihat [13 §3](./13-overtime-management.md#3-klasifikasi-hari).
+Kerja di rest day atau hari libur: seluruh durasi kerja adalah lembur (pembulatan & toleransi berlaku, ambang tidak). Jenis hari ditentukan klasifikasi modul sumber (`REST_DAY` dari jadwal, `HOLIDAY` dari kalender libur) dan dicocokkan ke day type Overtime Rule — lihat [13 §3](./13-overtime-management.md#3-klasifikasi-hari).
 
 ---
 
