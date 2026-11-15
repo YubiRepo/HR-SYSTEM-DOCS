@@ -151,6 +151,16 @@ Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `f
 | GET | `/payroll/reports/pph21` | `final` (withheld, employer_borne, dtp, due, payable), `by_treatment`, `pending`, `runs` |
 | GET | `/payroll/reports/pph21/withholdings` | Per karyawan: NIK, NPWP, PTKP, TER, metode, perlakuan, bruto, PPh |
 
+### Laporan Register (matriks karyawan × komponen)
+Semua `payroll:read`. Query: `schedule_id` + `period_id` (periode payroll schedule tsb) **atau** `schedule_id=all` + `period=YYYY-MM` (bulan pajak, semua schedule); `group_by=department|schedule|none` (default `department`, departemen = org unit karyawan **saat ini**); `branch_id` (opsional); `format=xlsx` (unduhan Excel: judul, header beku, baris grup, subtotal per grup, grand total). Hanya run `approved`/`paid`/`closed`; slip run lain dihitung di `pending_payslips`. Argumen salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`. `pph21/matrix` butuh benefit `payroll.tax`.
+| Method | Endpoint | Kolom |
+|---|---|---|
+| GET | `/payroll/reports/register` | Earning per komponen (urut `sequence`), Gross, deduction per komponen, BPJS (Employee), PPh 21, Net Pay, BPJS (Employer) |
+| GET | `/payroll/reports/bpjs/matrix` | No. Kesehatan / Ketenagakerjaan, lalu Base / Employee / Employer per program yang muncul, Total Employee / Employer / Total |
+| GET | `/payroll/reports/pph21/matrix` | NPWP/NIK, PTKP, TER category/rate, method, treatment, Taxable Gross, Withheld, Employer-borne, DTP, Refund, PPh 21 Due |
+
+Respons: `{ kind, period{schedule_id, schedule_name, period_id, code, start_date, end_date, pay_date, tax_period}, group_by, columns[{key, label, section, kind: amount|text}], groups[{key, label, rows[{employee_id, employee_number, full_name, department, schedule, payslips, values[]}], subtotal[]}], total[], employees, pending_payslips, runs[] }` — `values`/`subtotal`/`total` sejajar dengan `columns` (kolom `text` → string/null, tidak dijumlah). Beberapa run final di periode yang sama dijumlah per karyawan.
+
 ### Payslip (karyawan)
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
