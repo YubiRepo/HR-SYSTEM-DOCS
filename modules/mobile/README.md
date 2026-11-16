@@ -17,6 +17,7 @@ Dokumentasi aplikasi mobile HRMS. Mobile adalah **klien** dari modul-modul yang 
 |---|---|
 | [`README.md`](./README.md) | Indeks (dokumen ini) |
 | [`01-feature-breakdown.md`](./01-feature-breakdown.md) | Fitur mobile per peran; mana yang tetap di web |
+| [`issues/`](./issues/README.md) | Issue backend per modul yang ditemukan saat integrasi mobile + status untuk tim backend |
 | [`api/`](./api/README.md) | Endpoint API yang dipakai mobile (sesuai implementasi backend) |
 
 ---
