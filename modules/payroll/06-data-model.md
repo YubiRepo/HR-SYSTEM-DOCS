@@ -84,7 +84,8 @@ Satu baris per karyawan per program per rentang berlaku. Tidak boleh overlap per
 | `branch_id` | string (FK, nullable) | null = seluruh tenant |
 | `target_filter` | json (nullable) | Filter peserta: branch/salary_type/employment_type/employee_ids (P15: `pay_cycle` tidak lagi difilter, diganti schedule P4) |
 | `period_id` | uuid (FK, nullable) | Periode payroll (P4) yang dibayar run; null = run off-cycle / sebelum P4 |
-| `period` | string | `YYYY-MM` — **masa pajak** (bulan `pay_date` periode bila ada `period_id`) |
+| `period` | string | `YYYY-MM` — **masa pajak** (default bulan `pay_date`; dapat diubah HR). Dasar TER, rekonsiliasi & laporan PPh 21 |
+| `bpjs_period` | string | `YYYY-MM` — **periode BPJS / bulan iuran** (default bulan akhir periode payroll; off-cycle = masa pajak; dapat diubah HR). Dasar batas upah BPJS bulanan, tarif BPJS & laporan BPJS |
 | `type` | enum | `regular`, `thr`, `bonus`, `final` |
 | `status` | enum | `draft`, `calculated`, `in_review`, `approved`, `paid`, `closed` |
 | `pay_date` | date | |

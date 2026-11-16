@@ -60,6 +60,7 @@ Lima program, tiap program beda tarif & pihak penanggung. Yang **memotong gaji k
 - Karyawan **tanpa baris kepesertaan sama sekali** masih dikenakan semua program (perilaku sebelum P11); hasil calculate mencantumkan mereka di `warnings`.
 - Baris awal dibuat otomatis saat tax profile disimpan pertama kali: satu baris per program dari `payroll_config.default_bpjs_programs` (kosong = semua), mulai tanggal masuk.
 - Rincian per program (lembaga, nomor kepesertaan, kelas risiko, dasar, tarif, iuran karyawan & perusahaan) disimpan di `payslips.bpjs_details`; jumlahnya sama dengan `bpjs_employee` / `bpjs_employer`.
+- **Periode BPJS (bulan iuran)** run (`payroll_runs.bpjs_period`) terpisah dari masa pajak (`period`). Batas upah bulanan dibagi antar run dengan **periode BPJS yang sama** (run berikutnya hanya mendapat sisa batas dari run approved/paid/closed lain), konfigurasi tarif BPJS dibaca per periode BPJS, dan laporan BPJS dikelompokkan per periode BPJS. Contoh: gaji Maret dibayar 8 April → masa pajak April, periode BPJS Maret; gaji April → periode BPJS April, sehingga masing-masing mendapat batas upah penuh.
 
 **Contoh (gaji dasar BPJS Rp8 jt, risiko rendah JKK 0,24%):**
 ```
@@ -80,6 +81,7 @@ PPh 21 bulan ini = Penghasilan bruto bulan ini × tarif TER
 - **Penghasilan bruto** = Σ komponen taxable bulan itu.
 - **Tarif TER** diambil dari tabel resmi, berdasar **kategori PTKP** (A/B/C) & rentang penghasilan.
 - Tabel TER disimpan sebagai data konfigurasi. Default per tenant di-seed dari Lampiran PP 58/2023 (berlaku 2024-01-01; A=44, B=40, C=41 baris). Batas atas bracket **inklusif** ("di atas X s.d. Y"), sehingga bruto tepat Rp5.400.000 di kategori A kena 0%.
+- **Beberapa run dalam satu masa pajak** (gaji + THR/bonus, atau gaji periode yang dibayar bulan berikutnya): TER diterapkan pada **bruto gabungan sebulan** (PMK 168/2023). PPh run ini = TER(Σ bruto taxable slip TER-bulanan run lain yang approved/paid/closed di masa pajak yang sama + bruto run ini) − PPh yang sudah diselesaikan slip-slip itu (dipotong + ditanggung perusahaan + DTP), minimal 0 (lebih bayar hanya dikembalikan lewat rekonsiliasi). Slip mencatat catatan pajak berisi jumlah slip, bruto & PPh yang digabung. Run draft/calculated tidak ikut; TER harian & rekonsiliasi tidak memakai aturan ini.
 
 ### 4.1a TER harian — pegawai tidak tetap dibayar harian / per jam (P14)
 Berlaku untuk karyawan dengan `employment_tax_status = non_permanent` **dan** salary structure (versi kompensasi yang berlaku) bertipe `daily` / `hourly`. Pegawai tetap, dan pegawai tidak tetap yang digaji bulanan, tetap memakai TER bulanan §4.1.

@@ -171,7 +171,7 @@ Respons: `{ kind, period{schedule_id, schedule_name, period_id, code, start_date
 ---
 
 ## 1. POST /payroll/runs
-Run regular (P4): `{ "period_id": "...", "type": "regular" }` — `period` diturunkan dari bulan `pay_date` periode dan `pay_date` default ke tanggal bayar periode. Tanpa `period_id` hanya untuk off-cycle (THR/bonus/final) dengan `period` + `pay_date`. Periode `closed` → `409 INVALID_PAYROLL_PERIOD_STATE`. Respons run menambah `period_id`, `period_code`, `schedule_name`.
+Run regular (P4): `{ "period_id": "...", "type": "regular" }` — `pay_date` default ke tanggal bayar periode, masa pajak (`period`) default ke bulan `pay_date`, dan `bpjs_period` default ke bulan akhir periode. Tanpa `period_id` hanya untuk off-cycle (THR/bonus/final) dengan `period` + `pay_date`; `bpjs_period` default = `period`. Opsional `tax_period` / `bpjs_period` (`YYYY-MM`) menimpa default (juga di `PUT /payroll/runs/{id}` & preview). Periode `closed` → `409 INVALID_PAYROLL_PERIOD_STATE`. Respons run menambah `period_id`, `period_code`, `schedule_name`, `tax_period` (= `period`), `bpjs_period`.
 ```json
 {
   "period": "2026-01",
