@@ -16,7 +16,7 @@ langkah operasional, tabel field, dan mock UI yang bisa dirender menjadi gambar.
 | HR Setting | [`hr-setting/`](./hr-setting/) | Struktur & kebijakan (organisasi, posisi, jam kerja, cuti, gaji, custom field) | Selesai |
 | Leave | [`leave/`](./leave/) | Pengajuan & saldo cuti | Belum |
 | Attendance | [`attendance/`](./attendance/) | Absensi, jadwal, lembur, mesin absen | Belum |
-| Salary | [`salary/`](./salary/) | Payroll, run, payslip | Belum |
+| Payroll | [`payroll/`](./payroll/) | Payroll, run, payslip | Belum |
 | Recruitment & ATS | [`recruitment/`](./recruitment/) | Lowongan, pipeline, pelamar, penawaran | Belum |
 | Performance & Goals | [`performance/`](./performance/) | KPI/OKR, siklus penilaian, 360°, kalibrasi | Belum |
 | Company Settings | [`company-settings/`](./company-settings/) | Profil perusahaan, cabang, common codes, billing, pengguna, peran | Selesai |

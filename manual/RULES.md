@@ -41,7 +41,7 @@ manual/
 ├── hr-setting/            # menu "HR Setting"
 ├── leave/                 # menu "Leave"
 ├── attendance/            # menu "Attendance"
-├── salary/                # menu "Salary"
+├── payroll/               # menu "Payroll"
 ├── recruitment/           # menu "Recruitment & ATS"
 ├── performance/           # menu "Performance & Goals"
 ├── company-settings/      # menu "Company Settings"
@@ -57,7 +57,7 @@ Peta menu → folder → sub-halaman (sumber: `app/layouts/default.vue` sidebar)
 | HR Setting | `hr-setting/` | Organizations, Positions, Working Time, Working Patterns, Holiday & Leave Calendar, Attendance Rules, Leave Types, Salary Component, Tax and BPJS, Custom Fields |
 | Leave | `leave/` | Leave Request, Leave Balances |
 | Attendance | `attendance/` | Employee Calendars, Rotation Simulations, Daily Records, Overtime Request, Payroll Rekap Summary, Machines & Agents, Machine ID Mapping, Machine Punches |
-| Salary | `salary/` | Employee Payrolls, Payroll Runs, Payslips |
+| Payroll | `payroll/` | Compensations, Payroll Periods, Payroll Runs, Payslips, Reports, Statutory Reports |
 | Recruitment & ATS | `recruitment/` | Lowongan Kerja, Pipeline Seleksi (ATS), Database Pelamar, Penawaran & Konversi, Konfigurasi Pipeline |
 | Performance & Goals | `performance/` | Sasaran Kerja (KPI/OKR), Siklus Penilaian, Penilaian Kinerja, 360° Feedback, Sesi Kalibrasi (9-Box), Kerangka & Kompetensi |
 | Company Settings | `company-settings/` | Overview, Branches, Common Codes, Billing, Users, Roles & Permissions (Activity nonaktif) |
@@ -99,7 +99,7 @@ bawah ini. Semua path relatif terhadap dua repo:
 | `hr-setting/` | `app/pages/tenants/hr-setting/**` | `useOrgUnits`, `usePositions`, `useShifts`, `useSchedules`, `useScheduleGroups`, `useSchedulePatterns`, `useAttendanceRules`, `useHolidays`, `useLeaveTypes`, `usePayComponents`, `usePayrollTaxProfiles`, `useEmployeeFields`, `useTenantBranches` | `modules/core-hr/**`, `modules/attendance/**`, `modules/leave/**`, `modules/payroll/**` |
 | `leave/` | `app/pages/tenants/leave/**` | `useLeaveRequests`, `useLeaveBalances`, `useLeaveTypes`, `useLeaveApprovalFlows`, `useLeaveBalancePreview` | `modules/leave/**` |
 | `attendance/` | `app/pages/tenants/attendance/**` | `useAttendance*`, `useOvertimeRequests`, `useMachineIntegration`, `useShifts`, `useSchedule*`, `useAttendanceCorrections`, `useAttendanceSummary` | `modules/attendance/**` |
-| `salary/` | `app/pages/tenants/salary/**` | `usePayroll`, `usePayrollRuns`, `usePayrollConfig`, `usePayrollProfiles`, `usePayslips`, `usePayComponents` | `modules/payroll/**` |
+| `payroll/` | `app/pages/tenants/payroll/**` | `usePayroll`, `usePayrollRuns`, `usePayrollConfig`, `usePayrollProfiles`, `usePayslips`, `usePayComponents` | `modules/payroll/**` |
 | `recruitment/` | `app/pages/tenants/recruitment/**` | `useRecruitment` | `modules/recruitment/**` |
 | `performance/` | `app/pages/tenants/performance/**` | (logika di halaman/komponen) | `modules/performance/**` |
 | `company-settings/` | `app/pages/tenants/settings/**`, `settings.vue` | `useMyTenant`, `useTenantBranches`, `useCommonCodes`, `useMyBilling`, `useAccessUsers`, `useAccessRoles`, `useAccessPermissions` | `modules/platform/tenant/**`, `modules/platform/billing/**`, `modules/rbac/**` |
