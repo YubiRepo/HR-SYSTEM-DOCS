@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–11. |
+| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–26. |
 | **Tanggal** | 2026-11-16 |
 | **Pemicu** | Auth, authz, tenant (company) dan branch HR dipindahkan ke platform Jewelry. Company yang terdaftar di Jewelry otomatis dapat akses semua aplikasi, sehingga entitlement HR dihapus. |
 | **Keputusan user** | (1) **Tenant HR = company Jewelry** (`tenants.id` HR = `companies.id` Jewelry; branch HR = branch Jewelry; semua UUID). (2) **Jewelry menjadi master RBAC**: catalog permission HR didaftarkan di Jewelry dengan dimensi aplikasi, role & assignment HR dikelola di backoffice Jewelry. (3) **Data HR boleh direset**, tanpa migrasi data lama. (4) **jewelry-be/fe boleh diubah dan ditambah fitur** untuk kebutuhan HR. (5) Role HR yang di-seed hanya `company_admin`, `branch_admin`, `employee`. (6) Tanpa registrasi aplikasi; konfigurasi aplikasi lewat env. (7) **Tema backoffice HR mengikuti tema BO Jewelry.** (8) **Database HR selama pengerjaan integrasi: `hr_system_jewerly`.** |
@@ -64,7 +64,7 @@ Aturan kerja: commit hanya jika diminta; migrasi dan seeder ditulis tetapi dijal
 2. **Model scope beda**: HR punya data scope `self|branch|tenant` per permission; Jewelry hanya scope assignment. Tambah `role_permissions.data_scope` (`self` | null) di Jewelry. Mapping: company→`tenant`, branch→`branch`, `data_scope=self`→`self`. `Principal.Authorize` dan `branchscope` HR tidak berubah.
 3. **Format kode permission**: kode HR (`resource:action`) disimpan apa adanya di Jewelry dengan `app='hr'`, sehingga pemanggilan `RequirePermission`/`Authorize` di HR tidak perlu disentuh.
 4. **`grants_all`** (`owner`, `company_admin`): rekomendasi mencakup semua permission HR, sesuai prinsip "company otomatis dapat akses semua aplikasi".
-5. **Login karyawan (ESS)**: login Jewelry hanya via email; email unik global; satu user hanya satu tenant. Karyawan tanpa email tidak bisa login, dan email yang sudah dipakai di tenant lain akan bentrok. **Harus diputuskan sebelum Fase 11** (wajib email, atau tambah login username/phone di Jewelry).
+5. **Login karyawan (ESS)**: login Jewelry hanya via email; email unik global; satu user hanya satu tenant. Karyawan tanpa email tidak bisa login, dan email yang sudah dipakai di tenant lain akan bentrok. **Diputuskan (2026-11-17): email wajib** untuk karyawan yang butuh akun ESS. Karyawan tanpa email tetap bisa dibuat, hanya tanpa akun (pembuatan akun otomatis dilewati dengan warning; pembuatan akun eksplisit menolak dengan validation error).
 6. **Ketergantungan runtime**: setiap request HR bergantung pada Jewelry (dengan cache 60 detik). Rekomendasi: fail-closed.
 7. **JWKS & `aud`**: perubahan di Jewelry tidak boleh merusak klien Jewelry yang sudah ada.
 8. **Service-to-service** belum ada di Jewelry → perlu API key per aplikasi, diset lewat **env** (tanpa tabel registry aplikasi).
@@ -186,12 +186,12 @@ Setiap fase kecil, bisa di-build dan di-test sendiri, serta tidak merusak fase s
 
 #### Fase 19 — Hapus auth lokal `[HR-API]`
 - Hapus login, token grant/refresh, select/switch tenant & branch, invitation, register, forgot/reset password, verify email, argon2, JWT generator, JWKS HR, session store Redis, `certs/`.
-- Migrasi drop `refresh_tokens`, `password_resets`, `password_history`, `tenant_members`, serta kolom password/lockout di `users`.
+- Migrasi drop `refresh_tokens`, `password_resets`, `password_history`, serta kolom password/lockout/login di `users`. **Catatan pelaksanaan:** drop `tenant_members` dipindah ke migrasi Fase 20 karena role assignment lokal masih membacanya sampai fase itu. Folder `certs/` (tidak dilacak git, milik root) dihapus manual oleh user.
 - **Selesai bila**: `go build ./...` & `go test ./...` lulus.
 
 #### Fase 20 — Hapus RBAC lokal `[HR-API]`
 - Hapus usecase role, endpoint `/api/v1/rbac/*`, role templates, seeder platform roles/role templates. `permissions.go` tetap sebagai konstanta key (dipakai `RequirePermission`).
-- Migrasi drop `roles`, `role_permissions`, `role_assignments`, `role_templates`.
+- Migrasi drop `roles`, `role_permissions`, `role_assignments`, `role_templates`, dan `tenant_members` (dipindah dari Fase 19).
 - **Selesai bila**: build & test lulus.
 
 #### Fase 21 — Hapus gate entitlement di modul `[HR-API]`
@@ -226,6 +226,7 @@ Setiap fase kecil, bisa di-build dan di-test sendiri, serta tidak merusak fase s
 #### Fase 27 — Switcher company/branch `[HR-BO]`
 - `app/components/TeamsMenu.vue`, `BranchSelect.vue`, `useTenants`, `useAccessBranches`: data dari profile Jewelry; switch via Jewelry `switch-context`, lalu reload session.
 - **Selesai bila**: ganti company/branch mengubah data yang tampil.
+- **Catatan pelaksanaan:** `switchTenant`/`switchBranch` di `app/stores/user.ts` dan sumber daftar di `TeamsMenu.vue` sudah dipindah ke Jewelry `switch-context`/`profile` saat Fase 24 (endpoint HR lama sudah hilang). Sisa fase ini: `BranchSelect.vue`, `useTenants`, `useAccessBranches`. Halaman profil (`useMyProfile`: ganti identifier & password) juga masih memanggil endpoint HR lama — arahkan ke Jewelry bersama fase ini.
 
 #### Fase 28 — Hapus UI entitlement & billing `[HR-BO]`
 - Hapus `useEntitlementGate` (nav di `app/layouts/default.vue` & `app/pages/tenants/employee/*`), `useEntitlements`, `useBilling`, `useMyBilling`, `app/components/{entitlements,billing}`, `app/pages/platform/{entitlements,billing}`, `app/pages/tenants/settings/billing.vue`, mock server terkait.
