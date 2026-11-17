@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–30. |
+| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–30. Fase 31: uji E2E level API selesai, tersisa uji browser & skenario `branch_admin`. |
 | **Tanggal** | 2026-11-16 |
 | **Pemicu** | Auth, authz, tenant (company) dan branch HR dipindahkan ke platform Jewelry. Company yang terdaftar di Jewelry otomatis dapat akses semua aplikasi, sehingga entitlement HR dihapus. |
 | **Keputusan user** | (1) **Tenant HR = company Jewelry** (`tenants.id` HR = `companies.id` Jewelry; branch HR = branch Jewelry; semua UUID). (2) **Jewelry menjadi master RBAC**: catalog permission HR didaftarkan di Jewelry dengan dimensi aplikasi, role & assignment HR dikelola di backoffice Jewelry. (3) **Data HR boleh direset**, tanpa migrasi data lama. (4) **jewelry-be/fe boleh diubah dan ditambah fitur** untuk kebutuhan HR. (5) Role HR yang di-seed hanya `company_admin`, `branch_admin`, `employee`. (6) Tanpa registrasi aplikasi; konfigurasi aplikasi lewat env. (7) **Tema backoffice HR mengikuti tema BO Jewelry.** (8) **Database HR selama pengerjaan integrasi: `hr_system_jewerly`.** |
@@ -251,6 +251,7 @@ Setiap fase kecil, bisa di-build dan di-test sendiri, serta tidak merusak fase s
 #### Fase 31 — Uji end-to-end & cutover `[HR-API]` `[HR-BO]` `[JW-BE]` `[JW-FE]`
 - Reset DB HR (`hr_system_jewerly`); seed company/branch/user di Jewelry; jalankan sync; jalankan skenario verifikasi di §5.
 - Perbarui dokumen modul `auth`, `rbac`, `platform` dan `HRMS_Tenancy_Model.md`.
+- **Catatan pelaksanaan:** dokumen modul awal tidak diubah (cabang khusus). Dokumentasi integrasi ditulis di [`integrations/jewelry/`](../integrations/jewelry/README.md); hasil uji di [`05-hasil-uji-e2e.md`](../integrations/jewelry/05-hasil-uji-e2e.md).
 
 ---
 
