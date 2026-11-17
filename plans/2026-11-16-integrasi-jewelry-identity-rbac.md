@@ -141,6 +141,7 @@ Setiap fase kecil, bisa di-build dan di-test sendiri, serta tidak merusak fase s
 #### Fase 9 — Editor role per aplikasi `[JW-FE]`
 - Halaman role: tab/filter aplikasi (Jewelry / HR), permission picker per app, pilihan data scope (`self`) untuk permission HR.
 - **Selesai bila**: bisa membuat role HR dan meng-assign ke user di company/branch.
+- **Catatan pelaksanaan:** form user (`BoUserAssignmentFields`) semula hanya menampilkan role Jewelry karena lookup `/backoffice/roles` tanpa `app` (backend memakai default `jewelry`). `useAccessLookups.fetchAssignableRoles` kini mengambil kedua aplikasi (`app=jewelry` dan `app=hr`) sekaligus; label role non-Jewelry diberi awalan nama aplikasi (mis. `HR System · HR Branch Admin`) agar tidak tertukar dengan role Jewelry yang kodenya sama.
 
 #### Fase 10 — App launcher `[JW-FE]`
 - Launcher di `app/components/backoffice/shell/BoTopbarAccount.vue`: ambil `/apps` (dari env backend), tampilkan app yang user punya ≥1 permission; klik → `POST /auth/handoff` → redirect.
