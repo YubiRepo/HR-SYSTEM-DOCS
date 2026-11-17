@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–26. |
+| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–30. |
 | **Tanggal** | 2026-11-16 |
 | **Pemicu** | Auth, authz, tenant (company) dan branch HR dipindahkan ke platform Jewelry. Company yang terdaftar di Jewelry otomatis dapat akses semua aplikasi, sehingga entitlement HR dihapus. |
 | **Keputusan user** | (1) **Tenant HR = company Jewelry** (`tenants.id` HR = `companies.id` Jewelry; branch HR = branch Jewelry; semua UUID). (2) **Jewelry menjadi master RBAC**: catalog permission HR didaftarkan di Jewelry dengan dimensi aplikasi, role & assignment HR dikelola di backoffice Jewelry. (3) **Data HR boleh direset**, tanpa migrasi data lama. (4) **jewelry-be/fe boleh diubah dan ditambah fitur** untuk kebutuhan HR. (5) Role HR yang di-seed hanya `company_admin`, `branch_admin`, `employee`. (6) Tanpa registrasi aplikasi; konfigurasi aplikasi lewat env. (7) **Tema backoffice HR mengikuti tema BO Jewelry.** (8) **Database HR selama pengerjaan integrasi: `hr_system_jewerly`.** |
@@ -226,15 +226,17 @@ Setiap fase kecil, bisa di-build dan di-test sendiri, serta tidak merusak fase s
 #### Fase 27 — Switcher company/branch `[HR-BO]`
 - `app/components/TeamsMenu.vue`, `BranchSelect.vue`, `useTenants`, `useAccessBranches`: data dari profile Jewelry; switch via Jewelry `switch-context`, lalu reload session.
 - **Selesai bila**: ganti company/branch mengubah data yang tampil.
-- **Catatan pelaksanaan:** `switchTenant`/`switchBranch` di `app/stores/user.ts` dan sumber daftar di `TeamsMenu.vue` sudah dipindah ke Jewelry `switch-context`/`profile` saat Fase 24 (endpoint HR lama sudah hilang). Sisa fase ini: `BranchSelect.vue`, `useTenants`, `useAccessBranches`. Halaman profil (`useMyProfile`: ganti identifier & password) juga masih memanggil endpoint HR lama — arahkan ke Jewelry bersama fase ini.
+- **Catatan pelaksanaan:** `switchTenant`/`switchBranch` di `app/stores/user.ts` dan sumber daftar di `TeamsMenu.vue` sudah dipindah ke Jewelry `switch-context`/`profile` saat Fase 24 (endpoint HR lama sudah hilang). Sisa fase ini: `BranchSelect.vue`, `useTenants`, `useAccessBranches`. Halaman profil: nama & email read-only (dikelola di Jewelry), ganti password lewat Jewelry `/auth/change-password`, avatar tetap milik HR (`/auth/me` kini mengembalikan `avatar_url`). `useAccessBranches`, `useTenants`, dan identitas login akun karyawan di `tenants/employee/[id].vue` ikut dibereskan di Fase 29. Superadmin lintas tenant belum didukung (switch-context Jewelry hanya untuk company di tenant user).
 
 #### Fase 28 — Hapus UI entitlement & billing `[HR-BO]`
 - Hapus `useEntitlementGate` (nav di `app/layouts/default.vue` & `app/pages/tenants/employee/*`), `useEntitlements`, `useBilling`, `useMyBilling`, `app/components/{entitlements,billing}`, `app/pages/platform/{entitlements,billing}`, `app/pages/tenants/settings/billing.vue`, mock server terkait.
 - **Selesai bila**: typecheck lulus; semua menu tampil sesuai permission saja.
+- **Catatan pelaksanaan:** konsol tenant platform (`pages/platform/tenants`, `useTenants`, modal tenant platform, mock `server/api/{platform,tenants,branches}`) ikut dihapus di fase ini karena bergantung pada `useEntitlements` dan endpoint yang sudah hilang di Fase 23. Sisa konsol platform (`/platform` overview, access, audit, health, settings, `usePlatformOverview`, `useImpersonation`) tetap untuk Fase 29.
 
 #### Fase 29 — Hapus UI RBAC & platform tenant `[HR-BO]`
 - Hapus `app/pages/tenants/settings/{roles,users}.vue`, `app/pages/platform/{access,tenants}`, `app/components/access/PermissionPicker.vue`; halaman branches hanya edit timezone/default. Tambah link "Manage roles & users in Backoffice". `usePermissions`, `AppPermissionGate`, `auth.global.ts` tetap. Teks UI baru dalam bahasa Inggris.
 - **Selesai bila**: typecheck lulus; tidak ada link ke halaman yang dihapus.
+- **Catatan pelaksanaan:** seluruh konsol `/platform` (overview, access, audit, health, settings) ikut dihapus. Picker approver dan tab akun karyawan memakai endpoint baru `[HR-API]` `GET /api/v1/auth/users`, `GET /api/v1/auth/users/:id`, `POST /api/v1/auth/users/:id/password-reset` (read-only dari Jewelry service API; reset = Jewelry mengirim email). Filter peran di approval policy belum berfungsi karena service API Jewelry belum mengembalikan role user.
 
 #### Fase 30 — Tema mengikuti BO Jewelry `[HR-BO]` (referensi `[JW-FE]`)
 - Salin token desain dari `[JW-FE]` `design/tokens.target.json` (palette per preset, `--font-sans`/`--font-serif`, `--radius-*`) ke `[HR-BO]` `app/assets/css/main.css` sebagai variabel CSS per `[data-theme='green|brown|gold|black']`, dipetakan ke skala warna Nuxt UI (`--ui-primary`, dst.).
@@ -242,6 +244,7 @@ Setiap fase kecil, bisa di-build dan di-test sendiri, serta tidak merusak fase s
 - Composable `useHrTheme` (pola `[JW-FE]` `app/composables/backoffice/useBackofficeTheme.ts`): ambil `theme` dari session Jewelry, `themeOrDefault` (default `green`), set atribut `data-theme` di `<html>`, ingat di cookie untuk halaman login sebelum session ada.
 - Logo/nama di sidebar & halaman login disesuaikan dengan identitas BO Jewelry.
 - **Selesai bila**: mengganti tema tenant di BO Jewelry → setelah reload, HR BO tampil dengan warna, font, dan radius yang sama; terang/gelap tetap terbaca.
+- **Catatan pelaksanaan:** skala warna Nuxt UI `brand` diturunkan dari satu variabel `--hr-brand` per preset (token `--color-brand-800`) dengan `color-mix`; panel sidebar/login memakai `--hr-shell` (token `--color-brand-950`); mode gelap memakai `--hr-brand-light` agar tema `black` tetap terbaca. Logo `msgrn` disalin dari `[JW-FE]` `public/brand/`. Warna biru semantik di halaman modul (badge status, chart) tidak diubah.
 
 ### Bagian E — Integrasi
 
