@@ -17,7 +17,7 @@
 |---|---|
 | HR-BO | `POST /api/v1/auth/login`, `/refresh`, `/logout`, `GET /auth/profile`, `POST /auth/switch-context`, `POST /auth/handoff/exchange`, `POST /auth/change-password` |
 | Jewelry-FE (launcher) | `GET /api/v1/apps`, `POST /api/v1/auth/handoff` |
-| HR-API | `GET /.well-known/jwks.json`, `GET /api/v1/auth/authorization?app=hr`, `/api/v1/internal/*` (companies, branches, users, provision user, assign role, ubah status) dengan `X-App-Key` |
+| HR-API | `GET /.well-known/jwks.json`, `GET /api/v1/auth/authorization?app=hr`, `/api/v1/internal/*` (companies, branches, users, provision user, assign role, ubah status, `PUT /catalog` sync katalog permission & role sistem) dengan `X-App-Key` |
 
 ## Alur
 

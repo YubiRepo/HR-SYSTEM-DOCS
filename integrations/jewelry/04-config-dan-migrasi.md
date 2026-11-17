@@ -24,7 +24,7 @@ Variabel yang dihapus dari HR-API: konfigurasi JWT/password/lockout/SMTP/auth ra
 
 ## Migrasi
 
-**jewelry-be:** `20261116094208_add_app_to_rbac`, `20261116101431_create_auth_handoff_codes`, lalu seed (katalog & role HR).
+**jewelry-be:** `20261116094208_add_app_to_rbac`, `20261116101431_create_auth_handoff_codes`, `20261117084026_app_permission_catalog` (`permissions.data_scope/translations/position/deprecated_at`, tabel `app_role_templates`). Katalog & role sistem HR **tidak** di-seed: terisi otomatis saat API HR start (lihat [01-arsitektur.md](01-arsitektur.md)). Seeder `permissions` hanya untuk katalog jewelry.
 
 **HR-API (`hr_system_jewerly`):**
 

@@ -47,8 +47,9 @@ Token valid tanpa `cid` → `403 CONTEXT_REQUIRED`; klien meminta user memilih c
 | `data_scope=self` | `self` |
 
 - Assignment level **tenant** Jewelry (mis. `owner`) dan role `grants_all` (`owner`, `company_admin`) serta superadmin mendapat **semua** permission HR.
-- Role HR yang di-seed: `company_admin`, `branch_admin`, `employee`. Role HR kustom dibuat di backoffice Jewelry (tab aplikasi HR).
-- Kode permission HR (`resource:action`) sama dengan katalog lama, jadi `RequirePermission` / `Authorize` / `NarrowToBranch` di modul HR tidak berubah. Katalognya di jewelry-be `internal/domain/authz/constant/permissions_hr.go`.
+- Role sistem HR: `company_admin` (grants_all), `branch_admin`, `employee`. Role HR kustom dibuat di backoffice Jewelry (tab aplikasi HR).
+- Kode permission HR (`resource:action`) sama dengan katalog lama, jadi `RequirePermission` / `Authorize` / `NarrowToBranch` di modul HR tidak berubah.
+- **Katalog milik HR.** Sumbernya HR-API `internal/modules/auth/domain/role/constant/permissions.go` (kode, group, label EN/ID, role sistem). Setiap kali API HR start, `auth.SyncCatalog` mengirimnya ke Jewelry (`PUT /api/v1/internal/catalog`, header `X-App-Key`) di background dengan retry; Jewelry down tidak memblokir API. Jewelry menyimpan katalog di DB, memprovisikan role sistem HR ke semua tenant, dan menandai *deprecated* kode yang tidak dikirim lagi (baris di role tetap ada tetapi diabaikan). Menambah permission HR cukup di HR-API, tanpa deploy atau seeder jewelry-be.
 - Superadmin Jewelry boleh memilih company lewat header `X-Company-ID` (diabaikan untuk user lain).
 
 ## Cache & kegagalan

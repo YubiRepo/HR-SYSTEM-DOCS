@@ -254,6 +254,30 @@ Setiap fase kecil, bisa di-build dan di-test sendiri, serta tidak merusak fase s
 - Perbarui dokumen modul `auth`, `rbac`, `platform` dan `HRMS_Tenancy_Model.md`.
 - **Catatan pelaksanaan:** dokumen modul awal tidak diubah (cabang khusus). Dokumentasi integrasi ditulis di [`integrations/jewelry/`](../integrations/jewelry/README.md); hasil uji di [`05-hasil-uji-e2e.md`](../integrations/jewelry/05-hasil-uji-e2e.md).
 
+### Bagian F — Catalog permission milik HR
+
+#### Fase 32 — Sync catalog permission & role sistem HR ke Jewelry `[HR-API]` `[JW-BE]`
+Latar: Fase 5 menyalin catalog HR ke `[JW-BE]` (`permissions_hr.go` + role HR di `system_roles.go`) dan mengisinya ke DB lewat seeder. Akibatnya ada dua sumber kebenaran, dan di server yang seeder-nya belum dijalankan picker role menampilkan permission HR (dari kode) tetapi penyimpanan menolak (`DOMAIN_ROLE_PERMISSION_UNKNOWN`, cek ke tabel `permissions`).
+
+Keputusan user:
+1. Sync **otomatis saat API HR start**; bila Jewelry tidak bisa dihubungi, API tetap jalan (warning + retry di background).
+2. **Label permission dikirim HR** (EN/ID); `[JW-FE]` tidak perlu diubah tiap ada permission baru.
+3. Permission yang dihapus dari catalog HR **diabaikan**: baris di role custom tidak dihapus, tetapi tidak lagi berlaku dan tidak tampil.
+
+`[HR-API]`:
+- `internal/modules/auth/domain/role/constant/permissions.go` menjadi satu-satunya sumber: catalog (kode, group, label EN/ID, `data_scope` self untuk permission ESS) dan definisi role sistem HR (`company_admin` grants_all, `branch_admin`, `employee`). Permission yang tidak lagi dipakai (`roles:*`, `users:*`, `platform_audit:read`) dihapus.
+- `internal/shared/idp`: `ServiceClient.SyncCatalog` → `PUT /api/v1/internal/catalog` (header `X-App-Key`).
+- `cmd/api`: goroutine sync saat start, retry dengan backoff, tidak memblokir server.
+
+`[JW-BE]`:
+- Migrasi: `permissions.data_scope`, `permissions.translations` (JSONB), `permissions.deprecated_at`; tabel `app_role_templates` (template role sistem per aplikasi non-jewelry).
+- `PUT /api/v1/internal/catalog` (app = pemilik `X-App-Key`): dalam satu transaksi upsert permission app itu, tandai `deprecated_at` untuk kode yang hilang, simpan template role, provisikan role sistem app itu ke **semua tenant** (permission role sistem disamakan dengan template), selaraskan `role_permissions.data_scope`.
+- Catalog aplikasi non-jewelry dibaca dari DB (hanya yang belum deprecated): daftar permission picker, validasi kode role, grant `grants_all`/superadmin, `data_scope`. Label dipilih dari `translations` sesuai locale request.
+- Tenant baru: `ProvisionSystemRoles` memakai role jewelry dari kode + template dari `app_role_templates`.
+- Hapus `permissions_hr.go`, role HR di `system_roles.go`, kunci locale `permission.*` HR; seeder `permissions` hanya untuk catalog jewelry.
+
+- **Selesai bila**: menambah permission di `[HR-API]` → setelah API HR restart, permission muncul di picker role HR `[JW-FE]` dan bisa disimpan tanpa deploy atau seeder `[JW-BE]`; role sistem HR muncul di semua tenant; `go test ./...` lulus di kedua repo.
+
 ---
 
 ## 5. Verifikasi
