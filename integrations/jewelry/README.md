@@ -21,6 +21,7 @@ Dokumentasi teknis cabang integrasi HR dengan backend Jewelry. Dokumen modul awa
 
 | File | Isi |
 |---|---|
+| [`00-ringkasan-perubahan.md`](./00-ringkasan-perubahan.md) | **Mulai di sini** — apa yang berubah dari `main`, dengan diagram |
 | [`01-arsitektur.md`](./01-arsitektur.md) | Komponen, token & klaim, principal, grant & scope, cache, kegagalan |
 | [`02-company-branch-user.md`](./02-company-branch-user.md) | Proyeksi, JIT, sync periodik, bootstrap tenant, kolom milik HR, akun karyawan |
 | [`03-api-dan-alur.md`](./03-api-dan-alur.md) | Endpoint HR & Jewelry yang dipakai, alur login/SSO/pilih company/refresh/pencabutan |
