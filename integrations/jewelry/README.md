@@ -27,3 +27,5 @@ Dokumentasi teknis cabang integrasi HR dengan backend Jewelry. Dokumen modul awa
 | [`03-api-dan-alur.md`](./03-api-dan-alur.md) | Endpoint HR & Jewelry yang dipakai, alur login/SSO/pilih company/refresh/pencabutan |
 | [`04-config-dan-migrasi.md`](./04-config-dan-migrasi.md) | Environment variable keempat repo, migrasi, urutan menjalankan |
 | [`05-hasil-uji-e2e.md`](./05-hasil-uji-e2e.md) | Skenario verifikasi dan hasilnya |
+| [`06-menu-hr-di-bo-jewelry.md`](./06-menu-hr-di-bo-jewelry.md) | Halaman HR yang disalin ke BO Jewelry: client HR, permission HR, navigasi, guard |
+| [`07-pola-salin-halaman-hr.md`](./07-pola-salin-halaman-hr.md) | **Wajib dibaca sebelum menyalin halaman HR** — alur kerja, pemetaan komponen Nuxt UI → Vuetify, aturan `jewelry-fe` |

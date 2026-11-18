@@ -17,8 +17,10 @@
 | HR-API | `IDP_APP_KEY` | Sama dengan `HR_APP_API_KEY` |
 | HR-API | `IDP_HTTP_TIMEOUT_SECONDS` | Default 5 |
 | HR-API | `DB_NAME=hr_system_jewerly` | Database terpisah selama integrasi |
+| HR-API | `PAYROLL_ENABLED` | Default `false`: semua `/api/v1/payroll/*` menjawab 501 `FEATURE_UNAVAILABLE` (payroll diparkir) |
 | HR-BO | `NUXT_PUBLIC_JEWELRY_API_BASE_URL` | Jewelry API dari browser, tanpa `/api/v1` |
 | HR-BO | `NUXT_PUBLIC_JEWELRY_BACKOFFICE_URL` | URL backoffice Jewelry (link lupa password, kelola role/user/branch) |
+| jewelry-fe | `NUXT_PUBLIC_HR_API_BASE_URL` | HR-SYSTEM-API dari browser, **dengan** `/api/v1` (mis. `http://localhost:8111/api/v1`); kosong = menu HR disembunyikan |
 
 Variabel yang dihapus dari HR-API: konfigurasi JWT/password/lockout/SMTP/auth rate limit lokal dan `BILLING_GRACE_PERIOD_DAYS`.
 

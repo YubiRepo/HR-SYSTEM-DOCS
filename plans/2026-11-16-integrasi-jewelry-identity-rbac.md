@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–30. Fase 31: uji E2E level API selesai, tersisa uji browser & skenario `branch_admin`. |
+| **Status** | **Sedang dikerjakan.** Selesai: Fase 1–30. Fase 31: uji E2E level API selesai, tersisa uji browser & skenario `branch_admin`. Bagian G: Fase 33–35 selesai (fondasi menu HR di BO Jewelry); Fase 37 (Employees Info, CRUD inti) Fase 38 (tab detail karyawan), Fase 39 (Contract History), Fase 40 (Import karyawan), Fase 41 (Employee Calendars), Fase 42 (Daily Records), Fase 43 (Overtime Transactions), Fase 44 (Payroll Rekap Summary), Fase 45 (menu HR Settings → HR BO), dan Fase 46 (payroll diparkir) selesai. |
 | **Tanggal** | 2026-11-16 |
 | **Pemicu** | Auth, authz, tenant (company) dan branch HR dipindahkan ke platform Jewelry. Company yang terdaftar di Jewelry otomatis dapat akses semua aplikasi, sehingga entitlement HR dihapus. |
 | **Keputusan user** | (1) **Tenant HR = company Jewelry** (`tenants.id` HR = `companies.id` Jewelry; branch HR = branch Jewelry; semua UUID). (2) **Jewelry menjadi master RBAC**: catalog permission HR didaftarkan di Jewelry dengan dimensi aplikasi, role & assignment HR dikelola di backoffice Jewelry. (3) **Data HR boleh direset**, tanpa migrasi data lama. (4) **jewelry-be/fe boleh diubah dan ditambah fitur** untuk kebutuhan HR. (5) Role HR yang di-seed hanya `company_admin`, `branch_admin`, `employee`. (6) Tanpa registrasi aplikasi; konfigurasi aplikasi lewat env. (7) **Tema backoffice HR mengikuti tema BO Jewelry.** (8) **Database HR selama pengerjaan integrasi: `hr_system_jewerly`.** |
@@ -278,6 +278,217 @@ Keputusan user:
 
 - **Selesai bila**: menambah permission di `[HR-API]` → setelah API HR restart, permission muncul di picker role HR `[JW-FE]` dan bisa disimpan tanpa deploy atau seeder `[JW-BE]`; role sistem HR muncul di semua tenant; `go test ./...` lulus di kedua repo.
 
+### Bagian G — Menu HR di BO Jewelry
+
+Latar: sebagian halaman admin HR BO **disalin** (bukan dipindah) ke BO Jewelry, sehingga user bisa memakai fitur HR tersebut tanpa pindah aplikasi. Data diambil langsung dari `[HR-API]` memakai token Jewelry yang sama.
+
+Keputusan user (2026-11-18):
+1. Halaman **ditulis ulang** di `[JW-FE]` (Vuetify, design system Jewelry). Yang identik adalah fitur, alur, field, dan struktur menunya, bukan komponen Nuxt UI.
+2. **HR BO tetap dipelihara.** Halaman asli tidak dihapus. Perubahan fitur di halaman yang sudah disalin harus dikerjakan di kedua FE.
+3. **Hanya sebagian halaman yang disalin.** Daftarnya menyusul dan dicatat di tabel G.2. Bagian ini menyiapkan fondasi dan resep agar halaman bisa ditambah satu per satu.
+4. **ESS tetap di HR BO.** Yang disalin hanya halaman admin (`/tenants/*`).
+5. **Sumber permission HR di `[JW-FE]` = `[HR-API]` `GET /api/v1/auth/me`.** Hasilnya sudah disaring HR-API (branch aktif, data scope, superadmin), jadi tetap satu sumber dengan HR BO.
+
+#### G.1 Hal yang perlu diperhatikan
+1. **Beda library UI**: HR BO memakai Nuxt UI 4 + Tailwind, `[JW-FE]` memakai Vuetify 4. Tidak boleh memasang Nuxt UI/Tailwind ke `[JW-FE]` (CSS bentrok). Logika (tipe, composable, validasi) boleh disalin; template ditulis ulang.
+2. **Envelope respons beda**: `[HR-API]` mengirim pagination di field `pagination` (`page`, `per_page`, `total_items`, `total_pages`), sedangkan `[JW-FE]` `core/api/client.ts` hanya mengembalikan `data` + `meta`. Error `[HR-API]` berbentuk `{success, error: {code, message, details[{field, issue}]}, meta}`. Client HR butuh adapter.
+3. **Transport mock**: `[JW-FE]` default `apiMock: true` dengan routed transport ke base URL Jewelry. Client HR memakai transport HTTP sendiri ke base URL HR, tidak lewat mock Jewelry.
+4. **Context company wajib**: `[HR-API]` menolak token tanpa `cid` (403 `CONTEXT_REQUIRED`). User level tenant (mis. `owner`) yang belum memilih company tidak bisa membuka menu HR, jadi menu HR disembunyikan atau diarahkan ke pemilih company.
+5. **Header superadmin**: `[JW-FE]` mengirim `X-Tenant-ID` (acting tenant), sedangkan `[HR-API]` membaca `X-Company-ID` (`internal/modules/auth/principal_middleware.go`). `Access-Control-Allow-Headers` di `[HR-API]` `internal/shared/middleware/cors.go` belum memuat header tersebut.
+6. **Dua katalog permission**: tipe `Permission` `[JW-FE]` (`app/utils/backoffice/auth.permissions.ts`, `UPPER_SNAKE`) terpisah dari permission HR (`resource:action`). Nav dan guard halaman HR memakai tipe dan pengecekan sendiri.
+7. **Branch aktif**: data HR disaring `bid`. Setelah switch company/branch di Jewelry, cache permission HR dan data halaman HR harus di-reset.
+8. **Konvensi `[JW-FE]`**: semua label lewat i18n EN/ID (`t()`), setiap composable punya `*.test.ts`, route di namespace `/backoffice/hr/...`, `definePageMeta` dengan `layout: 'backoffice'` + middleware `backoffice-auth`.
+9. **Halaman mock HR tidak disalin**: recruitment, performance, devices, enrollment.
+10. **Komponen bersama dibuat sesuai kebutuhan**, bukan disalin semua di awal. Contoh di HR BO: `AppDataTable`, `AppEmployeeSelect`, `AppFilterPanel`, `AppFormSlideover`, `PagedSelect`, `BranchSelect`, `CommonCodeSelect`, `AppCurrencyInput`, `AppGeofenceMapPicker`. Komponen dibuat saat halaman pertama yang membutuhkannya disalin, lalu dipakai ulang.
+
+#### G.2 Daftar halaman yang disalin
+
+Diisi bertahap sesuai info user. Setiap baris dikerjakan sebagai satu fase dengan resep di Fase 36.
+
+| No | Halaman HR BO (`[HR-BO]`) | Route `[JW-FE]` | Permission HR | Komponen bersama baru | Status |
+|---|---|---|---|---|---|
+| 1 | `tenants/employee/{index,create,[id]}.vue` (Employees Info: list, create, detail tab Profile, archive) | `/backoffice/hr/employees`, `/create`, `/:id` | `employees:read` (list/detail), `employees:write` (create/edit), `employees:delete` (archive), `contracts:write` (kontrak awal) | `BoHrPagedSelect`, `BoHrCommonCodeSelect` | Selesai (Fase 37, 38) |
+| 2 | `tenants/employee/contracts.vue` (Contract History) | `/backoffice/hr/contracts` | `contracts:read` (list), `contracts:write` (renew, terminate, dokumen) | – (memakai ulang dialog kontrak Fase 38) | Selesai (Fase 39) |
+| 3 | `tenants/employee/import.vue` (Import Employees) | `/backoffice/hr/employees/import` | `employees:write` | – | Selesai (Fase 40) |
+| 4 | `tenants/attendance/employee-calendars.vue` (Employee Calendars) | `/backoffice/hr/attendance/employee-calendars` | `attendance:read` (lihat), `attendance:write` (jadwal kustom) | `BoHrEmployeeSelect` | Selesai (Fase 41) |
+| 5 | `tenants/attendance/records.vue` (Daily Records) | `/backoffice/hr/attendance/records` | `attendance:read` (lihat), `attendance:write` (evaluasi, input manual), `attendance:approve` (setujui koreksi) | – | Selesai (Fase 42) |
+| 6 | `tenants/attendance/overtime-transactions.vue` (Overtime Transactions) | `/backoffice/hr/attendance/overtime-transactions` | `attendance:read` (lihat), `attendance:write` (proses), `attendance:approve` (review) | – | Selesai (Fase 43) |
+| 7 | `tenants/attendance/payroll-rekap-summary.vue` (Payroll Rekap Summary) | `/backoffice/hr/attendance/payroll-rekap-summary` | `attendance:read` | – | Selesai (Fase 44) |
+
+#### Fase 33 — Akses `[HR-API]` dari origin BO Jewelry `[HR-API]`
+- `internal/shared/middleware/cors.go`: tambah `X-Company-ID` ke `Access-Control-Allow-Headers`.
+- Pastikan token dari login BO Jewelry (bukan hasil handoff) diterima: `aud` berisi `hr`, `cid` terisi setelah switch-context.
+- **Selesai bila**: preflight dari origin `[JW-FE]` lolos; `GET /api/v1/auth/me` dengan token BO Jewelry mengembalikan grants HR.
+- **Catatan pelaksanaan:** hanya CORS yang diubah. Verifier sudah menerima token Jewelry mana pun dengan `aud` `hr` (Fase 2/12), dan `X-Company-ID` tetap hanya berlaku untuk superadmin. Uji preflight dan `/auth/me` dari browser dilakukan bersama Fase 31.
+
+#### Fase 34 — Client HR & permission HR `[JW-FE]`
+- Runtime config `public.hrApiBaseUrl` (env `NUXT_PUBLIC_HR_API_BASE_URL`, di section "HR System" paling bawah `.env.example`, `.env.staging.example`, `.env.production.example`). Kosong berarti menu HR tidak tampil.
+- `app/core/api/hr-client.ts` (atau `apiClientFor` dengan transport HTTP terpisah) + composable `useHrApi`: token dan refresh dari `backofficeApiFor` (refresh tetap ke Jewelry), header `X-Company-ID` untuk superadmin yang sedang acting, adapter envelope `[HR-API]` (data, pagination, error → `ApiError` `[JW-FE]` agar toast dan error form tetap jalan).
+- Store `hr-access.store.ts` + composable `useHrAccess`: ambil `/auth/me` HR setelah session Jewelry siap dan setiap switch context; `canHr(key | key[])`, `hrReady`, `hrAvailable` (false bila tanpa company, HR tidak terkonfigurasi, atau HR-API gagal).
+- Tipe `HrPermission` di `app/utils/backoffice/hr.permissions.ts`, disalin dari `[HR-BO]` (hanya key yang dipakai halaman tersalin).
+- **Selesai bila**: unit test adapter envelope/error, refresh 401, reset saat switch context, `canHr` untuk grant tenant/branch.
+- **Catatan pelaksanaan:**
+  - Adapter dibuat sebagai transport (`app/core/api/hr-envelope.ts`, `createHrTransport`), jadi `createApiClient` dipakai tanpa perubahan.
+  - `refreshAccessToken` di `useApi.ts` dijadikan single-flight lintas client. Tanpa ini, refresh paralel dari client backoffice dan client HR dengan refresh token yang sama bisa terdeteksi sebagai reuse dan mencabut sesi.
+  - Client HR tidak memasang `onSessionExpired`, sehingga 401 dari HR tidak mengakhiri sesi Jewelry.
+  - `HrPermission` memuat seluruh catalog HR (bukan hanya key yang dipakai), agar halaman berikutnya cukup memakai tipe yang sudah ada.
+  - `jewelry-fe` melarang komentar di kode, jadi penjelasan desain dicatat di [`integrations/jewelry/06-menu-hr-di-bo-jewelry.md`](../integrations/jewelry/06-menu-hr-di-bo-jewelry.md).
+
+#### Fase 35 — Shell: grup menu HR & guard route `[JW-FE]`
+- `app/utils/backoffice/shell.navigation.ts`: `NavItem` mendukung `hrPermission` (selain `permission` Jewelry). Tambah grup "HR" yang mengikuti struktur menu HR BO (HR Setting, Employees, Leave, Attendance, Payroll, Company Settings), tetapi hanya berisi halaman yang ada di tabel G.2. Grup/parent kosong tidak dirender.
+- Middleware `backoffice-hr-access`: halaman HR butuh `hrAvailable` dan `canHr(meta.hrPermission)`. Bila belum ada company → arahkan ke pemilih context; bila tanpa izin → halaman 403 yang sudah ada.
+- Label menu lewat i18n (`shell.nav.hr.*`), EN/ID.
+- **Selesai bila**: tanpa halaman tersalin, grup HR tidak tampil; dengan satu halaman dummy, menu tampil sesuai permission HR dan hilang saat permission dicabut di Jewelry (≤60 detik + reload).
+- **Catatan pelaksanaan:**
+  - Grup HR disimpan terpisah di `app/utils/backoffice/hr.navigation.ts` dan digabung oleh `visibleNavigation(can, canHr)` lewat `filterNavigation`. Uji "halaman dummy" memakai grup HR tiruan di `shell.navigation.test.ts`.
+  - Bila tidak ada company, belum ada pemilih context umum di BO Jewelry. Akibatnya menu HR disembunyikan dan guard mengembalikan 403. Bila HR-API down, guard mengembalikan status error tersebut (default 503).
+  - Ikon parent sementara memakai ikon yang sudah ada di `app/assets/icons`.
+
+#### Fase 36 — Resep menyalin satu halaman `[JW-FE]` (referensi `[HR-BO]`)
+Versi lengkap (alur, pemetaan komponen, aturan `jewelry-fe`): [`07-pola-salin-halaman-hr.md`](../integrations/jewelry/07-pola-salin-halaman-hr.md). Ringkasnya, setiap kali menambah baris di tabel G.2:
+1. Baca halaman `[HR-BO]` beserta composable, tipe, dan komponen yang dipakainya. Catat endpoint, permission (`definePageMeta`), filter, kolom, form, dan aksi.
+2. Salin tipe ke `app/types/backoffice/hr/*.type.ts` dan composable ke `app/composables/backoffice/hr/use*.ts` (ganti `useApiClient` HR BO dengan `useHrApi`), plus `*.test.ts`.
+3. Tulis ulang halaman di `app/pages/backoffice/hr/<modul>/<halaman>.vue` dengan komponen Vuetify/`[JW-FE]` (list, filter, form drawer mengikuti pola halaman `[JW-FE]` yang sudah ada). Field, validasi, urutan kolom, dan aksi sama dengan HR BO.
+4. Komponen bersama yang belum ada dibuat di `app/components/backoffice/hr/` lalu dicatat di tabel G.2.
+5. Tambah item nav (Fase 35) dan kunci i18n EN/ID.
+6. Isi baris tabel G.2 (route, permission, komponen baru, status).
+- **Selesai bila** (per halaman): typecheck, lint, dan test `[JW-FE]` lulus; hasil CRUD dari BO Jewelry sama dengan dari HR BO untuk company/branch yang sama; user `branch_admin` hanya melihat data branch-nya.
+
+#### Fase 37 — Employees Info (CRUD inti) `[JW-FE]` (referensi `[HR-BO]` `tenants/employee/*`)
+- Label grup menu menjadi **"HR"**; menu pertama: Employees → Employees Info.
+- Cakupan (keputusan user 2026-11-18): list (filter branch/org unit/status/jadwal, search, sort, paging; tanpa stat cards), create lengkap (Basic, Employment, Contract, Personal, Address, Login Access, Custom Fields, History & Records 10 seksi, dialog password sementara), detail tab Profile (edit data dasar, atasan langsung, data pribadi & alamat, verifikasi ID pajak) dan archive.
+- **Selesai bila**: typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan:**
+  - Archive memakai dialog konfirmasi (HR BO tanpa konfirmasi) sesuai konvensi BO Jewelry.
+  - Tidak disalin: tombol Import Excel, upload avatar, tab detail lain, aksi mutasi/status/offboarding/akun. Daftarnya ada di [`07-pola-salin-halaman-hr.md`](../integrations/jewelry/07-pola-salin-halaman-hr.md) §4.
+  - Pola kerja dan pemetaan komponen untuk halaman berikutnya dicatat di [`07-pola-salin-halaman-hr.md`](../integrations/jewelry/07-pola-salin-halaman-hr.md).
+  - Uji browser terhadap HR-API nyata belum dilakukan.
+
+#### Fase 38 — Detail karyawan: tab lengkap & avatar `[JW-FE]` (referensi `[HR-BO]` `tenants/employee/[id].vue`)
+- **Keputusan user (2026-11-18):**
+  - Semua tab diterapkan kecuali **Payroll**: Profile, Contracts, Documents, Career History, Work Policy, Others (10 seksi riwayat + custom fields), dan Account Settings (hanya bila karyawan punya akun).
+  - Upload foto profil dan kartu identitas profil (layout HR BO) ikut dibuat.
+  - **Ditunda:** transfer/promotion, ubah lifecycle status, dan offboarding.
+- **Isi:**
+  - Menu Actions berisi Create New Account (dengan dialog password sementara), Link Existing Account, dan Archive.
+  - Tab Contracts: kontrak baru, perpanjang, akhiri, dan dokumen kontrak (upload presign).
+  - Tab Documents: upload presign dengan jenis common code `document_type`, serta hapus dengan konfirmasi.
+  - Tab Account: link "kelola role" mengarah ke halaman user BO Jewelry (`/backoffice/users/:id/edit`), bukan URL eksternal seperti di HR BO.
+  - Tab disimpan di query `?tab=`. Tab Profile tetap ter-mount (`v-show`) agar perubahan yang belum disimpan tidak hilang saat pindah tab.
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan:**
+  - Seksi Others disimpan dengan tombol simpan per seksi (bar simpan menempel di bawah).
+  - Tombol "Request Change in Career Mutation" di tab Work Policy tidak disalin karena halaman mutasi belum ada di BO Jewelry.
+  - Uji browser terhadap HR-API nyata belum dilakukan.
+
+#### Fase 39 — Contract History `[JW-FE]` (referensi `[HR-BO]` `tenants/employee/contracts.vue`)
+- Menu Employees → Contract History di `/backoffice/hr/contracts`, sumber data `GET /core-hr/contracts`.
+- **Filter:** status (default Active, seperti HR BO; opsi "Semua status" dikirim tanpa `filter[status]`), jenis kontrak (common code `contract_type`), cabang, dan "berakhir dalam 30 hari". Ada juga search dan sort.
+- **Tabel:** kolom End Date diberi penanda "N hari lagi" / "Berakhir hari ini" / "Lewat tanggal berakhir" untuk kontrak aktif.
+- **Aksi baris:** buka karyawan (`?tab=contracts`), kelola/lihat dokumen, perpanjang, dan akhiri. Dialognya sama dengan tab Contracts dan diberi teks pengantar.
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan:** HR BO memakai checkbox untuk filter "expiring". Di BO Jewelry filter ini menjadi select di toolbar, karena `BoListToolbar` hanya mendukung select.
+
+#### Fase 40 — Import karyawan `[JW-FE]` (referensi `[HR-BO]` `tenants/employee/import.vue`)
+- Tombol "Import Excel" di Employees Info membuka `/backoffice/hr/employees/import`. Alurnya 3 langkah seperti HR BO:
+  1. **Upload:** unduh template, unggah `.xlsx`/`.csv` (maks 5 MB), dan opsi buat akun login / kirim undangan sekarang.
+  2. **Review:** hasil cek (dry run) berisi total, siap, dan bermasalah, dengan tab Masalah/Siap. Bisa unduh baris bermasalah, lalu konfirmasi import.
+  3. **Result:** progres di-polling tiap 2 detik dan job disimpan di query `?job=`, sehingga bisa dibuka ulang. Ringkasan hasil, unduh baris yang dilewati, dan kirim undangan.
+- **Endpoint:** `POST /core-hr/employees/import/presign` → `PUT` ke `upload_url` → `POST /core-hr/employees/import` (cek) → `POST /core-hr/bulk/jobs/:id/commit`, ditambah `GET …/jobs/:id`, `…/problems`, `…/invitations`, dan `GET /core-hr/employees/import/template`.
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan:**
+  - Transport HR kini menormalisasi error yang dikirim sebagai blob (unduhan file gagal), sehingga pesan error tetap terbaca.
+  - Halaman Import History (`tenants/core-hr/data-operations.vue`) belum disalin. Teks "hasil tersedia di Import History" sengaja diganti menjadi "import tetap berjalan".
+
+#### Fase 41 — Attendance → Employee Calendars `[JW-FE]` (referensi `[HR-BO]` `tenants/attendance/employee-calendars.vue`)
+- Parent menu baru **Attendance** dengan child pertama **Employee Calendars** (`/backoffice/hr/attendance/employee-calendars`).
+- **Tampilan Roster** (default): tabel karyawan × tanggal.
+  - Rentang: Minggu Ini, Bulan Ini, kustom (maks 62 hari), serta tombol sebelumnya/berikutnya.
+  - Sel diwarnai sesuai warna shift dan diberi penanda sumber (rotasi, tetap, kustom, duty call, libur, tanpa jadwal). Ada paging.
+- **Tampilan Monthly Calendar** (`?view=calendar`): jumlah karyawan per shift per hari, libur nasional/cabang, hitungan libur dan tanpa jadwal. Klik tanggal membuka dialog detail per kelompok shift.
+- **Filter:** cabang, unit organisasi, jabatan (mengikuti unit), pola jadwal (mengikuti tipe), tipe jadwal, dan search.
+- **Aksi** (`attendance:write`):
+  - Atur Jadwal Kustom untuk satu karyawan pada satu hari, berupa shift atau libur.
+  - Ubah atau hapus entri kustom.
+  - Sel hasil pola bisa dilihat detailnya lalu "Timpa Hari Ini".
+- **Endpoint:** `GET /attendance/schedules/roster`, `GET /attendance/schedules/roster-summary`, `POST /attendance/schedules?branch_id=`, `DELETE /attendance/schedules/:id`, `GET /attendance/shifts`, `GET /attendance/holidays`, `GET /attendance/schedule-patterns`, `GET /core-hr/positions`.
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan:**
+  - Namespace i18n baru `hrAttendance`.
+  - Nama hari/bulan memakai `Intl.DateTimeFormat` sesuai bahasa backoffice, bukan daftar teks.
+  - Warna shift berasal dari API (hex), jadi dipakai sebagai style inline, bukan token desain.
+
+#### Fase 42 — Attendance → Daily Records `[JW-FE]` (referensi `[HR-BO]` `tenants/attendance/records.vue`)
+- **Tab Attendance Log**:
+  - Filter tanggal (default bulan berjalan), cabang, karyawan, status, dan shift.
+  - Kolom: karyawan, tanggal, jam masuk/pulang (sesuai zona waktu cabang), lembur, kanal, chip status (+ "dalam radius").
+  - Aksi baris: lihat bukti lokasi dan ajukan koreksi.
+- **Tab Correction Approvals**: filter status, perubahan waktu lama → baru, alasan, serta setujui/tolak (`attendance:approve`, hanya yang pending).
+- **Header**:
+  - Refresh dan Ajukan Koreksi.
+  - Evaluasi Kehadiran (`attendance:write`, maks 31 hari sampai kemarin) dengan ringkasan hasil.
+  - Input Manual (Testing), hanya di mode development (`import.meta.dev`).
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan (beda dari HR BO):**
+  - Peta bukti absen memakai embed OpenStreetMap (iframe + marker) dan link "Buka di OpenStreetMap", bukan Leaflet dari CDN. Radius geofence tidak digambar; jarak ke kantor ditampilkan bila ada.
+  - Filter status satu pilihan (HR BO: multi "semua dari").
+  - Search "cari di halaman ini" (client-side) tidak disalin.
+  - Nama karyawan diambil dari `GET /core-hr/employees?per_page=-1`, karena record tidak membawa nama. HR BO hanya memakai 100 karyawan pertama.
+
+#### Fase 43 — Attendance → Overtime Transactions `[JW-FE]` (referensi `[HR-BO]` `tenants/attendance/overtime-transactions.vue`)
+- **List transaksi lembur:**
+  - Filter status, realisasi, karyawan, dan tanggal kerja (default bulan berjalan).
+  - Kolom: karyawan, tanggal kerja (+ penanda penyesuaian), jenis hari & kode aturan, menit disetujui/aktual/diakui, sumber persetujuan, rincian komponen upah, realisasi, dan status.
+- **Aksi:**
+  - Detail transaksi: klasifikasi, fakta absensi, pengukuran lembur, dan hasil beserta rincian.
+  - Review menit yang diakui (`attendance:approve`, hanya `pending_review`, dibatasi rentang dari server).
+  - Proses Lembur untuk rentang tanggal (`attendance:write`) dengan ringkasan hasil.
+- **Endpoint:** `GET /attendance/overtime/transactions`, `POST …/process`, `POST …/:id/review`.
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan:** badge sumber "Order" belum menjadi link ke halaman Overtime Order karena halaman itu belum disalin.
+
+#### Fase 44 — Attendance → Payroll Rekap Summary `[JW-FE]` (referensi `[HR-BO]` `tenants/attendance/payroll-rekap-summary.vue`)
+- **Rekap per karyawan** dari `GET /attendance/summary` (filter tanggal default bulan berjalan dan cabang; search nama/nomor di sisi client).
+- **Kolom:**
+  - Kolom tetap (kehadiran, terlambat/pulang, jenis hari, lembur, cuti).
+  - Kolom dinamis dari data (komponen lembur, jenis cuti, shift), dengan nama variabel payroll (`ot_min_OT_1`, dst.).
+- **Pengaturan tampilan** (disimpan di localStorage): grup kolom, header label/variabel, durasi menit/jam, dan sembunyikan kolom nol.
+- **Interaksi:**
+  - Status "N lembur menunggu" (link ke Overtime Transactions `status=pending_review`) atau "Siap".
+  - Nilai bisa diklik menuju sumbernya: Daily Records (filter status/shift) atau Overtime Transactions.
+  - Ekspor CSV sesuai kolom yang tampil.
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
+- **Catatan pelaksanaan:**
+  - Nilai cuti belum bisa diklik karena halaman Leave Request belum disalin.
+  - Link ke Daily Records memakai satu status saja (filter di sana satu pilihan). Contohnya "libur dikerjakan" hanya memfilter `holiday`, tidak `holiday`+`present`.
+
+#### Fase 45 — Menu HR Settings mengarah ke HR BO `[JW-FE]` `[HR-BO]`
+- Grup menu HR mendapat item **HR Settings** di posisi parent "HR Setting" HR BO (parent kosong dihapus). Item ini **tidak disalin**, tetapi membuka HR BO lewat SSO.
+- **Cara kerja:**
+  - `[JW-FE]` klik menu → `POST /auth/handoff {app: "hr"}` → tab baru ke `redirect_url` + `&next=/tenants/hr-setting/organizations` (`useHrHandoff`).
+  - Context company/branch aktif ikut terbawa lewat sesi handoff.
+  - URL langsung `/backoffice/hr/settings` menjadi halaman cadangan yang mengalihkan di tab yang sama.
+- **Visibilitas:** tampil bila user memegang salah satu permission konfigurasi HR (`org:read`, `org:write`, `approval:config`, `attendance:config`, `leave:config`, `payroll:config`, `settings:write`). Ikuti juga aturan `canSeeHr` (tampil saat company belum dipilih).
+- `[HR-BO]` `app/pages/auth/callback.vue`: membaca `next` dari fragment. Hanya path internal yang diterima (diawali `/`, bukan `//`, tanpa `\`, bukan `/auth/*`); selain itu tetap ke `landingPath`.
+- **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus; typecheck `[HR-BO]` tidak menambah error.
+- **Catatan pelaksanaan:** butuh env `[JW-BE]` `HR_APP_URL`/`HR_APP_CALLBACK_URL` seperti app launcher (Fase 3/7).
+
+#### Fase 46 — Payroll diparkir sementara `[HR-API]` `[HR-BO]`
+- **Keputusan user (2026-11-18):** semua fitur payroll dinonaktifkan dulu. Menu di-comment (tidak dihapus), dan endpoint menjawab "fitur tidak tersedia".
+- `[HR-API]`:
+  - Config `PAYROLL_ENABLED` (default `false`, env di section terpisah `.env.example` / `.env.jewelry.example`).
+  - Selama `false`, `payroll.Module.RegisterRoutes` hanya memasang `grp.Any("/*path")` yang menjawab **501 `FEATURE_UNAVAILABLE`** ("the payroll feature is not available yet"), tanpa auth dan tanpa menyentuh handler. Modul payroll tetap dibuat agar seam period-lock attendance/leave dan seeder default tetap jalan.
+  - Test: `internal/modules/payroll/module_routes_test.go`.
+- `[HR-BO]` yang di-comment (dengan catatan cara mengaktifkan kembali):
+  - Sidebar: grup Payroll, item HR Setting (Salary Component, Salary Structures, Payroll Schedules, Tax and BPJS), dan ESS Payslip.
+  - Quick link Payroll di dashboard admin, kartu Latest Payslip + pemanggilannya di dashboard ESS, dan tab Payroll di detail karyawan.
+  - Halaman payroll tidak dihapus dan masih bisa dibuka lewat URL; datanya akan berisi error 501.
+- **Tidak termasuk:** Payroll Rekap Summary (menu Attendance), karena sumbernya `/attendance/summary` (modul attendance), bukan modul payroll.
+- **Mengaktifkan kembali:** `PAYROLL_ENABLED=true` di HR-API, lalu uncomment blok yang ditandai di HR BO.
+
+#### Fase 47 dst. — Salin halaman sesuai tabel G.2 `[JW-FE]`
+- Satu fase per halaman (atau per kelompok halaman kecil dalam satu modul), mengikuti [`07-pola-salin-halaman-hr.md`](../integrations/jewelry/07-pola-salin-halaman-hr.md).
+
 ---
 
 ## 5. Verifikasi
@@ -291,3 +502,4 @@ Keputusan user:
   5. Company baru di Jewelry → langsung bisa dipakai di HR tanpa subscription; default leave/payroll ter-seed.
   6. Buat akun karyawan dari HR → user muncul di Jewelry dengan role HR `employee` → bisa login ESS.
   7. Tema tenant di BO Jewelry diganti (mis. `gold`) → HR BO ikut berganti tema.
+  8. Login BO Jewelry dengan role HR `company_admin` → grup menu HR tampil (hanya halaman di tabel G.2) → data sama dengan HR BO; ganti company/branch → data HR ikut berganti; user tanpa permission HR → grup HR tidak tampil.
