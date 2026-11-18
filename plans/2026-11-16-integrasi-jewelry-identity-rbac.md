@@ -426,8 +426,8 @@ Versi lengkap (alur, pemetaan komponen, aturan `jewelry-fe`): [`07-pola-salin-ha
 - **Tab Correction Approvals**: filter status, perubahan waktu lama → baru, alasan, serta setujui/tolak (`attendance:approve`, hanya yang pending).
 - **Header**:
   - Refresh dan Ajukan Koreksi.
-  - Evaluasi Kehadiran (`attendance:write`, maks 31 hari sampai kemarin) dengan ringkasan hasil.
-  - Input Manual (Testing), hanya di mode development (`import.meta.dev`).
+  - Evaluasi Kehadiran (`attendance:write`, maks 31 hari sampai hari ini) dengan ringkasan hasil.
+  - Input Manual (Testing), hanya di luar production: env `NUXT_PUBLIC_HR_APP_ENV` (section HR System) ≠ `production`, disamakan dengan `APP_ENV` `[HR-API]`. Di luar production tanggal evaluasi juga bebas (termasuk masa depan).
 - **Selesai bila:** typecheck, lint, test, dan semua `check:*` `[JW-FE]` lulus.
 - **Catatan pelaksanaan (beda dari HR BO):**
   - Peta bukti absen memakai embed OpenStreetMap (iframe + marker) dan link "Buka di OpenStreetMap", bukan Leaflet dari CDN. Radius geofence tidak digambar; jarak ke kantor ditampilkan bila ada.
