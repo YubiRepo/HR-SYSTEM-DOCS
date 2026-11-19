@@ -5,7 +5,7 @@
 
 | Method | Path | Permission | Isi |
 |---|---|---|---|
-| GET | `/auth/me` | login | Principal efektif: `user`, `tenant_id`, `active_branch_id`, `session_id`, `is_super_admin`, `roles`, `grants[{key, scope, branch_id}]`, `avatar_url` |
+| GET | `/auth/me` | login | Principal efektif: `user`, `tenant_id`, `active_branch_id`, `session_id`, `is_super_admin`, `roles`, `grants[{key, scope, branch_id}]` (sudah dipersempit ke branch aktif), `assigned_grants` (grant asli sebelum dipersempit, dipakai switcher branch), `avatar_url` |
 | POST | `/auth/me/avatar/presign` · `/confirm`, DELETE `/auth/me/avatar` | login | Avatar HR |
 | GET | `/auth/users` | `employees:read` / `employees:write` / `approval:config` | Akun company (dari Jewelry) |
 | GET | `/auth/users/:id` | sama | Satu akun, hanya bila anggota company |
@@ -33,7 +33,7 @@
 3. Lanjut seperti langkah 2–4 login.
 
 ### Ganti company / branch
-Switcher di sidebar memanggil Jewelry `switch-context {company_id, branch_id}`, menyimpan token baru, lalu me-reload aplikasi. `branch_id` kosong = seluruh company.
+Switcher di sidebar memanggil Jewelry `switch-context {company_id, branch_id}`, menyimpan token baru, lalu me-reload aplikasi. `branch_id` kosong = seluruh company. Boleh-tidaknya memilih "All Branches" dibaca dari `assigned_grants` (`branch:read` scope tenant), bukan `grants`, supaya role tingkat company yang sedang di satu branch tetap bisa kembali ke semua branch atau pindah ke branch lain.
 
 ### Refresh
 Saat HR menjawab 401, HR-BO memanggil Jewelry `/auth/refresh` (single-flight, refresh token dirotasi) lalu mengulang request sekali; gagal → kembali ke login.
