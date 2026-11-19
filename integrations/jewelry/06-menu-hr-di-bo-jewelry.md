@@ -77,6 +77,10 @@ definePageMeta({
 
 Refresh token Jewelry berotasi. Bila client backoffice dan client HR sama-sama menerima 401 lalu me-refresh dengan refresh token yang sama, permintaan kedua terlihat sebagai *reuse* dan bisa mencabut sesi. Karena itu `refreshAccessToken` (`useApi.ts`) single-flight per `NuxtApp` dan dipakai kedua client.
 
+Antar-tab: `requestRefresh` berjalan di bawah Web Lock `jewelry.backoffice.token-refresh` dan membaca ulang token tersimpan lebih dulu. Bila tab lain sudah merotasi token, token baru itu dipakai (tanpa refresh kedua). Bila refresh gagal tetapi token tersimpan sudah berganti (dirotasi tab lain), token itu juga dipakai. Tanpa ini, tab yang kalah mendapat 401, `onSessionExpired` → `clearToken()` menghapus token pemenang, dan semua tab logout.
+
+Refresh yang gagal karena jaringan atau 5xx (`AppError` kind `network` / `server`) tidak mengakhiri sesi: `createApiClient` melempar error itu ke request asal. Hanya refresh token yang ditolak (4xx) yang membuat 401 diteruskan ke `onSessionExpired`.
+
 401 dari HR (setelah refresh gagal) **tidak** mengakhiri sesi Jewelry. Client HR tidak memasang `onSessionExpired`, sehingga salah konfigurasi HR (mis. `aud`) tidak menendang user keluar dari BO Jewelry.
 
 ## Pemilih company/branch

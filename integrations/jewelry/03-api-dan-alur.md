@@ -36,7 +36,11 @@
 Switcher di sidebar memanggil Jewelry `switch-context {company_id, branch_id}`, menyimpan token baru, lalu me-reload aplikasi. `branch_id` kosong = seluruh company. Boleh-tidaknya memilih "All Branches" dibaca dari `assigned_grants` (`branch:read` scope tenant), bukan `grants`, supaya role tingkat company yang sedang di satu branch tetap bisa kembali ke semua branch atau pindah ke branch lain.
 
 ### Refresh
-Saat HR menjawab 401, HR-BO memanggil Jewelry `/auth/refresh` (single-flight, refresh token dirotasi) lalu mengulang request sekali; gagal → kembali ke login.
+Saat HR menjawab 401, HR-BO memanggil Jewelry `/auth/refresh` (single-flight, refresh token dirotasi) lalu mengulang request sekali.
+
+- **Antar-tab**: refresh berjalan di bawah Web Lock `hr-token-refresh` dan membaca ulang cookie lebih dulu. Bila tab lain sudah merotasi token, tab ini memakai token baru itu, bukan me-refresh dengan token lama (yang pasti ditolak Jewelry lalu menghapus cookie milik tab lain).
+- **Gagal**: hanya penolakan refresh token (4xx) yang menghapus sesi dan kembali ke login. Error jaringan / 5xx Jewelry membiarkan sesi; request itu saja yang gagal.
+- **Umur sesi** diatur Jewelry: access token 15 menit; refresh token 30 hari bila login dengan *Remember me*, 12 jam (bergeser tiap refresh) bila tidak. SSO dari BO Jewelry mewarisi pilihan *Remember me* sesi asalnya.
 
 ### Pencabutan
 Logout, suspend user, atau cabut role di Jewelry berlaku di HR paling lambat 60 dtk (umur cache grant).
