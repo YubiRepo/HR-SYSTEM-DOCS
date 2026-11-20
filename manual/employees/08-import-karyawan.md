@@ -34,8 +34,8 @@ Klik **Download Template** di langkah 1 untuk mendapatkan file
 
 | Sheet | Isi |
 |---|---|
-| **Employees** | Baris judul kolom (kolom wajib bertanda `*`, berwarna kuning). Org Unit, Position, Work Branch, Contract Type, Gender, Marital Status dan custom field pilihan punya drop-down |
-| **Reference** | Daftar nilai yang boleh dipakai: nama Org Unit, Position (beserta unitnya), Branch, Contract Type, Gender, Marital Status, dan opsi custom field — diambil dari data perusahaan Anda saat template diunduh |
+| **Employees** | Baris judul kolom (kolom wajib bertanda `*`, berwarna kuning). Org Unit, Position, Work Branch, Schedule Type, Pattern, Starting Status, Contract Type, Gender, Marital Status, Religion, Tax ID Type, Currently Pregnant, Bank dan custom field pilihan punya drop-down |
+| **Reference** | Daftar nilai yang boleh dipakai: nama Org Unit, Position (beserta unitnya), Branch, Contract Type, Schedule Pattern (beserta tipenya), Religion, Bank, pilihan tetap (Gender, Marital Status, Schedule Type, Starting Status, Tax ID Type, Currently Pregnant), dan opsi custom field — diambil dari data perusahaan Anda saat template diunduh |
 | **Guide** | Petunjuk singkat pengisian dan format tanggal |
 
 ### Kolom sheet Employees
@@ -44,29 +44,52 @@ Klik **Download Template** di langkah 1 untuk mendapatkan file
 |---|---|---|---|
 | `Employee No` | Tidak | Kosongkan agar dibuat otomatis; bila diisi harus unik | EMP-0101 |
 | `Full Name *` | Ya | Teks | Budi Santoso |
+| `Short Name` | Tidak | Teks | Budi |
 | `NIK *` | Ya | 16 digit angka, unik di perusahaan | 3175012345678901 |
 | `Work Email *` | Ya | Format email, unik | budi@perusahaan.co.id |
+| `Phone / WhatsApp` | Tidak | Teks | 0812-3456-7890 |
 | `Hire Date *` | Ya | `YYYY-MM-DD` | 2026-11-02 |
 | `Org Unit *` | Ya | Nama unit persis seperti di sheet **Reference** | Engineering |
 | `Position *` | Ya | Nama posisi yang berada di **Org Unit** tersebut | Software Engineer |
 | `Work Branch` | Tidak | Nama cabang; kosong = cabang default | Jakarta HQ |
-| `Phone / WhatsApp` | Tidak | Teks | 0812-3456-7890 |
-| `NPWP` | Tidak | Teks | 12.345.678.9-012.000 |
-| `Gender` | Tidak | `Male` / `Female` | Male |
-| `Marital Status` | Tidak | `Single` / `Married` / `Divorced` / `Widowed` | Single |
-| `Date of Birth` | Tidak | `YYYY-MM-DD` | 1995-04-17 |
+| `Direct Manager (Employee No)` | Tidak | Employee No karyawan yang sudah ada, **atau** karyawan di baris di atasnya dalam file yang sama (baris itu harus mengisi Employee No). Kosong = kepala unit organisasi | EMP-0001 |
+| `Schedule Type` | Tidak | `Fixed` / `Rotation`; diisi bersama **Pattern** | Fixed |
+| `Pattern` | Tidak | Nama schedule pattern dari sheet **Reference**, harus bertipe sama dengan Schedule Type. Schedule Type & Pattern kosong = jadwal diatur nanti (karyawan belum bisa clock-in) | Office Hours |
+| `Starting Status` | Tidak | `Probation` / `Active`; kosong = Probation | Probation |
 | `Contract Type` | Tidak | Nama (atau kode) tipe kontrak dari sheet **Reference**; bila diisi, kontrak pertama ikut dibuat | Fixed Term |
 | `Contract Start` | Tidak | `YYYY-MM-DD`; kosong = sama dengan Hire Date | 2026-11-02 |
 | `Contract End` | Tidak | `YYYY-MM-DD`; kosong = tanpa batas waktu | 2027-11-01 |
+| `Contract Remark` | Tidak | Catatan kontrak pertama (perlu Contract Type) | Kontrak awal |
+| `Date of Birth` | Tidak | `YYYY-MM-DD` | 1995-04-17 |
+| `Place of Birth` | Tidak | Teks | Bandung |
+| `Gender` | Tidak | `Male` / `Female` | Male |
+| `Marital Status` | Tidak | `Single` / `Married` / `Divorced` / `Widowed` | Single |
+| `Religion` | Tidak | Nama (atau kode) agama dari sheet **Reference** | Islam |
+| `Nationality` | Tidak | Teks | Indonesian |
+| `Tax ID Type` | Tidak | `None` / `NPWP` / `NIK` (NIK dipakai sebagai NPWP); kosong tapi Tax ID Number diisi = NPWP | NPWP |
+| `Tax ID Number` | Tidak | Nomor NPWP/NIK sesuai Tax ID Type | 0123456789012345 |
+| `NPWP` | Tidak | Kolom template lama — masih diterima bila Tax ID Type & Tax ID Number kosong | 12.345.678.9-012.000 |
+| `Family Card Number (KK)` | Tidak | Teks | 3175010000000001 |
+| `Number of Children` | Tidak | Bilangan bulat ≥ 0 | 2 |
+| `Height (cm)` / `Weight (kg)` | Tidak | Angka positif (koma desimal boleh) | 170,5 |
+| `Currently Pregnant` | Tidak | `Yes` / `No` | No |
+| `ID Card Address` | Tidak | Alamat sesuai KTP | Jl. Melati 1 |
+| `Address Line 1` / `Address Line 2` | Tidak | Alamat domisili; Line 1 wajib bila kolom alamat lain diisi | Jl. Mawar 2 |
+| `Region Code` | Tidak | Kode wilayah Kemendagri (provinsi/kota/kecamatan/desa) | 31.74.01 |
+| `Postal Code` | Tidak | Teks | 12345 |
+| `Bank` | Tidak | Nama (atau kode) bank dari sheet **Reference**; Bank, Account Number dan Account Holder diisi bersama dan menjadi **rekening utama (payroll)** | Bank Central Asia |
+| `Account Number` | Tidak | Teks | 0123456789 |
+| `Account Holder` | Tidak | Teks | Budi Santoso |
 | *(custom field)* | Sesuai pengaturan field | Satu kolom per custom field aktif (judul = label field). Pilihan: salah satu opsinya; Ya/Tidak: `Yes`/`No`; tanggal: `YYYY-MM-DD`; angka | — |
 
 > **Tip:** Buat dulu seluruh **Org Unit** dan **Position** di menu HR Setting
 > sebelum mengimpor karyawan. Baris yang menyebut unit/posisi yang belum ada
 > akan ditandai error.
 
-> **Catatan:** Data lain (alamat, keluarga, rekening bank, Work Policy, Direct
-> Manager, dll.) tidak termasuk template ini dan dilengkapi lewat halaman detail
-> karyawan setelah impor.
+> **Catatan:** Template mencakup semua field form **Add Employee** ditambah satu
+> rekening bank utama. Data berulang lain (riwayat pendidikan, keluarga,
+> pelatihan, rekening tambahan, dll.) dilengkapi lewat halaman detail karyawan
+> setelah impor.
 
 ## Langkah 1 · Upload File
 
@@ -230,6 +253,11 @@ can fix and import them later."* Tombol **Cancel** / **Yes, Import**.
 | Posisi tidak berada di unit tersebut | *"Sales Lead" is not a position in "Marketing"* |
 | Branch tidak ditemukan | *Branch "Surabaya" not found* |
 | Nilai pilihan tidak dikenal | *Gender must be Male or Female* |
+| Pattern tidak cocok dengan Schedule Type | *Pattern "3 Shift" is not a fixed pattern* |
+| Schedule Type tanpa Pattern (atau sebaliknya) | *Pattern is required when Schedule Type is filled* |
+| Manager tidak ditemukan | *No employee with Employee No "EMP-9" (existing, or in a row above)* |
+| Rekening tidak lengkap / bank tidak dikenal | *Account Number is required when a bank account is filled* |
+| Tax ID tidak valid | pesan validasi NPWP/NIK, sama seperti di form **Add Employee** |
 
 ## Langkah 3 · Result
 
@@ -332,9 +360,13 @@ bisa dibuka lagi dari **Import History**.
 2. **Format template** — Excel (.xlsx) dengan **nama** unit/posisi/cabang/tipe
    kontrak; API menerjemahkan nama → ID. File `.csv` (pemisah `,` atau `;`) juga
    diterima.
-3. **Kolom tambahan** — kontrak pertama (Contract Type/Start/End) dan semua
-   custom field aktif ikut di template. Religion, alamat dan Work Policy belum.
-4. **Direct Manager** — tidak ikut di template.
+3. **Kolom tambahan** — semua field form **Add Employee** (profil lengkap,
+   tax ID, alamat, Direct Manager, Schedule Type + Pattern, Starting Status),
+   kontrak pertama (Type/Start/End/Remark), satu rekening bank utama, dan semua
+   custom field aktif ikut di template. Data berulang lain tetap lewat halaman
+   detail karyawan.
+4. **Direct Manager** — ditulis sebagai Employee No; boleh merujuk karyawan di
+   baris atasnya karena baris diimpor berurutan.
 5. **Batas file** — 1.000 baris / 5 MB.
 6. **Mode update & Export → edit → import ulang** — ditunda; saat ini hanya
    *Add new employees only*.

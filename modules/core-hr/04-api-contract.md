@@ -505,11 +505,11 @@ Untuk migrasi/onboarding tenant baru yang sudah punya banyak data karyawan. Satu
 
 ### 14.1 Template
 **`GET /employees/import/template`** → `employees-import-template.xlsx` dengan tiga sheet:
-- **Employees**: baris judul (kolom wajib bertanda `*`), sel tanggal/NIK berformat teks, drop-down untuk Org Unit, Position, Work Branch, Contract Type, Gender, Marital Status, dan custom field bertipe select/boolean.
-- **Reference**: Org Unit, Position (beserta unitnya), Branch, Contract Type (nama + kode), pilihan Gender/Marital Status, opsi custom field select — diambil dari data tenant saat template diunduh.
+- **Employees**: baris judul (kolom wajib bertanda `*`), sel tanggal/NIK/nomor berformat teks, drop-down untuk Org Unit, Position, Work Branch, Schedule Type, Pattern, Starting Status, Contract Type, Gender, Marital Status, Religion, Tax ID Type, Currently Pregnant, Bank, dan custom field bertipe select/boolean.
+- **Reference**: Org Unit, Position (beserta unitnya), Branch, Contract Type (nama + kode), Schedule Pattern (nama + tipe, dari attendance), Religion & Bank (nama + kode common code), pilihan tetap (Gender, Marital Status, Schedule Type, Starting Status, Tax ID Type, Currently Pregnant), opsi custom field select — diambil dari data tenant saat template diunduh.
 - **Guide**: petunjuk pengisian.
 
-Kolom: Employee No, Full Name\*, NIK\*, Work Email\*, Hire Date\*, Org Unit\*, Position\*, Work Branch, Phone / WhatsApp, NPWP, Gender, Marital Status, Date of Birth, Contract Type, Contract Start, Contract End, lalu satu kolom per **custom field aktif** (judul = label field). Org Unit/Position/Branch/Contract Type ditulis dengan **nama** (Contract Type boleh juga kodenya); API menerjemahkannya ke ID. Bila Contract Type diisi, kontrak pertama ikut dibuat (Contract Start kosong = Hire Date, Contract End kosong = tanpa batas). Judul kolom dicocokkan tanpa memedulikan huruf besar/kecil dan tanda `*`; nama key teknis (`full_name`, `national_id`, …) juga diterima.
+Kolom (mencakup semua field `POST /employees` dari form Add Employee + satu rekening utama): Employee No, Full Name\*, Short Name, NIK\*, Work Email\*, Phone / WhatsApp, Hire Date\*, Org Unit\*, Position\*, Work Branch, Direct Manager (Employee No), Schedule Type, Pattern, Starting Status, Contract Type, Contract Start, Contract End, Contract Remark, Date of Birth, Place of Birth, Gender, Marital Status, Religion, Nationality, Tax ID Type, Tax ID Number, NPWP (alias lama), Family Card Number (KK), Number of Children, Height (cm), Weight (kg), Currently Pregnant, ID Card Address, Address Line 1, Address Line 2, Region Code, Postal Code, Bank, Account Number, Account Holder, lalu satu kolom per **custom field aktif** (judul = label field). Org Unit/Position/Branch/Pattern/Contract Type/Religion/Bank ditulis dengan **nama** (Contract Type/Religion/Bank boleh juga kodenya); API menerjemahkannya ke ID/kode. Bila Contract Type diisi, kontrak pertama ikut dibuat (Contract Start kosong = Hire Date, Contract End kosong = tanpa batas). Schedule Type + Pattern diisi bersama (pattern harus bertipe sama) → Work Policy awal. Direct Manager = Employee No karyawan yang sudah ada atau baris di atasnya dalam file (baris diimpor berurutan). Bank + Account Number + Account Holder diisi bersama → `bank_accounts[0]` dengan `is_primary: true`. Tax ID Type kosong dengan Tax ID Number terisi = `npwp`; kolom `NPWP` lama dipakai hanya bila keduanya kosong. Judul kolom dicocokkan tanpa memedulikan huruf besar/kecil dan tanda `*`; nama key teknis (`full_name`, `national_id`, …) juga diterima; template lama (tanpa kolom baru) tetap valid. Cek (dry-run) menjalankan validasi yang sama dengan `POST /employees` sebelum menyimpan — termasuk tax ID, rekening, manager dan common code.
 
 ### 14.2 Alur
 ```
@@ -552,7 +552,7 @@ Commit dua kali atas cek yang sama mengembalikan job impor yang sama. Bila worke
         { "row": 19, "field": "Position", "issue": "\"Sales Lead\" is not a position in \"Marketing\"", "employee": "Dani" }
       ]
     },
-    "ready": [ { "row": 2, "full_name": "Budi Santoso", "national_id": "3175…", "email": "budi@…", "org_unit": "Engineering", "position": "Software Engineer" } ]
+    "ready": [ { "row": 2, "full_name": "Budi Santoso", "national_id": "3175…", "email": "budi@…", "org_unit": "Engineering", "position": "Software Engineer", "branch": "Jakarta HQ", "manager": "EMP-0001", "schedule": "Office Hours" } ]
   }
 }
 ```
