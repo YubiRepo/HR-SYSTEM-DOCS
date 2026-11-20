@@ -45,6 +45,6 @@ Semua migrasi drop punya `down` yang membuat ulang struktur (tanpa data).
 ## Urutan menjalankan (dev)
 
 1. jewelry-be: isi env → recreate container → `make migrate-up` → `make seed`.
-2. HR-API: buat DB `hr_system_jewerly` → isi env → rebuild container → `make migrate-up`.
+2. HR-API: buat DB `hr_system_jewerly` → isi env → rebuild container → `make dev-migrate`.
 3. jewelry-fe di port berbeda dari HR-BO (mis. `npm run dev -- --port 3001`).
 4. HR-BO `npm run dev` di origin yang sama dengan `HR_APP_URL`.
