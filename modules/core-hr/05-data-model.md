@@ -46,7 +46,7 @@ Model data konseptual (stack-agnostic). Entitas `users` & `tenants` dimiliki mod
 | `birth_date` | date (nullable) | Tanggal lahir |
 | `gender` | enum (nullable) | `male` / `female` |
 | `marital_status` | enum (nullable) | Untuk PTKP (lajang/kawin/…) |
-| `address` | json (nullable) | `{line1, line2, region_code, postal_code}` — `region_code` string bebas, tidak tervalidasi (lihat §2.7 wilayah) |
+| `address` | json (nullable) | `{line1, line2, region_code, postal_code, province_name, city_name, district_name, village_name}` — `region_code` divalidasi ke sumber wilayah saat disimpan; nama tiap level ikut disimpan (lihat §2.7 wilayah) |
 | `bank_account` | json (nullable) | Rekening (bank, no rek, nama) — untuk transfer gaji |
 | `emergency_contact` | json (nullable) | Kontak darurat |
 | `hire_date` | date | Tanggal bergabung |
@@ -204,13 +204,18 @@ Data wilayah administratif Indonesia untuk alamat berjenjang (provinsi → kota/
 
 Response tiap region node: `{code, parent_code, level, name}` — kode memakai format dotted Kemendagri (mis. `"31"`, `"31.74"`, `"31.74.01"`, `"31.74.01.1001"`), sama persis dengan yang dipakai wilayah.id sehingga tidak perlu remapping. Tidak ada `postal_code` pada level manapun — wilayah.id tidak menyediakannya.
 
-**Alamat karyawan** (`employees.address`, §2.1) **tidak** menyimpan referensi berjenjang ke region — `region_code` adalah string bebas, tidak divalidasi/FK ke manapun. Bentuk aktualnya:
+**Alamat karyawan** (`employees.address`, §2.1) menyimpan `region_code` (kode level terdalam yang dipilih) **beserta nama tiap level** di jalurnya. Tidak ada FK (wilayah tidak disimpan lokal). Bentuk aktualnya:
 ```json
 {
   "line1": "Jl. Merdeka No. 10", "line2": null,
-  "region_code": "31.71.01.1001", "postal_code": "10110"
+  "region_code": "31.71.01.1001", "postal_code": "10110",
+  "province_name": "DKI JAKARTA", "city_name": "KOTA ADM. JAKARTA PUSAT",
+  "district_name": "GAMBIR", "village_name": "GAMBIR"
 }
 ```
+- Nama **diisi oleh API** dari `region_code` setiap create/update/import (nama yang dikirim client diabaikan); level di bawah kode dibiarkan kosong (mis. kode kota → `district_name`/`village_name` kosong).
+- `region_code` tak dikenal → `422 VALIDATION_ERROR`. Bila wilayah.id tidak bisa dihubungi, kode tetap disimpan tanpa nama; nama terisi pada penyimpanan berikutnya. Update dengan kode yang sama memakai nama tersimpan (tanpa lookup).
+- Data lama (hanya kode) diisi lewat backfill per tenant `20261120090000 fill_address_region_names_for_tenant` (`make backfill-up`).
 
 - Referensi bersifat **global** (dipakai semua tenant), bukan per tenant — tidak ada isolasi tenant untuk lookup wilayah.
 - Tidak ada endpoint sync — tidak ada local store yang perlu disinkronkan.

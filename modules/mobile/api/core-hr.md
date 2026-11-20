@@ -25,6 +25,7 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dir
 }
 ```
 - `address.region_code` adalah kode wilayah terdalam yang dipilih (kelurahan/desa) dari §4. Objek `address` diganti utuh.
+- Response `address` juga memuat `province_name`, `city_name`, `district_name`, `village_name` (diisi API dari `region_code`; tidak perlu dikirim).
 - `emergency_contact.relationship` memakai common code `family_relationship`.
 - Response `200` berisi profil terbaru. Perubahan langsung berlaku; approval HR untuk perubahan kontak belum ada.
 

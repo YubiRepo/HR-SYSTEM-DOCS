@@ -34,8 +34,8 @@ Klik **Download Template** di langkah 1 untuk mendapatkan file
 
 | Sheet | Isi |
 |---|---|
-| **Employees** | Baris judul kolom (kolom wajib bertanda `*`, berwarna kuning). Org Unit, Position, Work Branch, Schedule Type, Pattern, Starting Status, Contract Type, Gender, Marital Status, Religion, Tax ID Type, Currently Pregnant, Bank dan custom field pilihan punya drop-down |
-| **Reference** | Daftar nilai yang boleh dipakai: nama Org Unit, Position (beserta unitnya), Branch, Contract Type, Schedule Pattern (beserta tipenya), Religion, Bank, pilihan tetap (Gender, Marital Status, Schedule Type, Starting Status, Tax ID Type, Currently Pregnant), dan opsi custom field — diambil dari data perusahaan Anda saat template diunduh |
+| **Employees** | Baris judul kolom (kolom wajib bertanda `*`, berwarna kuning). Org Unit, Position, Work Branch, Schedule Type, Pattern, Starting Status, Contract Type, Gender, Marital Status, Religion, Tax ID Type, Currently Pregnant, Bank, Province, City / Regency (mengikuti Province) dan custom field pilihan punya drop-down |
+| **Reference** | Daftar nilai yang boleh dipakai: nama Org Unit, Position (beserta unitnya), Branch, Contract Type, Schedule Pattern (beserta tipenya), Religion, Bank, Province, City / Regency (beserta provinsinya), pilihan tetap (Gender, Marital Status, Schedule Type, Starting Status, Tax ID Type, Currently Pregnant), dan opsi custom field — diambil dari data perusahaan Anda saat template diunduh |
 | **Guide** | Petunjuk singkat pengisian dan format tanggal |
 
 ### Kolom sheet Employees
@@ -75,7 +75,11 @@ Klik **Download Template** di langkah 1 untuk mendapatkan file
 | `Currently Pregnant` | Tidak | `Yes` / `No` | No |
 | `ID Card Address` | Tidak | Alamat sesuai KTP | Jl. Melati 1 |
 | `Address Line 1` / `Address Line 2` | Tidak | Alamat domisili; Line 1 wajib bila kolom alamat lain diisi | Jl. Mawar 2 |
-| `Region Code` | Tidak | Kode wilayah Kemendagri (provinsi/kota/kecamatan/desa) | 31.74.01 |
+| `Province` | Tidak | Nama provinsi dari sheet **Reference** (drop-down) | DKI JAKARTA |
+| `City / Regency` | Tidak | Nama kota/kabupaten di provinsi tersebut — drop-down otomatis menampilkan kota dari Province di baris yang sama | KOTA ADM. JAKARTA SELATAN |
+| `District` | Tidak | Nama kecamatan di kota tersebut (diketik) | KEBAYORAN BARU |
+| `Village` | Tidak | Nama kelurahan/desa di kecamatan tersebut (diketik) | SENAYAN |
+| `Region Code` | Tidak | Alternatif keempat kolom di atas: kode wilayah Kemendagri. Isi **salah satu**, nama wilayah atau Region Code | 31.74.07.1006 |
 | `Postal Code` | Tidak | Teks | 12345 |
 | `Bank` | Tidak | Nama (atau kode) bank dari sheet **Reference**; Bank, Account Number dan Account Holder diisi bersama dan menjadi **rekening utama (payroll)** | Bank Central Asia |
 | `Account Number` | Tidak | Teks | 0123456789 |
@@ -255,6 +259,8 @@ can fix and import them later."* Tombol **Cancel** / **Yes, Import**.
 | Nilai pilihan tidak dikenal | *Gender must be Male or Female* |
 | Pattern tidak cocok dengan Schedule Type | *Pattern "3 Shift" is not a fixed pattern* |
 | Schedule Type tanpa Pattern (atau sebaliknya) | *Pattern is required when Schedule Type is filled* |
+| Wilayah tidak ditemukan | *District "Tebet" not found in KOTA ADM. JAKARTA SELATAN* |
+| Level wilayah dilompati | *City / Regency is required when District is filled* |
 | Manager tidak ditemukan | *No employee with Employee No "EMP-9" (existing, or in a row above)* |
 | Rekening tidak lengkap / bank tidak dikenal | *Account Number is required when a bank account is filled* |
 | Tax ID tidak valid | pesan validasi NPWP/NIK, sama seperti di form **Add Employee** |
