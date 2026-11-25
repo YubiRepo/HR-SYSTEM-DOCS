@@ -7,3 +7,6 @@ business/index.md
 architectures/index.md
 modules/index.md
 manual/index.md
+
+# graphify knowledge graph (local only)
+graphify-out/
