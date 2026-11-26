@@ -19,7 +19,8 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 | POST | `/attendance/records/evaluate` | Evaluasi periode: `{date_from, date_to, branch_id?}` (maks 31 hari, s/d kemarin). Hari tanpa record diisi record `source=system` (absent, workday tertutup cuti, holiday, day_off); record system lama dihitung ulang; record ber-clock-in/manual/terkoreksi tidak disentuh. Response: ringkasan jumlah per status + yang di-skip | `attendance:write` |
 | POST | `/attendance/records/{id}/correction` | Ajukan/terapkan koreksi (self hanya untuk catatan miliknya sendiri) | `attendance:self` / `attendance:write` |
 | GET | `/attendance/me/corrections` | Status pengajuan koreksi milik sendiri | `attendance:self` |
-| POST | `/attendance/corrections/{id}/approve` | Setujui koreksi | `attendance:approve` |
+| POST | `/attendance/corrections/{id}/approve` · `/reject` | Setujui/tolak koreksi. Body `{ "notes": "..." }` (alias `note`) | approver step aktif (policy) atau `attendance:approve` — lihat §3c |
+| GET | `/attendance/corrections/{id}/approval` | Timeline approval koreksi (`null` bila tidak dirutekan) | `attendance:read` (scope), pemilik, atau approver |
 
 ### Shift & Schedule
 | Method | Endpoint | Deskripsi | Izin |
@@ -45,8 +46,9 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 |---|---|---|---|
 | POST | `/attendance/overtime` | Ajukan lembur (self hanya untuk dirinya sendiri) | `attendance:self` / `attendance:write` |
 | GET | `/attendance/me/overtime` | Status pengajuan lembur milik sendiri | `attendance:self` |
-| POST | `/attendance/overtime/{id}/approve` | Setujui lembur (boleh mempersingkat window) | `attendance:approve` |
-| POST | `/attendance/overtime/{id}/reject` | Tolak lembur | `attendance:approve` |
+| POST | `/attendance/overtime/{id}/approve` | Setujui lembur (boleh mempersingkat window) | approver step aktif (policy) atau `attendance:approve` — lihat §3c |
+| POST | `/attendance/overtime/{id}/reject` | Tolak lembur | approver step aktif (policy) atau `attendance:approve` — lihat §3c |
+| GET | `/attendance/overtime/{id}/approval` | Timeline approval lembur (`null` bila tidak dirutekan) | `attendance:read` (scope), pemilik, atau approver |
 | POST | `/attendance/overtime/{id}/cancel` | Batalkan (pending, atau approved sebelum mulai) | `attendance:self` / `attendance:write` |
 | — | `/attendance/overtime-rules…`, `/attendance/overtime/transactions…` | Overtime rule & transaksi — lihat [13 §9](./13-overtime-management.md#9-api) | |
 | GET | `/attendance/summary` | Rekap periode (untuk Payroll) | `attendance:read` |
@@ -327,6 +329,21 @@ Catatan perhitungan:
 { "approved_end_at": "2026-10-26T19:00:00+07:00", "note": "Sampai 19:00 saja" }
 ```
 `approved_end_at` opsional; tanpa field ini seluruh window disetujui. Nilai di luar window ditolak. Reviewer tidak boleh menyetujui request miliknya sendiri (`OVERTIME_SELF_APPROVAL`). Request adalah otorisasi — durasi aktual dihitung dari absensi (lihat [13](./13-overtime-management.md)).
+
+## 3c. Approval berjenjang (lembur & koreksi)
+
+Bila tenant punya policy approval aktif untuk `overtime_request` / `attendance_correction` (HR Setting → Approval Policies), dokumen yang diajukan **sesudahnya** dirutekan lewat engine approval ([modules/approval](../approval/README.md)). Tanpa policy: tetap satu langkah oleh pemegang `attendance:approve` (perilaku lama). Dokumen yang sudah pending sebelum policy dibuat tetap satu langkah.
+
+| Aspek | Aturan |
+|---|---|
+| Siapa yang memutuskan | Approver step aktif. Step `any_approver`: pemegang `attendance:approve` dalam branch scope, bukan pemilik/pengaju. Route approve/reject tidak lagi digate permission; handler/engine yang memeriksa. |
+| Lembur — step antara | Approve step antara tidak mengubah status (tetap `pending`). `approved_end_at` dari step antara disimpan sebagai **batas** window; step berikutnya hanya boleh mempersingkat lagi (`INVALID_OVERTIME_ARGUMENT` bila melebihi). Step terakhir menyetujui dengan batas tersebut. |
+| Koreksi — step antara | Koreksi tetap `pending`; record absensi baru diubah saat step terakhir menyetujui (cek periode payroll terkunci tetap berlaku). |
+| Semua step terlewati | Dokumen langsung disetujui saat diajukan (koreksi langsung diterapkan). |
+| Reject | Lembur: status `rejected`, claim hari dilepas. Koreksi: `rejected`, record tidak berubah. |
+| Cancel lembur | Approval yang berjalan ikut dibatalkan. |
+| List | `GET /attendance/overtime`, `/me/overtime`, `/corrections`, `/me/corrections`: item pending membawa `approval_routed`, `current_approver_user_id`, `can_decide`. |
+| Inbox | Kedua dokumen tampil di `GET /approval/inbox` dan `GET /approval/requests/{type}/{id}` (detail: window rencana, absensi aktual / nilai lama → baru, absensi hari itu). |
 
 ---
 

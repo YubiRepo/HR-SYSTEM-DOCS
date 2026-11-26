@@ -294,7 +294,8 @@ Rincian blok ini:
 - `simulate`: `minutes` = lembur aktual; response menambah `break_minutes` dan `net_minutes` (= minutes − break), breakdown dihitung dari `net_minutes`.
 - Schedule pattern (`POST`/`PATCH /attendance/schedule-patterns`) menerima `overtime_rule_id` (PATCH: `""` = kosongkan, tidak dikirim = tetap); rule harus ada dan aktif. Response menambah `overtime_rule_id`, `overtime_rule_name`, `overtime_rule_active`. `GET /attendance/schedule-patterns?overtime_rule_id=<id>` menyaring pattern yang memakai rule tersebut.
 | POST | `/attendance/overtime` | self / write |
-| POST | `/attendance/overtime/{id}/approve` · `/reject` | approve |
+| POST | `/attendance/overtime/{id}/approve` · `/reject` | approver step aktif atau approve ([05 §3c](./05-api-contract.md#3c-approval-berjenjang-lembur--koreksi)) |
+| GET | `/attendance/overtime/{id}/approval` | read (scope), pemilik, atau approver |
 | POST | `/attendance/overtime/{id}/cancel` | self / write |
 | GET | `/attendance/overtime/transactions` (`period`, `status`, `realization_status`, `employee_id`) | read |
 | GET | `/attendance/overtime/transactions/{id}` | read |

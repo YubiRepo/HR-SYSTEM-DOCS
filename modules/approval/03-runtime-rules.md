@@ -22,7 +22,27 @@ Submit, Decide, dan Cancel dipanggil modul pemilik **di dalam transaksinya sendi
 | Approve/Reject (route **tanpa permission**; hanya approver step aktif) | `Decide` — `any_approver` hanya bila pemanggil punya `leave:approve`. `final_approved` → konsumsi saldo + ledger; `rejected` → lepas reservasi; `advanced` → `leave_requests.current_step` disinkronkan. |
 | Cancel (pemilik atau `leave:config`) | `Cancel` dalam transaksi yang sama dengan pelepasan reservasi. |
 | List | Tiap item pending membawa `approval_routed`, `current_approver_user_id`, `can_decide` (untuk pemanggil). |
-| Timeline | `GET /leave/requests/{id}/approval`: `leave:read`/`leave:approve`, pemilik cuti, atau approver request itu (assigned/pernah memutuskan). |
-| Inbox | Leave mendaftarkan *summarizer* (jenis, tanggal, hari, alasan, lampiran + path approve/reject/timeline). |
+| Timeline | `GET /leave/requests/{id}/approval`: `leave:read`/`leave:approve` (dalam branch scope), pemilik cuti, atau approver menurut `CanView`. |
+| Inbox & tampilan approver | Leave mendaftarkan *document provider*: ringkasan (jenis, tanggal, hari, alasan, lampiran + path approve/reject/timeline) dan detail (status, tanggal diajukan, saldo per tanggal mulai, lampiran). |
+
+## Integrasi Payroll Run
+
+| Payroll | Engine |
+|---|---|
+| Submit run (`/runs/{id}/submit`) | `Submit` tanpa subject, `subtype = branch`; hanya bila ada policy `payroll_run`. |
+| Approve/Reject (route tanpa permission) | `Decide`; step `any_approver` butuh `payroll:approve`. |
+| `GET /runs/{id}`, `/runs/{id}/approval` | `payroll:read` (dalam branch scope) atau approver menurut `CanView`. |
+| Inbox & tampilan approver | Ringkasan run + detail (rincian total, catatan penolakan terakhir), `detail_path` ke halaman run. |
 
 `approval_flows`, `approval_steps`, dan `leave_request_approvals` milik leave **tidak dipakai lagi** untuk routing (tabel tidak dihapus; `leave_request_approvals` masih diisi sebagai log lama).
+
+## Integrasi Attendance (lembur & koreksi)
+
+| Attendance | Engine |
+|---|---|
+| Submit lembur / koreksi | Bila ada policy (`HasPolicy`): `Submit` dengan `subject = employee`, tanpa subtype, satu transaksi dengan penyimpanan dokumen (+ claim hari untuk lembur). `final_approved` → langsung disetujui (koreksi langsung diterapkan). Tanpa policy: tidak dirutekan. |
+| Approve/Reject (route tanpa permission) | Dokumen dirutekan → `Decide`; `any_approver` hanya bila pemanggil punya `attendance:approve` dalam scope. Tidak dirutekan → wajib `attendance:approve` (satu langkah). |
+| Lembur step antara | `approved_end_at` disimpan sebagai batas window (`LimitWindow`); step terakhir memakai/mempersingkat batas itu. |
+| Cancel lembur | `Cancel` di transaksi yang sama. |
+| Timeline | `GET /attendance/overtime/{id}/approval`, `/attendance/corrections/{id}/approval`. |
+| Inbox & tampilan approver | Provider attendance: ringkasan + detail (status, waktu pengajuan, absensi hari itu; batas window dari step sebelumnya). |

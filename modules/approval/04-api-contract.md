@@ -11,6 +11,7 @@
 | PUT | `/policies/{id}` | `approval:config` | Ganti nama/subtype/aktif + seluruh step |
 | DELETE | `/policies/{id}` | `approval:config` | Dokumen berjalan tidak terpengaruh |
 | GET | `/inbox` | login | Step `pending` yang menunggu pemanggil, lintas document type (lihat di bawah) |
+| GET | `/requests/{type}/{documentId}` | approver dokumen (`CanView`) | Tampilan approver: detail dari modul pemilik + semua approval dokumen + `can_decide` (lihat di bawah). 403 untuk non-approver |
 
 **Contoh `POST /policies`**
 ```json
@@ -49,7 +50,39 @@ Berisi (1) step `pending` yang di-assign ke pemanggil, dan (2) step `any_approve
 }
 ```
 
-`summary` disediakan modul pemilik lewat `RegisterSummarizer`; UI inbox cukup merender field dan memanggil path-nya (body `{ "note": "..." }`).
+`summary` disediakan modul pemilik lewat `RegisterDocument`; UI inbox cukup merender field dan memanggil path-nya (body `{ "note": "..." }`).
+
+## Tampilan approver — `GET /requests/{type}/{documentId}`
+
+Akses **berdasarkan penugasan, bukan permission modul** (tidak perlu `leave:read`, `payroll:read`, dsb.). Diizinkan bila pemanggil:
+
+| Siapa | Lihat | Approve/reject |
+|---|---|---|
+| Approver step `pending` | ✅ | ✅ (`can_decide`) |
+| Approver step `waiting` (belum giliran) | ✅ read-only | ❌ |
+| Approver/pemutus approval mana pun dari dokumen ini, termasuk approval lama sebelum ditolak & diajukan ulang | ✅ read-only, selamanya | ❌ |
+| Step aktif `any_approver` | ✅ bila punya `ApprovePermission` document type, dalam branch scope, dan bukan pemilik/pengaju | ✅ syarat sama |
+
+Pemilik dokumen dan HR reader tetap memakai endpoint modul pemilik.
+
+```json
+{
+  "document_type": "leave_request", "document_type_label": "Leave request", "document_id": "...",
+  "subject_employee_id": "...", "subject_name": "Budi", "submitted_by_name": "Budi",
+  "detail": {
+    "summary": { "title": "Annual leave", "subtitle": "...", "fields": [ { "label": "Dates", "value": "..." } ], "approve_path": "...", "reject_path": "...", "timeline_path": "..." },
+    "sections": [ { "title": "Balance as of 2026-12-01", "fields": [ { "label": "Available", "value": "8 day(s)" } ] } ],
+    "attachments": [ { "label": "Supporting document", "url": "https://...presigned" } ],
+    "detail_path": ""
+  },
+  "can_decide": true,
+  "approvals": [ { "request_id": "...", "status": "pending", "steps": [], "actions": [] } ]
+}
+```
+
+- `approvals`: semua instance approval dokumen, terbaru dulu (format sama dengan timeline di bawah).
+- `attachments[].url`: URL presigned berumur pendek yang dibuat modul pemilik saat detail disusun — hanya keluar setelah `CanView`, jadi tidak perlu endpoint lampiran terpisah.
+- `detail_path` (opsional): route aplikasi untuk tampilan lebih kaya (payroll run → `/tenants/salary/runs/{id}`). Endpoint modul di baliknya wajib memakai `CanView` untuk jalur approver.
 
 ## Timeline dokumen
 
@@ -76,5 +109,5 @@ Disajikan oleh modul pemilik dengan aturan aksesnya sendiri. Leave: `GET /leave/
 | `CurrentApprovers(ctx, tenant, docType, ids)` | Approver step aktif per dokumen (null = any approver) |
 | `Timeline(ctx, tenant, docType, id)` | Request terakhir + nama approver + log |
 | `EnsureDefaultPolicy(ctx, tenant, docType)` | Idempoten |
-| `IsParticipant(ctx, tenant, docType, id, user)` | User adalah/pernah menjadi approver atau pemutus |
-| `RegisterSummarizer(docType, s)` | Ringkasan dokumen untuk inbox |
+| `CanView(ctx, tenant, docType, id, user, access)` | Pemanggil boleh membaca dokumen sebagai approver (aturan tabel di atas). `access` dibangun dengan `approval.AccessFor(principal)`. Modul pemilik **wajib** memakai ini untuk jalur approver di endpoint bacanya, bukan logika sendiri |
+| `RegisterDocument(docType, p)` | `p` = `DocumentProvider` (`Summarize` untuk inbox + `Detail` untuk tampilan approver; opsional `DocumentBranches` untuk dokumen tanpa subject). Consumer baru wajib mengimplementasikan keduanya |

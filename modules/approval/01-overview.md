@@ -41,9 +41,14 @@ Terjadi bila atasan tidak ada, atasan tidak punya akun login, atau karyawan acua
 | Key | Pemilik | Subject? | Subtype |
 |---|---|---|---|
 | `leave_request` | Leave | Ya | `leave_type` |
+| `payroll_run` | Payroll | Tidak | `branch` |
+| `overtime_request` | Attendance | Ya | — |
+| `attendance_correction` | Attendance | Ya | — |
 
 Consumer baru menambahkan entri di registry (`approval/domain/constant`). Dokumen tanpa subject hanya boleh memakai `manager_of = submitter`.
 
 ## 5. Policy default
+
+`payroll_run`, `overtime_request`, dan `attendance_correction` **opt-in**: tanpa policy, modul pemilik tetap memakai approve satu langkah (permission approve modul); dokumen hanya dirutekan bila policy dibuat.
 
 Setiap tenant mendapat policy default `leave_request`: **1 step, atasan langsung pemilik dokumen, `any_approver` bila tidak ditemukan**. Dibuat saat provisioning tenant (seeder leave) dan oleh backfill `20261110090000_route_leave_approvals_for_tenant` untuk tenant lama. Tanpa policy aktif sama sekali, dokumen langsung disetujui.

@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Fase 0, 1 & 1.5 selesai (2026-11-10)** — kode API + Backoffice + docs. Migrasi `20261110000001`–`20261110000004` dan backfill `20261110090000` ditulis, belum dijalankan. Fase 2–3 belum dikerjakan. Catatan implementasi: §11 (Fase 0), §12 (Fase 1), §13 (Fase 1.5). |
+| **Status** | **Fase 0, 1 & 1.5 selesai (2026-11-10)** — kode API + Backoffice + docs. Migrasi `20261110000001`–`20261110000004` dan backfill `20261110090000` ditulis, belum dijalankan. `payroll_run` sudah memakai engine (payroll P7, di luar urutan fase). **Fase 1.6 & 2 selesai (2026-11-26)** (akses approver §15–§16; lembur & koreksi §17). Berikutnya Fase 3. Catatan implementasi: §11 (Fase 0), §12 (Fase 1), §13 (Fase 1.5). Inventaris dokumen: §14. |
 | **Tanggal** | 2026-11-05 |
 | **Pemicu** | Admin perlu mengatur bahwa sebuah jenis dokumen (mulai dari pengajuan cuti) butuh persetujuan **beberapa orang secara berjenjang**, misalnya atasan langsung → user tertentu dari role HR → direktur. Saat ini approval leave dipaksa satu step, sedangkan dokumen lain hanya punya approve/reject satu langkah yang digate permission. |
 | **Keputusan user** | (1) Engine **generik lintas modul**, leave menjadi consumer pertama. (2) Approver konkret ditentukan **admin di konfigurasi**; sistem me-resolve otomatis saat submit. (3) Record per step menyimpan **`user_id` approver**, bukan role id atau kode entitas. (4) Sumber atasan: **`manager_id`, fallback kepala unit**. (5) **Grade jabatan** dimasukkan ke Fase 0. (6) Atasan dihitung dari **subject employee** (pemilik dokumen), bukan dari pengaju. Dokumen internal tanpa subject employee memakai pengaju sebagai titik awal. Lihat §3. |
@@ -318,8 +318,9 @@ Fase 0: migrasi `20261110000001_job_grades` (tabel + `positions.job_grade_id` FK
 | **0** ✅ | Validasi `manager_id`, reporting line resolver, master `job_grades` + grade di position (API & UI), UI Direct Manager & Effective manager, docs Core HR. Bisa di-merge sendiri. |
 | **1** ✅ | Modul approval (schema, domain, engine, policy CRUD API) + integrasi leave + UI policy + timeline leave + docs. |
 | **1.5** ✅ | *(fase antara, ditambahkan 2026-11-10)* Approval bisa dipraktikkan end-to-end: inbox lintas dokumen (API + halaman admin & ESS), approve/reject tanpa wajib `leave:approve` (engine yang menentukan), approver boleh membaca timeline. |
-| **2** | Migrasi overtime request & attendance correction ke engine. |
-| **3** | Mutation request, payroll run (opsional); tipe step tambahan (`position` → pemegang jabatan, grade, `role_pool` any/all) untuk dokumen internal (§4.6), delegasi, notifikasi via outbox messaging. |
+| **1.6** ✅ | *(ditambahkan 2026-11-26, prasyarat Fase 2)* Akses approver terpusat: kontrak `Detailer` + `CanView`, endpoint detail & lampiran di modul approval, leave & payroll run dimigrasi ke pola ini. Lihat §15. |
+| **2** ✅ | Migrasi overtime request & attendance correction ke engine (memakai kontrak §15 sejak awal). Lihat §17. |
+| **3** | Mutation request (+ keputusan batch, §14), payroll run ✅ (sudah lewat payroll P7); tipe step tambahan (`position` → pemegang jabatan, grade, `role_pool` any/all) untuk dokumen internal (§4.6), delegasi, notifikasi via outbox messaging. |
 
 ---
 
@@ -367,7 +368,7 @@ Penyimpangan dari rencana awal: permission `org:read`/`org:write` (bukan `job_gr
 - Opsi `on_unresolved` ketiga: **`any_approver`** (step tidak di-assign; siapa saja dengan permission approve modul, kecuali pemilik dokumen & pengaju). Menjadi default dan dipakai policy default, menggantikan rencana backfill "user pertama pemegang role sebagai fallback".
 - `approver_user_id` di `approval_request_steps` nullable (untuk `any_approver`).
 - Halaman policy di HR Setting, bukan `settings/approval-policies.vue`.
-- Endpoint `GET /approval/requests/by-document/...` tidak dibuat; timeline disajikan modul pemilik (leave) agar aturan aksesnya ikut modul itu.
+- Endpoint `GET /approval/requests/by-document/...` tidak dibuat; timeline disajikan modul pemilik (leave) agar aturan aksesnya ikut modul itu. *(Diganti di §15: jalur approver dipusatkan di modul approval.)*
 - Approver tetap harus punya `leave:approve` (route lama tidak diubah).
 - Inbox tersedia di API (`GET /approval/inbox`), halaman "My Approvals" belum dibuat.
 
@@ -387,3 +388,156 @@ Alasan: setelah Fase 1, policy & pengajuan bisa dibuat tetapi approval tidak bis
 - Komponen `ApprovalInbox` + `useApprovalInbox`; halaman `/ess/approvals` (menu ESS "Approvals") dan `/tenants/approvals` (menu admin "My Approvals"). Detail: ringkasan, lampiran, timeline, catatan (wajib untuk reject), Approve/Reject.
 
 **Belum**: badge jumlah pending di menu, notifikasi (Fase 3).
+
+---
+
+## 14. Inventaris Dokumen yang Butuh Approval Policy (2026-11-26)
+
+Sumber: registry `constant.DocumentTypes` (`internal/modules/approval/domain/constant/constant.go`) dan endpoint approve/reject/review di router semua modul.
+
+**Sudah memakai engine**
+
+| `document_type` | Subject employee | Subtype | `ApprovePermission` (any_approver) | Catatan |
+|---|---|---|---|---|
+| `leave_request` | ya | `leave_type` | `leave:approve` | Fase 1 & 1.5 |
+| `payroll_run` | tidak | `branch` | `payroll:approve` | Payroll P7 (commit `98e09ac`); branch scope any_approver lewat `DocumentBrancher` |
+
+**Belum — masih approve/reject satu langkah, digate permission**
+
+| Kandidat `document_type` | Endpoint sekarang | Subject employee | Fase | Catatan |
+|---|---|---|---|---|
+| `overtime_request` | `POST /attendance/overtime/:id/approve\|reject` | ya | 2 | |
+| `attendance_correction` | `POST /attendance/.../corrections/:id/approve\|reject` | ya | 2 | |
+| `mutation_request` | `POST /core-hr/mutation-requests/:id/approve\|reject` | ya | 3 | Kandidat subtype: jenis mutasi |
+| `mutation_request_batch` | `POST /core-hr/mutation-request-batches/:id/approve\|reject` | tidak (banyak karyawan) | 3 | **Perlu keputusan:** approval per batch atau per item di dalamnya |
+| `overtime_transaction` | `POST /attendance/overtime-transactions/:id/review` | ya | belum dijadwalkan | Hasil proses, bukan pengajuan — **perlu keputusan** apakah perlu berjenjang |
+
+**Bukan kandidat:** overtime order (`/issue`, `/cancel` — perintah atasan, bukan pengajuan), pembayaran manual platform (`/platform/payments/:id/approve` — level platform, bukan dokumen tenant).
+
+---
+
+## 15. Akses Approver ke Dokumen — Fase 1.6 (2026-11-26)
+
+### 15.1 Masalah
+
+- Approve/reject sudah tanpa permission gate (engine memvalidasi approver step aktif), tetapi **melihat detail** dicek ad hoc per modul: leave `canReadOwnOrAssigned` (handler `leaverequest/approval.go`), payroll `GET /runs/:id` di handler. Leave bahkan tidak punya endpoint detail; approver hanya melihat `Summary` inbox + timeline.
+- `IsParticipant` hanya mencocokkan `approver_user_id` / `decided_by`, sehingga approver step `any_approver` (approver null) tidak tercakup dan bergantung pada permission baca modul.
+- Setiap consumer baru (overtime, koreksi, mutasi) harus mengulang logika ini → rawan approver tidak bisa melihat, atau justru terlalu terbuka.
+- Lampiran (presigned URL) belum punya aturan akses approver.
+
+### 15.2 Keputusan
+
+1. **Akses approver berbasis penugasan, bukan permission.** Tidak ada permission baru seperti `approval:view`, dan approver tidak perlu `<modul>:read`. Memberi permission baca modul ke semua manajer akan membuka *semua* dokumen tenant, padahal yang dibutuhkan hanya dokumen yang ditugaskan.
+2. **Pengecualian `any_approver`:** karena tidak ada orang yang di-assign, syaratnya `ApprovePermission` document type + branch scope (aturan sama dengan inbox).
+3. **Approver step berikutnya** (belum giliran) **boleh melihat, read-only**, agar bisa bersiap.
+4. **Approver yang sudah memutuskan** **tetap boleh melihat, read-only**, termasuk setelah dokumen selesai/ditolak/dibatalkan (audit).
+5. Hanya approver step `pending` yang boleh approve/reject (tidak berubah).
+6. Jalur akses lain tetap milik modul pemilik: pemilik dokumen (self) dan HR reader (`<modul>:read` + branch scope).
+7. **Mengubah keputusan §12** ("endpoint by-document tidak dibuat; timeline disajikan modul pemilik"): detail & timeline untuk approver kini disajikan modul approval, supaya pengecekan akses ada di satu tempat.
+
+**Matriks akses (jalur approver)**
+
+| Siapa | Lihat detail + lampiran + timeline | Approve/reject |
+|---|---|---|
+| Approver step `pending` | ✅ | ✅ |
+| Approver step `waiting` (belum giliran) | ✅ read-only | ❌ |
+| Approver/decider step sebelumnya | ✅ read-only, selamanya | ❌ |
+| `any_approver` step `pending` | ✅ bila punya `ApprovePermission` + dalam branch scope (bukan pemilik/pengaju) | ✅ syarat sama |
+| Lainnya | ❌ lewat jalur ini (bisa lewat jalur self/HR reader modul) | ❌ |
+
+Instance yang dicek: semua instance approval dokumen (bukan hanya yang terbaru), agar approver dari pengajuan sebelum ditolak/diajukan ulang tetap bisa membaca riwayatnya.
+
+### 15.3 Kontrak
+
+```go
+// Owning module, registered per document_type (like Summarizer).
+type Detailer interface {
+    // Approver view: only the data needed to decide (data minimization).
+    Detail(ctx context.Context, tenantID, documentID string) (*DocumentDetail, error)
+    // Attachment resolves an attachment key to a short-lived download URL.
+    Attachment(ctx context.Context, tenantID, documentID, key string) (url string, err error)
+}
+
+type DocumentDetail struct {
+    Summary                     // title, subtitle, fields, paths (reused)
+    Sections    []DetailSection // label + fields / simple table
+    Attachments []AttachmentRef // key, name, content type
+    DetailPath  string          // optional: module's rich view (must call CanView)
+}
+
+// Approval contract — the single access check.
+CanView(ctx, tenantID, docType, docID, userID string, access ApproverAccess) (bool, error)
+// access carries the caller's permissions + branch scope for the any_approver rule.
+```
+
+- `IsParticipant` diganti/diperluas menjadi `CanView` (mencakup semua instance + aturan any_approver).
+- Registrasi document type di registry wajib menyertakan `Detailer`; consumer tanpa `Detailer` tidak boleh didaftarkan.
+
+### 15.4 Endpoint (modul approval)
+
+| Endpoint | Akses | Isi |
+|---|---|---|
+| `GET /approval/requests/{type}/{documentId}` | `CanView` | `DocumentDetail` + timeline semua instance + `can_decide` |
+| `GET /approval/requests/{type}/{documentId}/attachments/{key}` | `CanView` | redirect/URL presigned berumur pendek |
+
+Approve/reject tetap di endpoint modul pemilik (efek bisnis & transaksi ada di sana). Dokumen dengan tampilan rumit (payroll run + payslip) memakai `DetailPath`; endpoint modul tersebut wajib memanggil `approval.CanView`, bukan logika sendiri.
+
+### 15.5 Migrasi consumer yang ada
+
+- **Leave:** implement `Detailer` (jenis, tanggal, hari, alasan, saldo relevan, lampiran); `canReadOwnOrAssigned` memakai `CanView` untuk jalur approver; `GET /leave/requests/{id}/approval` tetap untuk pemilik & HR reader.
+- **Payroll run:** implement `Detailer` (periode, cabang, jumlah karyawan, total bruto/neto/potongan) + `DetailPath` ke `GET /payroll/runs/{id}`; handler `Get`/`Approval` memakai `CanView`.
+- **Backoffice:** detail di `ApprovalInbox` mengambil dari endpoint baru (generik untuk semua document type); tombol Approve/Reject dari `can_decide`; mode read-only untuk approver yang belum/sudah giliran.
+
+### 15.6 Verifikasi
+
+Unit test `CanView`: approver pending/waiting/decided → boleh; user lain → tidak; any_approver dengan permission + scope → boleh, tanpa permission / di luar scope / pemilik / pengaju → tidak; approver instance lama setelah diajukan ulang → boleh. Manual: manajer (ESS, tanpa `leave:read`) membuka detail & lampiran cuti bawahan dari inbox; approver step 3 melihat dokumen saat masih di step 1 tanpa tombol Approve; user tak terkait mendapat 403.
+
+
+---
+
+## 16. Catatan Implementasi Fase 1.6 (2026-11-26)
+
+**API**
+- Engine `application/engine/access.go`: `Access` (permission + branch scope; `InboxOptions` kini alias), `CanView`, `Document` (view approver), `mayDecideUnassigned` (aturan any_approver: permission, branch scope, bukan pengaju/pemilik).
+- Repository: `IsParticipant` kini mencakup **semua** instance approval dokumen (approver step berstatus apa pun atau pemutus); method baru `ListByDocument` (terbaru dulu). Tidak ada migrasi baru (indeks `idx_approval_requests_document` sudah ada).
+- Kontrak: `IsParticipant` → `CanView(..., access)`; `RegisterSummarizer` → `RegisterDocument(docType, DocumentProvider)` (`Summarizer` + `Detailer` wajib, dicek saat compile); helper `approval.AccessFor(PermissionHolder)` (dipenuhi `*principal.Principal`).
+- Endpoint `GET /api/v1/approval/requests/{type}/{documentId}` tanpa permission gate (403 bila bukan approver).
+- Leave: `Detail` (summary + status, tanggal diajukan, saldo per tanggal mulai via `LeaveBalanceQueries.Preview`, lampiran presigned); `canReadOwnOrAssigned` memakai `CanView`.
+- Payroll run: `Detail` (status, periode BPJS, jumlah karyawan/excluded/error, rincian total, catatan penolakan terakhir, `detail_path` `/tenants/salary/runs/{id}`); `authorizeRead` (`GET /runs/{id}`, `/runs/{id}/approval`) memakai `CanView` — approver `any_approver` dengan `payroll:approve` kini bisa membuka run tanpa `payroll:read`.
+- Test: `access_test.go` (approver pending/waiting, pemutus instance lama, any_approver dengan/tanpa permission, branch scope, pemilik, pengaju, `Document` + `can_decide` + 403).
+
+**Backoffice**
+- `types/approval.ts`: `ApprovalDocument` + mapper. `useApprovalInbox`: `getTimeline` → `getDocument` (endpoint baru).
+- `ApprovalInbox.vue`: section detail, lampiran, link "Open full details" (`detail_path`), timeline approval terkini + "Earlier approvals" (collapsible), tombol Approve/Reject & catatan hanya bila `can_decide`, pesan read-only bila tidak.
+
+**Penyimpangan dari §15**
+- **Tanpa endpoint lampiran terpisah** dan tanpa `Detailer.Attachment`: lampiran dikirim sebagai URL presigned berumur pendek di dalam detail, yang hanya keluar setelah `CanView` — hasil akses sama, lebih sederhana.
+- `detail_path` berisi route aplikasi (Backoffice), bukan path API.
+- Leave tidak diberi endpoint detail sendiri; kebutuhan approver dipenuhi endpoint approval.
+
+**Belum**: halaman `leave/requests.vue` (modal review admin) masih memakai timeline modul leave — tidak berubah, karena jalur itu untuk HR reader.
+
+
+---
+
+## 17. Catatan Implementasi Fase 2 (2026-11-26)
+
+**Keputusan:** lembur & koreksi **opt-in** seperti `payroll_run` — dirutekan hanya bila tenant punya policy aktif untuk document type-nya; tanpa policy tetap satu langkah oleh `attendance:approve` (perilaku lama, tidak ada backfill/policy default). Alasan: menghindari perubahan perilaku mendadak bagi tenant yang sudah berjalan (HR tidak tiba-tiba kehilangan hak approve karena atasan langsung jadi approver). Dokumen pending yang dibuat sebelum policy ada tetap satu langkah.
+
+**API**
+- Registry approval: `overtime_request`, `attendance_correction` (subject: ya, tanpa subtype, `ApprovePermission = attendance:approve`).
+- Attendance: port `application/approvalport` (`Router`, `Routing` dengan `InTx`/`Routed`/`SubmitIfPolicy`) + fake `approvalporttest`; gateway & provider di `infrastructure/approvalgateway`; `Module.SetApproval` dipanggil di `cmd/api/main.go`.
+- Lembur: submit/review/cancel lewat routing dalam satu transaksi (bersama claim hari). `Review(..., canApprove)`; step antara menyimpan batas window via `OvertimeRequest.LimitWindow` (`approved_end_at` pada request pending — diabaikan `ApprovedWindow` sampai disetujui; dihapus saat reject); `Approve` final memakai batas itu dan menolak memperpanjangnya. `CancelAs` membatalkan approval berjalan.
+- Koreksi: submit dalam transaksi + `FinalizeApproved` (semua step terlewati → langsung diterapkan); `Review(..., canApprove)` menerapkan koreksi hanya di step terakhir; penerapan (`apply`) dipisah agar dipakai keduanya. `ReviewCorrectionRequest` menerima `note` sebagai alias `notes` (inbox mengirim `note`).
+- HTTP: route approve/reject lembur & koreksi tanpa permission gate; `canApprove` = `attendance:approve` mencakup cabang karyawan/record. List & `/me/*` membawa `approval_routed`, `current_approver_user_id`, `can_decide`. Endpoint timeline baru `GET /attendance/overtime/{id}/approval`, `GET /attendance/corrections/{id}/approval` (read dalam scope, pemilik, atau `CanView`). `CorrectionBranch` diganti `CorrectionOwner`.
+- Test: `approval_routing_test.go` (lembur: multi-step + batas window, tidak boleh memperpanjang, reject, cancel, tanpa policy, semua step terlewati), `correction_routing_test.go` (diterapkan hanya di step akhir, semua step terlewati, tanpa policy + alias `note`).
+
+**Backoffice**
+- `OvertimeRequest` / `AttendanceCorrection` + `approvalRouted`, `canDecide`. Halaman Overtime Requests & Correction Approvals: aksi Approve/Reject untuk dokumen yang dirutekan hanya bila `canDecide`, selain itu "Waiting for another approver"; bantuan "Approved Until" menjelaskan step berikutnya hanya bisa mempersingkat.
+- Policy editor sudah generik (document type baru muncul otomatis dari `/approval/document-types`).
+
+**Penyimpangan**
+- Self-approval guard lembur (`OVERTIME_SELF_APPROVAL`) hanya untuk jalur satu langkah; di jalur engine aturan skip/any_approver engine yang berlaku.
+- Review di luar branch scope kini `PERMISSION_DENIED` (sebelumnya `RESOURCE_NOT_FOUND` dari gate route).
+
+**Belum:** halaman ESS untuk pengajuan sendiri belum menampilkan timeline approval lembur/koreksi (endpoint sudah ada); overtime transaction & mutation request menunggu keputusan §14.
