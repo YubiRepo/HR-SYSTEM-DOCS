@@ -10,6 +10,19 @@ Membuat tenant baru = melahirkan "wadah" pelanggan. Langkah saat provisioning:
 4. Buat akun **tenant admin** pertama (via modul Auth) & kirim undangan.
 5. Seed peran sistem tenant (via modul RBAC).
 6. Hitung **entitlement** awal dari plan.
+7. Seed **data awal modul** (best-effort; kegagalan satu modul tidak menggagalkan provisioning): Leave (jenis cuti + policy approval cuti), Payroll (BPJS, PPh 21, PTKP, TER, jadwal payroll bulanan, komponen sistem, komponen **Basic Salary** + struktur **Standard Monthly**), common codes, lalu **HR setting defaults** (§1.1).
+
+### 1.1 HR setting defaults
+
+Didaftarkan lewat `platform.Module.AddTenantDefaultsSeeder` (urut), setelah common codes. Setiap seeder **hanya mengisi area yang masih kosong** untuk tenant — tidak pernah mengubah data yang sudah ada.
+
+| Modul | Yang di-seed | Syarat (area kosong) |
+|---|---|---|
+| Core HR | Org unit root **Head Office** (`company`); posisi **Staff** (20), **Supervisor** (5), **Manager** (2) di unit root; job grade **STAFF** (10), **SPV** (20), **MGR** (30) | belum ada org unit / posisi / job grade |
+| Attendance | OT code `OT15`, `OT20`, `OT30`, `OT40`; overtime rule **STANDARD** (PP 35/2021, 5 hari kerja: hari kerja 1.5x jam pertama lalu 2x; hari libur/istirahat 2x s/d 8 jam, 3x jam ke-9, 4x selanjutnya; tanpa dokumen/melebihi window → `needs_review`); shift **REG** 08:00–17:00 (istirahat makan 12:00–13:00, 8 jam, toleransi telat 15 menit); pola kerja **Regular (Mon–Fri)** dengan shift & OT rule tsb.; attendance rule default tenant (lembur perlu approval, tanpa geofence/auto clock-out) | belum ada overtime rule / shift / pola kerja / rule default; OT code per kode; pola hanya bila shift-nya di-seed di run yang sama |
+| Approval | Policy default (1 step atasan langsung, `any_approver` bila tidak ditemukan) untuk **setiap** document type | belum ada policy apa pun untuk document type tsb. |
+
+Tenant lama: backfill `20261126090000_seed_hr_setting_defaults_for_tenant` menjalankan seeder yang sama (Core HR, Attendance, Payroll, Approval) dengan aturan yang sama — konflik = lewati.
 
 ```
 POST /platform/tenants
@@ -18,7 +31,8 @@ POST /platform/tenants
    ├─ subscription dibuat (plan terpilih)
    ├─ akun tenant_admin diundang (Auth)
    ├─ peran sistem di-seed (RBAC)
-   └─ entitlement dihitung
+   ├─ entitlement dihitung
+   └─ data awal modul di-seed (leave, payroll, common codes, HR setting defaults)
 ```
 
 ---

@@ -541,3 +541,11 @@ Unit test `CanView`: approver pending/waiting/decided → boleh; user lain → t
 - Review di luar branch scope kini `PERMISSION_DENIED` (sebelumnya `RESOURCE_NOT_FOUND` dari gate route).
 
 **Belum:** halaman ESS untuk pengajuan sendiri belum menampilkan timeline approval lembur/koreksi (endpoint sudah ada); overtime transaction & mutation request menunggu keputusan §14.
+
+---
+
+## 18. Seeder HR Setting & UI Tab Policy (2026-11-26)
+
+- Policy default untuk **semua** document type kini di-seed saat provisioning tenant dan lewat backfill `20261126090000_seed_hr_setting_defaults_for_tenant` (hanya document type tanpa policy apa pun). Bagian dari seeder HR setting yang lebih luas — lihat `modules/platform/tenant/02-lifecycle.md` §1.1.
+- Konsekuensi: keputusan opt-in di §17 berlaku untuk tenant yang sudah punya policy sendiri atau menghapus policy default; tenant baru (dan tenant lama tanpa policy) mulai dengan approval atasan langsung untuk lembur, koreksi, dan payroll run.
+- Backoffice: halaman Approval Policies memakai tab per document type; field "Document type" di form dihapus.

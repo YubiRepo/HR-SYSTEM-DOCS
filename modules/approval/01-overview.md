@@ -51,4 +51,8 @@ Consumer baru menambahkan entri di registry (`approval/domain/constant`). Dokume
 
 `payroll_run`, `overtime_request`, dan `attendance_correction` **opt-in**: tanpa policy, modul pemilik tetap memakai approve satu langkah (permission approve modul); dokumen hanya dirutekan bila policy dibuat.
 
+**Sejak 2026-11-26** provisioning tenant (seeder approval) dan backfill `20261126090000_seed_hr_setting_defaults_for_tenant` membuat policy default (1 step atasan langsung, `any_approver` bila tidak ditemukan) untuk **setiap** document type yang belum punya policy apa pun — termasuk ketiga document type di atas. Untuk tenant lama yang belum punya policy-nya, ini memindahkan approve lembur/koreksi/payroll run dari satu langkah ke atasan langsung. Hapus atau ubah policy di HR Setting → Approval Policies bila tidak diinginkan.
+
+UI HR Setting → Approval Policies menampilkan **satu tab per document type** (dari `/approval/document-types`); policy dibuat di tab document type-nya, tanpa memilih document type di form.
+
 Setiap tenant mendapat policy default `leave_request`: **1 step, atasan langsung pemilik dokumen, `any_approver` bila tidak ditemukan**. Dibuat saat provisioning tenant (seeder leave) dan oleh backfill `20261110090000_route_leave_approvals_for_tenant` untuk tenant lama. Tanpa policy aktif sama sekali, dokumen langsung disetujui.
