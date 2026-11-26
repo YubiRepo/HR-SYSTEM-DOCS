@@ -99,11 +99,16 @@ Payslip (`GET /payroll/payslips/{id}`, `/runs/{id}/payslips`) menambah snapshot 
 | POST | `/payroll/schedules` | `{ code, name, pay_cycle, is_default, rule }` — schedule pertama tenant otomatis default | `payroll:config` |
 | GET | `/payroll/schedules/{id}` | Detail + semua versi aturan | `payroll:read` |
 | PATCH | `/payroll/schedules/{id}` | `{ code, name, is_default, is_active }` (pay cycle tetap; default tidak bisa dinonaktifkan) | `payroll:config` |
-| PUT | `/payroll/schedules/{id}/rules` | Tambah/ganti satu versi aturan (per `effective_from`) | `payroll:config` |
+| PUT | `/payroll/schedules/{id}/rules` | Tambah/ganti satu versi aturan (per `effective_from`). Ditolak (422) bila simulasi aturan menghasilkan error yang sama dengan `errors` di preview | `payroll:config` |
+| POST | `/payroll/schedules/{id}/rules/preview` | `{ rule?, count? }` → `{ from, periods[], errors[], warnings[] }`. Tanpa `rule` = periode aturan yang berlaku mulai hari ini; dengan `rule` = simulasi versi kandidat mulai `effective_from` (tidak disimpan). `count` default 6, maks 24. Tiap periode: `code, start_date, end_date, cutoff_from, cutoff_to, pay_date, tax_period, bpjs_period, status?` (status periode yang sudah di-generate). Issue: `{ kind, period?, message }` | `payroll:read` |
 | POST | `/payroll/schedules/{id}/periods/generate` | `{ year }` → `{ created, updated, kept }`. Idempoten: periode baru dibuat; periode `open` tanpa run mengikuti aturan terbaru; lainnya dibiarkan | `payroll:config` |
 | GET | `/payroll/periods` | Filter `schedule_id`, `year` (prefix kode), `status`; respons menambah `tax_period` | `payroll:read` |
 | GET | `/payroll/periods/{id}` | Detail periode | `payroll:read` |
 | POST | `/payroll/periods/{id}/lock` · `/reopen` · `/close` | `open`→`locked`, `locked`→`open`, `open/locked`→`closed` | `payroll:run` |
+
+Validasi aturan schedule:
+- **Per field** — monthly: `effective_from` harus tanggal 1; `attendance_cutoff_day` ≤ `pay_day`. Day-based: `cutoff_offset_days` ≤ `pay_offset_days` dan > −`period_length_days` (jendela absensi tertinggal maksimal satu periode).
+- **Simulasi** (tahun `effective_from` −1 s/d +2, hanya periode yang berakhir ≥ `effective_from`) — error: `period_gap` / `period_overlap` dan `attendance_gap` / `attendance_overlap` antar periode berurutan (hari tidak terbayar / terbayar dua kali), `frozen_period_changed` (periode `locked`/`closed`/dipakai run akan berubah tanggal), `invalid_rule` (kode periode dobel dsb.). Warning (tidak memblokir): `cutoff_after_pay_date` (absensi belum final saat gajian), `attendance_beyond_period` (jendela absensi melewati akhir periode).
 
 Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bulk`) menerima `schedule_id` (null = default); respons versi & daftar menambah `schedule_id` / `schedule_name`. Error: `INVALID_PAYROLL_SCHEDULE_ARGUMENT` (422), `INVALID_PAYROLL_PERIOD_STATE` (409).
 
