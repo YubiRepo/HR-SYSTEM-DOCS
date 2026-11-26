@@ -7,7 +7,7 @@ Kekurangan endpoint modul **Core HR** di [API docs](../api/README.md) yang ditem
 |---|---|---|---|
 | [CORE-1](#core-1) | Karyawan hanya bisa ubah kontak | P1 | Perlu keputusan |
 | [CORE-2](#core-2) | Karyawan belum bisa upload dokumen sendiri | P1 | Perlu keputusan |
-| [CORE-3](#core-3) | Belum ada endpoint `/me/` untuk kontrak, riwayat, work policy | P2 | Open |
+| [CORE-3](#core-3) | Belum ada endpoint `/me/` untuk kontrak, riwayat, work policy | P2 | `Done` |
 | [CORE-4](#core-4) | Perubahan rekening oleh karyawan butuh approval HR | P2 | Perlu keputusan |
 
 ---
@@ -28,11 +28,11 @@ Kekurangan endpoint modul **Core HR** di [API docs](../api/README.md) yang ditem
 - **Catatan BE:** —
 
 ### CORE-3
-**Belum ada endpoint `/me/` untuk kontrak, riwayat, work policy** · P2 · `Open`
+**Belum ada endpoint `/me/` untuk kontrak, riwayat, work policy** · P2 · `Done`
 
 - **Endpoint:** tersedia untuk admin: `GET /core-hr/employees/{id}/contracts`, `/history`, `/work-policies`, `/reporting-line`. Versi `/me/` belum ada.
 - **Usulan:** `GET /core-hr/me/contracts`, `/me/history`, `/me/work-policies`, `/me/reporting-line` (read-only).
-- **Catatan BE:** —
+- **Catatan BE:** semua tersedia (read-only, izin `employees:self` / `employees:read`): `GET /core-hr/me/history`, `/me/work-policies`, `/me/contracts` (sudah ada sebelumnya), dan `GET /core-hr/me/reporting-line?levels=` (ditambahkan 26 Nov 2026, Fase 2). Bentuk respons sama dengan versi `/employees/{id}/…`. Lihat [api/core-hr.md](../api/core-hr.md) §6.
 
 ### CORE-4
 **Perubahan rekening oleh karyawan butuh approval HR** · P2 · `Perlu keputusan`

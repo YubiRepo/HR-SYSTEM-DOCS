@@ -14,6 +14,8 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 | GET | `/attendance/me` | Kehadiran sendiri (catatan absen) | `attendance:self` |
 | GET | `/attendance/me/schedule` | **Jadwal sendiri** (shift ke depan) | `attendance:self` |
 | GET | `/attendance/me/today` | Jadwal & status hari ini | `attendance:self` |
+| GET | `/attendance/me/geofence` | Geofence efektif cabang sendiri (preview) | `attendance:self` |
+| GET | `/attendance/me/rules` | Attendance rule efektif cabang sendiri (bentuk sama dengan `GET /attendance/rules`; `data: null` bila belum ada rule) | `attendance:self` |
 | GET | `/attendance/records` | Daftar catatan (filter) | `attendance:read` |
 | POST | `/attendance/records` | Input manual (HR) | `attendance:write` |
 | POST | `/attendance/records/evaluate` | Evaluasi periode: `{date_from, date_to, branch_id?}` (maks 31 hari, s/d kemarin). Hari tanpa record diisi record `source=system` (absent, workday tertutup cuti, holiday, day_off); record system lama dihitung ulang; record ber-clock-in/manual/terkoreksi tidak disentuh. Response: ringkasan jumlah per status + yang di-skip | `attendance:write` |
@@ -120,14 +122,22 @@ Karyawan melihat **jadwal shift-nya sendiri** ke depan. Read-only.
 {
   "success": true,
   "data": [
-    { "date": "2026-01-15", "shift": { "name": "Reguler", "start": "08:00", "end": "17:00" }, "status": "scheduled" },
-    { "date": "2026-01-16", "shift": { "name": "Reguler", "start": "08:00", "end": "17:00" }, "status": "scheduled" },
-    { "date": "2026-01-17", "shift": null, "status": "day_off" },
-    { "date": "2026-01-18", "shift": null, "status": "holiday", "holiday_name": "Contoh Libur" }
+    {
+      "date": "2026-01-15", "shift_id": "…", "duty_call": false, "source": "fixed", "is_holiday": false,
+      "shift": { "name": "Reguler", "code": "REG", "color": "#2563eb", "start_time": "08:00", "end_time": "17:00",
+                 "cross_midnight": false, "breaks": [], "late_tolerance_min": 10 }
+    },
+    { "date": "2026-01-17", "duty_call": false, "source": "off", "is_holiday": false },
+    { "date": "2026-01-18", "shift_id": "…", "shift": { "…": "…" }, "duty_call": false, "source": "fixed",
+      "is_holiday": true, "holiday_name": "Contoh Libur" }
   ]
 }
 ```
-Menampilkan shift per tanggal, hari libur, dan day-off — agar karyawan tahu kapan & jam berapa harus masuk.
+Menampilkan shift per tanggal (resolusi sama dengan clock-in: baris jadwal → pola *fixed* → tanpa shift), hari libur, dan day-off — agar karyawan tahu kapan & jam berapa harus masuk.
+- `source`: `rotation` / `manual` / `duty_call` (baris jadwal), `fixed` (pola), `off` / `none`.
+- `shift`: ringkasan shift (`name`, `code`, `color`, `start_time`, `end_time`, `cross_midnight`, `breaks`, `late_tolerance_min`); tidak ada bila tanpa shift.
+- `is_holiday` / `holiday_name`: libur `is_observed` milik tenant atau cabang karyawan. Hari libur tetap membawa `shift` terjadwal; clock-in di hari itu mengikuti aturan hari libur (§2c `day_kind: holiday`).
+- Rentang maks 62 hari.
 
 ---
 

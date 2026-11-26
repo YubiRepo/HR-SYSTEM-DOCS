@@ -52,6 +52,8 @@ Berisi (1) step `pending` yang di-assign ke pemanggil, dan (2) step `any_approve
 
 `summary` disediakan modul pemilik lewat `RegisterDocument`; UI inbox cukup merender field dan memanggil path-nya (body `{ "note": "..." }`).
 
+Document type terdaftar: `leave_request`, `payroll_run`, `overtime_request`, `attendance_correction` (dua terakhir dirutekan hanya bila tenant punya policy untuknya). Contoh item untuk keempatnya: [`mobile/api/approval.md`](../mobile/api/approval.md).
+
 ## Tampilan approver — `GET /requests/{type}/{documentId}`
 
 Akses **berdasarkan penugasan, bukan permission modul** (tidak perlu `leave:read`, `payroll:read`, dsb.). Diizinkan bila pemanggil:

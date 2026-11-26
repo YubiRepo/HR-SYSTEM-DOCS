@@ -61,12 +61,13 @@ GET /core-hr/regions/villages?district=31.71.01
 ```
 Hanya karyawan aktif yang ditampilkan, dengan `per_page` maksimal 50. Data pribadi (NIK, alamat, kontak pribadi) tidak pernah muncul di sini.
 
-## 6. Riwayat, Work Policy & Kontrak Saya
+## 6. Riwayat, Work Policy, Kontrak & Atasan Saya
 **Permission:** `employees:self` atau `employees:read`. Read-only, selalu untuk karyawan milik user login (tanpa `{id}`).
 
 - `GET /core-hr/me/history` — bentuk sama dengan `GET /employees/{id}/history` (`assignments`; riwayat status ada di `employee_status` tiap entri). Tiap assignment juga membawa `branch_name`, `org_unit_name`, `position_name` (opsional; kosong bila lookup gagal), karena karyawan tidak punya izin memanggil endpoint lookup branch/org unit/posisi.
 - `GET /core-hr/me/work-policies` — bentuk sama dengan `GET /employees/{id}/work-policies`, plus `pattern_name` (opsional) untuk nama schedule pattern dari modul attendance.
 - `GET /core-hr/me/contracts?status=&type=&page=1&per_page=20` — bentuk dan filter sama dengan `GET /employees/{id}/contracts` (paginated, `type_name` sebagai label).
+- `GET /core-hr/me/reporting-line?levels=1` — atasan efektif sendiri, bentuk sama dengan `GET /employees/{id}/reporting-line` (`levels` 1–10, default 1). Tiap item: `level`, `employee_id`, `full_name`, `user_id`, `has_account`, `source` (`manager_id` / `org_unit_head`). Daftar kosong = atasan tidak ditemukan.
 
 ---
 

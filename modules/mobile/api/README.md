@@ -20,6 +20,7 @@ Subset endpoint HRMS yang dipakai aplikasi mobile. Mobile adalah **klien** dari 
 | [`attendance.md`](./attendance.md) | Clock in/out, geofence, hari ini, jadwal, koreksi, lembur | Tersedia |
 | [`leave.md`](./leave.md) | Saldo, ajuan, lampiran, riwayat, batal, approval | Tersedia |
 | [`payroll.md`](./payroll.md) | Slip gaji (list, detail, PDF), approve run | Tersedia (pinjaman belum) |
+| [`approval.md`](./approval.md) | Inbox persetujuan lintas modul (cuti, lembur, koreksi, payroll run), detail approver | Tersedia |
 | [`core-hr.md`](./core-hr.md) | Profil, update kontak, dokumen, wilayah, direktori | Tersedia |
 | [`performance.md`](./performance.md) | Goal, review, 360 | **Belum tersedia di API** |
 | [`recruitment.md`](./recruitment.md) | Kandidat, evaluasi, offer | **Belum tersedia di API** |
@@ -43,7 +44,7 @@ Approval memakai permission yang sudah ada (`attendance:approve`, `leave:approve
 
 ## Belum tersedia (menyusul)
 
-- **Fitur tim untuk manajer:** kehadiran tim hari ini, inbox approval, filter tim di kalender cuti, dan pembatasan approve hanya untuk bawahan langsung.
+- **Fitur tim untuk manajer:** kehadiran tim hari ini, filter tim di kalender cuti, dan pembatasan approve hanya untuk bawahan langsung.
 - **Notifikasi push** (registrasi device token / FCM).
 - **Pinjaman & cicilan** (Payroll).
 - Modul **Performance** dan **Recruitment**.

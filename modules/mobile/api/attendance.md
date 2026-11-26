@@ -28,6 +28,27 @@ Endpoint Attendance untuk aplikasi mobile. Prefix `/api/v1/attendance`, envelope
 - `accuracy_threshold_m` bisa tidak ada (= akurasi tidak dicek). Bila akurasi GPS lebih buruk dari nilai ini, minta user menunggu sinyal.
 - Endpoint ini **hanya untuk preview**. Keputusan akhir tetap di server saat clock-in/out.
 
+### 1a. Aturan Absensi Saya — `GET /attendance/me/rules`
+**Permission:** `attendance:self`. Aturan absensi **utuh** yang berlaku untuk karyawan (rule cabang, kalau tidak ada rule default tenant), dengan bentuk sama seperti `GET /attendance/rules` admin. Karyawan tidak bisa memilih cabang.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "…", "tenant_id": "…", "branch_id": "…", "branch_name": "Banyumas",
+    "ot_requires_approval": true, "ot_clock_in_lead_min": 60,
+    "geofence_enabled": true, "geofence_radius_m": 100,
+    "office_lat": -6.200378, "office_lng": 106.815681, "geofence_accuracy_threshold_m": 50,
+    "auto_clockout_enabled": false, "forgot_clockout_cap_hours": 23,
+    "clockout_reminder_min": 30,
+    "created_at": "…", "updated_at": "…"
+  }
+}
+```
+- `data: null` bila tenant belum punya aturan sama sekali → anggap tanpa pembatasan.
+- `branch_id` / `branch_name` kosong bila aturan berasal dari default tenant.
+- Dipakai untuk: pengingat absen pulang (`clockout_reminder_min` menit setelah shift selesai), info absen pulang otomatis (`auto_clockout_enabled`, `forgot_clockout_cap_hours`), jendela absen masuk lembur (`ot_clock_in_lead_min` sebelum lembur mulai), dan geofence. `/me/geofence` tetap tersedia.
+
 ## 2. Clock In / Clock Out — `POST /attendance/clock-in` · `POST /attendance/clock-out`
 **Permission:** `attendance:self`. Response clock-in `201`, clock-out `200`.
 
@@ -77,11 +98,29 @@ Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`,
   }
 }
 ```
-- `day_kind`: `workday` / `day_off` / `holiday`. Cuti **bukan** jenis hari: hari kerja yang tertutup cuti tetap `workday`. Untuk menampilkan info cuti hari ini, panggil `GET /leave/me/requests?status=approved` (lihat [leave.md](./leave.md) §5) lalu cari ajuan yang `date_from` ≤ hari ini ≤ `date_to` (endpoint itu belum punya filter tanggal).
+- `day_kind`: `workday` / `day_off` / `holiday`. Cuti **bukan** jenis hari: hari kerja yang tertutup cuti tetap `workday`. Untuk menampilkan info cuti hari ini, panggil `GET /leave/me/requests?status=approved` (lihat [leave.md](./leave.md) §5) dengan `date_from` = `date_to` = hari ini (filter overlap rentang cuti).
 - Di hari libur, `overtime_required: true` dan `overtime_access` berisi dokumen lembur yang membuka hari itu (`source`, `label`, `start`, `end`). Bila `overtime_access` tidak ada, clock-in akan ditolak.
 
 ## 4. Jadwal Saya — `GET /attendance/me/schedule?date_from=2026-09-01&date_to=2026-09-07`
-**Permission:** `attendance:self`. Mengembalikan satu baris per hari: `date`, `shift_id`, `duty_call`, `source`.
+**Permission:** `attendance:self`. Mengembalikan satu baris per hari (maks 62 hari):
+```json
+{
+  "date": "2026-11-26",
+  "shift_id": "…",
+  "shift": {
+    "name": "Normal", "code": "N", "color": "#2563eb",
+    "start_time": "08:00", "end_time": "17:00", "cross_midnight": false,
+    "breaks": [{ "type": "meal", "start": "12:00", "end": "13:00", "paid": false, "flexible": false, "duration_minutes": 0 }],
+    "late_tolerance_min": 10
+  },
+  "duty_call": false,
+  "source": "fixed",
+  "is_holiday": true,
+  "holiday_name": "Bos Nikah Lagi"
+}
+```
+- `shift` adalah ringkasan `shift_id` (tidak perlu memanggil `/attendance/shifts`); tidak ada bila hari itu tanpa shift.
+- `is_holiday` / `holiday_name`: libur yang berlaku (`is_observed`) untuk tenant atau cabang karyawan — sama dengan yang dipakai clock-in. Di hari libur `shift` tetap ditampilkan bila terjadwal, tetapi clock-in mengikuti aturan hari libur (perlu lembur, lihat §3).
 
 ## 5. Riwayat Absen Saya — `GET /attendance/me?date_from=…&date_to=…`
 **Permission:** `attendance:self`.
@@ -111,7 +150,9 @@ Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`,
 - Koreksi: `GET /attendance/corrections`, `POST /attendance/corrections/{id}/approve` · `/reject`, body `{ "notes": "…" }`.
 - Lembur: `GET /attendance/overtime`, `POST /attendance/overtime/{id}/approve` · `/reject`, body `{ "approved_end_at": null, "note": "…" }`. Approver tidak boleh menyetujui ajuannya sendiri (`403 OVERTIME_SELF_APPROVAL`).
 
-> **Menyusul:** kehadiran tim hari ini, inbox "menunggu saya", dan pembatasan approve hanya untuk bawahan langsung.
+> Inbox "menunggu saya" lintas modul: [approval.md](./approval.md). Lembur & koreksi masuk inbox bila tenant punya approval policy untuk keduanya; tanpa policy, pakai daftar `?status=pending` di atas.
+>
+> **Menyusul:** kehadiran tim hari ini.
 
 ---
 

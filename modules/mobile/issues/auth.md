@@ -5,25 +5,25 @@ Kekurangan endpoint modul **Auth** di [API docs](../api/README.md) yang ditemuka
 
 | ID | Judul | Prioritas | Status |
 |---|---|---|---|
-| [AUTH-1](#auth-1) | `PATCH /auth/me` tidak memvalidasi format HP & username | P2 | Open |
-| [AUTH-2](#auth-2) | Confirm avatar dengan key tidak valid membalas `500` | P3 | Open |
+| [AUTH-1](#auth-1) | `PATCH /auth/me` tidak memvalidasi format HP & username | P2 | `Done` |
+| [AUTH-2](#auth-2) | Confirm avatar dengan key tidak valid membalas `500` | P3 | `Done` |
 | [AUTH-3](#auth-3) | Karyawan tidak bisa cek ketersediaan username / HP | P2 | `Done` |
 
 ---
 
 ### AUTH-1
-**`PATCH /auth/me` tidak memvalidasi format HP & username** · P2 · `Open`
+**`PATCH /auth/me` tidak memvalidasi format HP & username** · P2 · `Done`
 
 - **Endpoint:** `PATCH /auth/me` (Update My Profile)
 - **Temuan:** input salah (mis. HP bukan E.164) ikut tersimpan. Validasi sementara hanya ada di app.
-- **Catatan BE:** —
+- **Catatan BE:** diperbaiki 26 Nov 2026 (Fase 3). `PATCH /auth/me` (dan `PATCH /auth/users/{id}/identifiers` admin, yang punya celah sama) kini memakai aturan registrasi: `phone` E.164, `username` `^[a-zA-Z0-9_.]{3,30}$` → salah format `400 INVALID_IDENTIFIER`. Hanya divalidasi bila nilainya **berubah**, supaya data lama yang formatnya tidak valid tidak menghalangi simpan field lain. Lihat [api/auth.md](../api/auth.md) §6a.
 
 ### AUTH-2
-**Confirm avatar dengan key tidak valid membalas `500`** · P3 · `Open`
+**Confirm avatar dengan key tidak valid membalas `500`** · P3 · `Done`
 
 - **Endpoint:** `POST /auth/me/avatar/confirm`
 - **Harapan:** `4xx` (mis. `400 INVALID_ARGUMENT`), bukan `500`.
-- **Catatan BE:** —
+- **Catatan BE:** diperbaiki 26 Nov 2026 (Fase 3). Key di luar `pending/avatars/` atau objek yang tidak ada di storage (belum di-upload / kedaluwarsa / key karangan) → `422 VALIDATION_ERROR` ("upload the file again"). Gangguan storage tetap `500`. Storage kini membedakan objek tidak ada (`storage.ErrUploadNotFound`) dari error koneksi.
 
 ### AUTH-3
 **Karyawan tidak bisa cek ketersediaan username / HP** · P2 · `Done`

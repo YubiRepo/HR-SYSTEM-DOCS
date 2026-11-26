@@ -18,4 +18,6 @@ Kekurangan / ketidaksesuaian API yang ditemukan saat integrasi aplikasi mobile, 
 | [Payroll](./payroll.md) | 1 | PAY-1 |
 | [Platform](./platform.md) | 2 | PLAT-1 … PLAT-2 |
 
+> **Urutan pengerjaan bertahap:** lihat [Plan Pengerjaan](./plan.md).
+
 > Cakupan: hanya endpoint yang ada di dokumentasi API. Fitur app yang memakai endpoint di luar dokumentasi diperbaiki di sisi app, bukan dicatat sebagai issue backend.

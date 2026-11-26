@@ -45,6 +45,14 @@ Response: token pair seperti §1a.
 ## 6. Akun Saya — `GET /auth/me`
 Berisi `id`, `email`, `phone`, `username`, `tenant_id`, `roles`, `status`, `avatar_url`. Field `employee_id` **tidak** ada di sini; data karyawan diambil dari `GET /core-hr/me/employee` (lihat [`core-hr.md`](./core-hr.md)).
 
+### 6a. Ubah Akun — `PATCH /auth/me`
+Body opsional `{ "email", "phone", "username" }`. Cek ketersediaan dulu dengan `GET /auth/me/identifiers/availability`.
+- Format divalidasi untuk nilai yang **berubah**: `phone` E.164 (`+6281234567890`), `username` 3–30 karakter huruf/angka/`_`/`.`. Salah format → `400 INVALID_IDENTIFIER`. Nilai lama yang tidak diubah tidak divalidasi ulang.
+- Duplikat → `409 USERNAME_ALREADY_EXISTS` / `PHONE_ALREADY_EXISTS` / `EMAIL_ALREADY_EXISTS`.
+
+### 6b. Foto Profil — `POST /auth/me/avatar/presign` → PUT file → `POST /auth/me/avatar/confirm`
+Body confirm `{ "key": "<key dari presign>" }`. Key di luar `pending/avatars/` atau file yang belum/tidak ter-upload (atau sudah kedaluwarsa) → `422 VALIDATION_ERROR`; ulangi dari presign.
+
 ## 7. Permission untuk Menu — `GET /rbac/users/{user_id}/permissions`
 User boleh memanggil endpoint ini untuk dirinya sendiri (`user_id` diambil dari `/auth/me`). Hasilnya dipakai app untuk menampilkan atau menyembunyikan menu, misalnya menu approval hanya bila user memegang `leave:approve`.
 

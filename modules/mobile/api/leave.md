@@ -56,8 +56,8 @@ Response `201`:
 ```
 **Error:** `422 INSUFFICIENT_BALANCE`, `422 NOT_ELIGIBLE`, `422 DOCUMENT_REQUIRED`, `409 DATE_CONFLICT`. `422 VALIDATION` muncul bila `document_ref` adalah upload milik orang lain atau file belum di-upload.
 
-## 5. Riwayat Saya — `GET /leave/me/requests?status=pending`
-**Permission:** `leave:self`. Bila ajuan punya lampiran hasil upload, response menyertakan `document_url`: link unduh sementara yang berlaku 15 menit.
+## 5. Riwayat Saya — `GET /leave/me/requests?status=pending&date_from=&date_to=`
+**Permission:** `leave:self`. Semua filter opsional. `date_from` / `date_to` (`YYYY-MM-DD`) menyaring ajuan yang rentangnya **overlap** dengan jendela itu (sama dengan `GET /leave/requests`), mis. cek cuti hari ini: `?status=approved&date_from=2026-11-26&date_to=2026-11-26`. Format salah → `VALIDATION_ERROR`. Bila ajuan punya lampiran hasil upload, response menyertakan `document_url`: link unduh sementara yang berlaku 15 menit.
 
 ## 6. Batalkan — `POST /leave/requests/{id}/cancel`
 **Permission:** `leave:self` (hanya ajuan sendiri). Status menjadi `cancelled` dan saldo dikembalikan.
@@ -71,4 +71,6 @@ Response `201`:
 ## 8. Kalender Cuti — `GET /leave/calendar?month=2026-09`
 **Permission:** `leave:read`. Saat ini mengembalikan seluruh cuti tenant pada bulan itu; parameter `team` belum didukung.
 
-> **Menyusul:** inbox "menunggu persetujuan saya" dan filter kalender per tim.
+> Inbox "menunggu persetujuan saya": [approval.md](./approval.md).
+>
+> **Menyusul:** filter kalender per tim.
