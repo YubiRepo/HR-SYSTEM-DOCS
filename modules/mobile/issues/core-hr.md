@@ -20,6 +20,7 @@ Kekurangan endpoint modul **Core HR** di [API docs](../api/README.md) yang ditem
 - **Terkait:** CORE-4 (rekening).
 - **Keputusan:** (26 Nov 2026, sementara) karyawan boleh mengubah **semua** data dirinya lewat `PATCH /core-hr/me/employee`, **kecuali data yang terkait mutasi**: `branch_id`, `org_unit_id`, `position_id`, job grade, pola kerja, dan status kepegawaian. Data ini sejak awal hanya berubah lewat mutation request. Kebijakan lebih ketat (approval) menyusul. Dikonfirmasi juga dikecualikan: `employee_number`, `manager_id` (atasan diatur HR), `custom_fields`, dan catatan milik HR `appraisal_records`, `reward_warning_records`.
 - **Catatan BE:** diimplementasikan 26 Nov 2026 (Fase 4). `PATCH /core-hr/me/employee` menerima body `PATCH /employees/{id}` dikurangi `employeedto.SelfServiceDeniedFields` (`branch_id`, `org_unit_id`, `position_id`, `manager_id`, `custom_fields`, `appraisal_records`, `reward_warning_records`). Field ditolak / tidak dikenal → `422 VALIDATION_ERROR` untuk seluruh request. Termasuk `bank_accounts` (sementara, CORE-4). Test `TestSelfServiceFieldsAreDecided` memaksa setiap field baru di DTO admin diputuskan: boleh diubah karyawan atau masuk daftar tolak. Lihat [api/core-hr.md](../api/core-hr.md) §2.
+- **Dipakai app (26 Nov 2026):** sheet edit biodata (pribadi, keluarga, payroll) memakai `PATCH /core-hr/me/employee`. Dicek ke server lokal: field self-service diterima, `manager_id` ditolak `422` dengan nama field.
 
 ### CORE-2
 **Karyawan belum bisa upload dokumen sendiri** · P1 · `Done`
@@ -28,6 +29,7 @@ Kekurangan endpoint modul **Core HR** di [API docs](../api/README.md) yang ditem
 - **Usulan:** `POST /core-hr/me/documents/presign` + `POST /core-hr/me/documents` dengan body yang sama. UI app sudah siap.
 - **Keputusan:** (26 Nov 2026) **boleh**, file langsung tersimpan tanpa verifikasi HR, sama seperti upload oleh admin. Implementasi: `POST /core-hr/me/documents/presign` + `POST /core-hr/me/documents`.
 - **Catatan BE:** diimplementasikan 26 Nov 2026 (Fase 4): `POST /core-hr/me/documents/presign` + `POST /core-hr/me/documents` (`employees:self`), memakai use case admin. Sekaligus diperketat untuk admin & self: `key` harus berawalan `pending/employee-documents/{employee_id}/` (sebelumnya cukup `pending/`, sehingga upload milik orang/fitur lain bisa diklaim), dan file yang tidak ada → `422 VALIDATION_ERROR` (sebelumnya `500`). Lihat [api/core-hr.md](../api/core-hr.md) §3a.
+- **Dipakai app (26 Nov 2026):** upload dokumen di Biodata memakai presign → PUT → `POST /core-hr/me/documents`. Presign dicek ke server lokal (key di `pending/employee-documents/{employee_id}/`).
 
 ### CORE-3
 **Belum ada endpoint `/me/` untuk kontrak, riwayat, work policy** · P2 · `Done`
@@ -35,6 +37,7 @@ Kekurangan endpoint modul **Core HR** di [API docs](../api/README.md) yang ditem
 - **Endpoint:** tersedia untuk admin: `GET /core-hr/employees/{id}/contracts`, `/history`, `/work-policies`, `/reporting-line`. Versi `/me/` belum ada.
 - **Usulan:** `GET /core-hr/me/contracts`, `/me/history`, `/me/work-policies`, `/me/reporting-line` (read-only).
 - **Catatan BE:** semua tersedia (read-only, izin `employees:self` / `employees:read`): `GET /core-hr/me/history`, `/me/work-policies`, `/me/contracts` (sudah ada sebelumnya), dan `GET /core-hr/me/reporting-line?levels=` (ditambahkan 26 Nov 2026, Fase 2). Bentuk respons sama dengan versi `/employees/{id}/…`. Lihat [api/core-hr.md](../api/core-hr.md) §6.
+- **Dipakai app (26 Nov 2026):** Riwayat Karier menampilkan bagian **Atasan** dari `GET /core-hr/me/reporting-line?levels=3` (atasan langsung dulu, kepala unit ditandai). Akun Rizky di server lokal masih `[]` (belum ada atasan / kepala unit).
 
 ### CORE-4
 **Perubahan rekening oleh karyawan butuh approval HR** · P2 · `Perlu keputusan`
