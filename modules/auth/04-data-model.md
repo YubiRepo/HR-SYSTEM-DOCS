@@ -42,6 +42,7 @@ Model data konseptual (stack-agnostic). Tipe bersifat generik; sesuaikan dengan 
 | `phone` | string | Nullable; format E.164; unik global bila ada |
 | `username` | string | Nullable; unik global (tidak peka huruf besar/kecil) bila ada |
 | `last_tenant_id` | string | Tenant terakhir yang dimasuki; default saat login |
+| `display_name` | string (nullable, ≤150) | Nama milik akun, terpisah dari `full_name` employee (nama HR resmi, per tenant). Diisi sekali saat masih kosong dari `admin.full_name` provisioning tenant atau dari `full_name` employee saat akun di-link; tidak pernah ditimpa otomatis setelah itu. User mengubahnya sendiri via `PATCH /auth/me` |
 | `password_hash` | string | Hash (mis. Argon2/bcrypt); null bila SSO-only |
 | `email_verified` | boolean | Status verifikasi email |
 | `phone_verified` | boolean | Status verifikasi telepon |

@@ -15,6 +15,7 @@ Semua endpoint mengikuti envelope response standar HRMS (`success` + `data`/`err
 | POST | `/auth/token/introspect` | Cek status token | Service |
 | POST | `/auth/token/revoke` | Cabut token spesifik | Bearer |
 | GET | `/auth/me` | Profil & klaim pengguna aktif | Bearer |
+| PATCH | `/auth/me` | Ubah `display_name` dan/atau identifier sendiri (`email`/`phone`/`username`, dicek unik) | Bearer |
 | POST | `/auth/password/forgot` | Minta reset password | Publik |
 | POST | `/auth/password/reset` | Setel ulang password via token | Publik |
 | POST | `/auth/password/change` | Ganti password (login) | Bearer |
@@ -173,6 +174,8 @@ Untuk resource server memeriksa token opaque / status revocation.
     "email": "budi@example.com",
     "phone": "+6281234567890",
     "username": "budi.santoso",
+    "display_name": "Budi",
+    "name": "Budi Santoso",
     "tenant_id": "tenant_01H8...",
     "roles": ["hr_admin"],
     "scope": ["employees:read", "employees:write"],
@@ -181,6 +184,9 @@ Untuk resource server memeriksa token opaque / status revocation.
   }
 }
 ```
+
+- `display_name` — nama milik akun (kolom `users.display_name`), bisa diubah lewat `PATCH /auth/me {"display_name": "..."}` (maks 150 karakter; `""` mengosongkan).
+- `name` — nama yang ditampilkan untuk sesi ini, di-resolve server: `full_name` employee yang ter-link ke akun di tenant sesi → `display_name` → `username` → `email`. Nama HR resmi tetap milik employee (core-hr, per tenant) dan tidak disinkronkan ke akun.
 
 ---
 

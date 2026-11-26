@@ -49,6 +49,7 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
   "start_trial": true
 }
 ```
+`admin.full_name` disimpan sebagai `display_name` akun admin (hanya bila akun belum punya nama — email yang sudah terdaftar tetap memakai namanya sendiri).
 **Response `201 Created`**
 ```json
 {
