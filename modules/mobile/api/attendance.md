@@ -48,6 +48,7 @@ Endpoint Attendance untuk aplikasi mobile. Prefix `/api/v1/attendance`, envelope
 - `data: null` bila tenant belum punya aturan sama sekali → anggap tanpa pembatasan.
 - `branch_id` / `branch_name` kosong bila aturan berasal dari default tenant.
 - Dipakai untuk: pengingat absen pulang (`clockout_reminder_min` menit setelah shift selesai), info absen pulang otomatis (`auto_clockout_enabled`, `forgot_clockout_cap_hours`), jendela absen masuk lembur (`ot_clock_in_lead_min` sebelum lembur mulai), dan geofence. `/me/geofence` tetap tersedia.
+- **WiFi kantor:** `wifi_enabled`, `wifi_networks[]` (`label`, `ssid`, `bssid`), `location_match_mode` (`all`/`any`) untuk preview WiFi kantor. Lihat [`attendance/14-office-wifi.md`](../../attendance/14-office-wifi.md) §6.
 
 ## 2. Clock In / Clock Out — `POST /attendance/clock-in` · `POST /attendance/clock-out`
 **Permission:** `attendance:self`. Response clock-in `201`, clock-out `200`.
@@ -68,6 +69,7 @@ Endpoint Attendance untuk aplikasi mobile. Prefix `/api/v1/attendance`, envelope
 - `lat`/`lng`/`accuracy_m`: kirim bila geofence aktif.
 - `is_mock`: flag mock-location dari OS. Bila `true`, request ditolak.
 - `photo_ref`: referensi foto (opsional).
+- `wifi_ssid` / `wifi_bssid`: WiFi yang sedang tersambung, untuk rule yang mewajibkan WiFi kantor. Jangan kirim nilai placeholder (`<unknown ssid>`, `02:00:00:00:00:00`). Lihat [`attendance/14-office-wifi.md`](../../attendance/14-office-wifi.md) §4 dan §6.
 
 Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`, `late_minutes`, `in_within_geofence`, `in_distance_m`, dll.
 
@@ -81,6 +83,7 @@ Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`,
 | `422 MOCK_LOCATION_DETECTED` | `is_mock: true` |
 | `422 GPS_ACCURACY_TOO_LOW` | `accuracy_m` lebih besar dari `geofence_accuracy_threshold_m` |
 | `422 OVERTIME_NOT_APPROVED` / `422 OUTSIDE_OVERTIME_WINDOW` | Hari libur tanpa dokumen lembur / terlalu awal |
+| `422 WIFI_NOT_CONNECTED` · `OUTSIDE_OFFICE_WIFI` · `WIFI_UNVERIFIABLE` · `OUTSIDE_WORK_AREA` | WiFi kantor wajib tidak terpenuhi. Pesan per kode di [`14-office-wifi.md`](../../attendance/14-office-wifi.md) §4.4 |
 
 ## 3. Ringkasan Hari Ini — `GET /attendance/me/today`
 **Permission:** `attendance:self`.

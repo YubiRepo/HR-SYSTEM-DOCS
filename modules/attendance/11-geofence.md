@@ -158,6 +158,7 @@ deteksi fake:
 - **Method config** (`09-method-config.md`): `require_geofence` diaktifkan per tenant/cabang.
 - **Branch** (`platform/tenant`): menyimpan `lat`/`lng` titik pusat.
 - **Rules**: `geofence_radius_m`, `geofence_enabled`.
+- **WiFi kantor** (`14-office-wifi.md`): lapisan lokasi kedua. HR memilih geofence **dan** WiFi wajib (`all`) atau salah satu cukup (`any`).
 
 ---
 
