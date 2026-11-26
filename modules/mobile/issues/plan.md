@@ -23,17 +23,17 @@ Ringkasan semua issue di [`issues/`](./README.md) dan urutan pengerjaannya secar
 | [AUTH-2](./auth.md#auth-2) | Confirm avatar key salah → `500` | P3 | Done | Diperbaiki (Fase 3) | 3 ✅ |
 | [APR-1](./approval.md#apr-1) | Contoh respons inbox + seed | P3 | Done | Docs `api/approval.md` (seed tidak dibuat) | 3 ✅ |
 | [APR-2](./approval.md#apr-2) | Lembur & koreksi masuk engine approval | P2 | Done | Sudah (`97b061c`); butuh policy + backfill, belum diuji ke server | 3 ✅ |
-| [CORE-1](./core-hr.md#core-1) | Karyawan hanya bisa ubah kontak | P1 | Perlu keputusan | — | 0 → 4 |
-| [CORE-2](./core-hr.md#core-2) | Karyawan upload dokumen sendiri | P1 | Perlu keputusan | — | 0 → 4 |
-| [CORE-4](./core-hr.md#core-4) | Ubah rekening butuh approval HR | P2 | Perlu keputusan | — | 0 → 4 |
-| [ATT-8](./attendance.md#att-8) | Clock-in saat cuti approved | P2 | Perlu keputusan | — | 0 → 4 |
+| [CORE-1](./core-hr.md#core-1) | Karyawan hanya bisa ubah kontak | P1 | Done | Diperbaiki (Fase 4) | 4 ✅ |
+| [CORE-2](./core-hr.md#core-2) | Karyawan upload dokumen sendiri | P1 | Done | Diperbaiki (Fase 4) | 4 ✅ |
+| [CORE-4](./core-hr.md#core-4) | Ubah rekening butuh approval HR | P2 | Perlu keputusan (sementara: terbuka tanpa approval) | — | 0 |
+| [ATT-8](./attendance.md#att-8) | Clock-in saat cuti approved | P2 | Done | Diperbaiki (Fase 4) | 4 ✅ |
 | [PLAT-1](./platform.md#plat-1) | Trial habis → semua tulis ditolak | P2 | Perlu keputusan | — | 0 → 4 |
 | [PLAT-2](./platform.md#plat-2) | Perpanjang trial tanpa jadi `active` | P3 | Perlu keputusan | — | 0 → 4 |
 | [PAY-1](./payroll.md#pay-1) | API pinjaman & kasbon | P2 | Perlu keputusan | — | 0 → 5 |
 | [AUTH-3](./auth.md#auth-3) | Cek ketersediaan username / HP | P2 | Done | Done | — |
 | [ATT-4](./attendance.md#att-4) | Jadwal tandai hari cuti | P3 | Done | Done (via Leave) | — |
 
-**Total:** 21 issue · 14 Done · 7 perlu keputusan · 0 teknis tersisa. Sisanya menunggu keputusan produk (Fase 0).
+**Total:** 21 issue · 17 Done · 4 masih perlu keputusan (CORE-4, PLAT-1, PLAT-2, PAY-1).
 
 ---
 
@@ -41,11 +41,12 @@ Ringkasan semua issue di [`issues/`](./README.md) dan urutan pengerjaannya secar
 
 Tidak ada kode sebelum diputuskan. Hasil keputusan ditulis di **Catatan BE** masing-masing issue, lalu item pindah ke Fase 4/5.
 
-- [ ] **CORE-1 + CORE-4** (diputuskan bersama): field apa saja yang boleh diubah karyawan via `PATCH /core-hr/me/employee`? Apakah `bank_accounts` ikut dibuka, dan kalau ya: lewat approval HR atau cukup notifikasi?
-- [ ] **CORE-2**: karyawan boleh upload dokumen sendiri? Jenis dokumen apa saja, perlu verifikasi HR?
-- [ ] **ATT-8**: clock-in saat cuti full-day approved ditolak (`ON_LEAVE`) atau diterima? Kalau diterima, apa yang terjadi dengan saldo cuti hari itu?
-- [ ] **PLAT-1**: (a) absen dikecualikan dari read-only selama grace? (b) notifikasi H-7 / H-1 ke tenant admin? (c) plan khusus untuk tenant demo?
-- [ ] **PLAT-2**: perlu opsi *extend trial* yang tetap `trialing`?
+- [x] **CORE-1** (26 Nov, sementara): semua data diri boleh diubah karyawan **kecuali data terkait mutasi** (cabang, org unit, posisi, job grade, pola kerja, status kepegawaian). Detail & usulan pengecualian tambahan di issue.
+- [ ] **CORE-4**: belum diatur. Sementara `bank_accounts` ikut terbuka tanpa approval/notifikasi; dibahas lagi nanti.
+- [x] **CORE-2** (26 Nov): boleh, langsung tersimpan tanpa verifikasi HR.
+- [x] **ATT-8** (26 Nov): tolak dengan `ON_LEAVE`; karyawan membatalkan cuti dulu bila masuk kerja.
+- [ ] **PLAT-1**: belum diputuskan (dicatat 26 Nov). Opsi: notifikasi H-7/H-1, absen saat grace, plan demo.
+- [ ] **PLAT-2**: belum diputuskan (dicatat 26 Nov). Opsi: endpoint *extend trial*.
 - [ ] **PAY-1**: pinjaman/kasbon masuk roadmap Payroll?
 
 ---
@@ -99,14 +100,16 @@ Fokus: kalender jadwal di app benar tanpa banyak panggilan tambahan.
 
 ## Fase 4 — Implementasi Hasil Keputusan
 
+> **CORE-1, CORE-2, ATT-8 selesai 26 Nov 2026** (belum di-commit saat ditulis). Sisa Fase 4 menunggu keputusan CORE-4, PLAT-1, PLAT-2.
+
 Diisi setelah Fase 0. Perkiraan bentuk kerja bila disetujui:
 
-- [ ] **CORE-1** — perluas `PATCH /core-hr/me/employee` ke field pribadi, keluarga & fisik, NPWP (key sama dengan `PATCH /core-hr/employees/{id}`).
-- [ ] **CORE-4** — `bank_accounts` lewat dokumen approval baru (mis. `employee_bank_change`) di engine approval, atau notifikasi ke HR, sesuai keputusan.
-- [ ] **CORE-2** — `POST /core-hr/me/documents/presign` + `POST /core-hr/me/documents` (body sama dengan route admin).
-- [ ] **ATT-8** — tolak clock-in dengan error `ON_LEAVE` di `ClockInUseCase.Execute`, atau dokumentasikan perilaku "boleh masuk" beserta efek ke saldo cuti.
-- [ ] **PLAT-1** — pengecualian absen saat grace dan/atau job notifikasi H-7 / H-1, sesuai keputusan.
-- [ ] **PLAT-2** — opsi *extend trial* (`trial_ends_at` baru, status tetap `trialing`).
+- [x] **CORE-1** — perluas `PATCH /core-hr/me/employee` ke semua field `PATCH /core-hr/employees/{id}` **kecuali** field mutasi (`branch_id`, `org_unit_id`, `position_id`) dan usulan pengecualian lain di issue (`manager_id`, `employee_number`, `custom_fields`, `appraisal_records`, `reward_warning_records`). Termasuk `bank_accounts` (sementara, lihat CORE-4).
+- [ ] **CORE-4** — *(menunggu keputusan)* `bank_accounts` lewat approval HR atau notifikasi.
+- [x] **CORE-2** — `POST /core-hr/me/documents/presign` + `POST /core-hr/me/documents` (body sama dengan route admin).
+- [x] **ATT-8** — tolak clock-in dengan error `ON_LEAVE` di `ClockInUseCase.Execute` bila cuti full-day approved (half-day tetap boleh).
+- [ ] **PLAT-1** — *(menunggu keputusan)* pengecualian absen saat grace dan/atau job notifikasi H-7 / H-1.
+- [ ] **PLAT-2** — *(menunggu keputusan)* opsi *extend trial* (`trial_ends_at` baru, status tetap `trialing`).
 
 ---
 

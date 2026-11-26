@@ -75,6 +75,7 @@ Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`,
 |---|---|
 | `409 ALREADY_CLOCKED_IN` / `409 NOT_CLOCKED_IN` | Sudah clock-in / belum clock-in |
 | `422 NO_SCHEDULE` | Tidak ada shift hari ini |
+| `409 ON_LEAVE` | Sedang cuti seharian (approved). Batalkan cuti dulu bila masuk kerja. Cuti setengah hari tetap bisa clock-in |
 | `422 OUTSIDE_CLOCK_WINDOW` | Di luar jendela clock-in/out shift |
 | `422 OUTSIDE_GEOFENCE` | Di luar radius kantor |
 | `422 MOCK_LOCATION_DETECTED` | `is_mock: true` |

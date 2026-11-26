@@ -20,6 +20,7 @@ Temuan modul **Platform / Entitlement** saat integrasi aplikasi mobile. Dicek ke
   1. Absen (clock-in/out) dikecualikan dari read-only selama masa grace (`grace_ends_at`), agar data kehadiran tidak bolong?
   2. Notifikasi ke tenant admin H-7 / H-1 sebelum trial / periode habis.
   3. Tenant demo/testing diberi trial panjang atau plan khusus yang tidak kedaluwarsa.
+- **Keputusan:** (26 Nov 2026) **belum diputuskan.** Opsi yang diusulkan: notifikasi H-7/H-1, absen tetap jalan selama grace, endpoint *extend trial*, plan demo tanpa kedaluwarsa.
 - **Catatan BE:** —
 
 ### PLAT-2
@@ -29,4 +30,5 @@ Temuan modul **Platform / Entitlement** saat integrasi aplikasi mobile. Dicek ke
 - **Temuan (kode `subscription_management.go` → `Subscription.ChangePlan`):** bila status `trialing`, otomatis menjadi `active` dan `trial_ends_at` dihapus. Tidak ada endpoint *extend trial*.
 - **Kejadian (25 Nov 2026):** untuk melanjutkan testing, langganan **PT Nurdiansyah** dan **PT Yubi Techno Craft** diperpanjang s/d **31 Des 2026** lewat endpoint ini (akun platform admin), sehingga statusnya kini `active` (tanpa invoice / tagihan; tercatat di audit log platform).
 - **Usulan:** endpoint / opsi *extend trial* (mis. `trial_ends_at` baru) yang mempertahankan status `trialing`.
+- **Keputusan:** (26 Nov 2026) **belum diputuskan.** Opsi yang diusulkan: notifikasi H-7/H-1, absen tetap jalan selama grace, endpoint *extend trial*, plan demo tanpa kedaluwarsa.
 - **Catatan BE:** —

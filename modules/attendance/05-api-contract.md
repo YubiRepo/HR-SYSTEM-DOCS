@@ -76,7 +76,7 @@ Offset yang dikirim client **tidak menentukan** tanggal kalender atau jam dindin
   "data": { "id": "att_01H8...", "clock_in": "08:03", "status": ["workday", "incomplete", "on_time"], "geofence": "ok" }
 }
 ```
-**Error:** `422 OUTSIDE_GEOFENCE`, `422 OUTSIDE_CLOCK_WINDOW`, `409 ALREADY_CLOCKED_IN`.
+**Error:** `422 OUTSIDE_GEOFENCE`, `422 OUTSIDE_CLOCK_WINDOW`, `409 ALREADY_CLOCKED_IN`, `409 ON_LEAVE` (clock-in saat cuti seharian).
 
 ---
 
@@ -403,6 +403,7 @@ Maks 500 item. `type` (kode `holiday_category` aktif) dan `is_observed` **wajib*
 | `OUTSIDE_CLOCK_WINDOW` | 422 | Clock-in/out di luar `clock_in_window`/`clock_out_window` shift |
 | `ALREADY_CLOCKED_IN` | 409 | Sudah clock-in & belum clock-out |
 | `NO_SCHEDULE` | 422 | Tidak ada jadwal & tanpa default |
+| `ON_LEAVE` | 409 | Clock-in saat cuti seharian (approved); cuti setengah hari tidak diblokir |
 | `CORRECTION_NOT_ALLOWED` | 409 | Periode sudah dikunci Payroll |
 | `PAYROLL_PERIOD_LOCKED` | 409 | Tanggal ada di periode payroll terkunci — input record manual & pengajuan koreksi ditolak |
 | `VALIDATION_ERROR` | 400/422 | Input tidak valid |

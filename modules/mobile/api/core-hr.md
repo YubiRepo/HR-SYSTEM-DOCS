@@ -15,8 +15,21 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dir
 
 `id` di sini adalah **employee id** karyawan.
 
-## 2. Perbarui Kontak — `PATCH /core-hr/me/employee`
-**Permission:** `employees:self`. Hanya tiga field berikut yang diterima. Field lain, misalnya `national_id`, `npwp`, atau `bank_accounts`, ditolak dengan `400 VALIDATION`.
+## 2. Perbarui Data Diri — `PATCH /core-hr/me/employee`
+**Permission:** `employees:self`. Body sama dengan `PATCH /core-hr/employees/{id}` (semua field opsional, hanya yang dikirim yang diubah), **kecuali** field yang dikelola HR:
+
+| Ditolak | Alasan |
+|---|---|
+| `branch_id`, `org_unit_id`, `position_id` | Penempatan, hanya lewat mutasi |
+| `manager_id` | Atasan diatur HR |
+| `custom_fields` | Field tambahan tenant |
+| `appraisal_records`, `reward_warning_records` | Catatan penilaian / penghargaan & SP milik HR |
+
+Field di luar body admin (`employee_number`, status, job grade, dll) juga ditolak. Field yang ditolak membuat **seluruh** request gagal dengan `422 VALIDATION_ERROR` (pesan menyebut nama field), bukan diabaikan diam-diam.
+
+Yang boleh, antara lain: `full_name`, `short_name`, `email`, `phone`, `address`, `emergency_contact`, `national_id`, `birth_date`, `birth_place`, `gender`, `marital_status`, `religion`, `nationality`, `number_of_children`, `is_pregnant`, `id_card_address`, `family_card_number`, `height_cm`, `weight_kg`, `tax_identity_type` / `tax_identity_number` (atau `npwp`), `bank_accounts`, serta daftar riwayat `academic_records`, `prior_employment_records`, `certificates`, `family_records`, `training_records`, `medical_records`, `insurance_records` (tiap daftar diganti utuh). Validasi sama dengan admin, mis. format & keunikan NIK.
+
+Contoh (kontak):
 ```json
 {
   "phone": "0813xxxx",
@@ -27,14 +40,21 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dir
 - `address.region_code` adalah kode wilayah terdalam yang dipilih (kelurahan/desa) dari §4. Objek `address` diganti utuh.
 - Response `address` juga memuat `province_name`, `city_name`, `district_name`, `village_name` (diisi API dari `region_code`; tidak perlu dikirim).
 - `emergency_contact.relationship` memakai common code `family_relationship`.
-- Response `200` berisi profil terbaru. Perubahan langsung berlaku; approval HR untuk perubahan kontak belum ada.
+- Response `200` berisi profil terbaru. Perubahan langsung berlaku; belum ada approval HR, **termasuk untuk `bank_accounts`** (keputusan sementara, lihat [issue CORE-4](../issues/core-hr.md#core-4)).
 
 ## 3. Dokumen Saya — `GET /core-hr/me/documents` · `GET /core-hr/me/documents/{doc_id}`
 **Permission:** `employees:self` atau `employees:read`.
 ```json
 { "success": true, "data": [ { "id": "…", "type": "contract", "type_name": "Contract", "file_name": "Kontrak_2024.pdf", "file_url": "https://…", "uploaded_at": "…" } ] }
 ```
-`type` adalah common code `document_type`; tampilkan `type_name` sebagai label. `file_url` adalah link unduh sementara. Dokumen milik orang lain mengembalikan `404`. Upload dokumen tetap dilakukan HR lewat web.
+`type` adalah common code `document_type`; tampilkan `type_name` sebagai label. `file_url` adalah link unduh sementara. Dokumen milik orang lain mengembalikan `404`.
+
+### 3a. Upload Dokumen Saya — `POST /core-hr/me/documents/presign` → PUT file → `POST /core-hr/me/documents`
+**Permission:** `employees:self`. Alur dan body sama dengan route admin `/employees/{id}/documents…`. Dokumen langsung tersimpan tanpa verifikasi HR.
+1. `POST /core-hr/me/documents/presign` `{ "content_type": "application/pdf" }` (jpg/png/webp/pdf) → `{ presign_url, key, expires_in }`.
+2. `PUT` file ke `presign_url`.
+3. `POST /core-hr/me/documents` `{ "type": "<kode document_type>", "file_name": "KTP.pdf", "key": "<key dari presign>" }` → `201` dokumen (dengan `file_url`).
+- `key` harus hasil presign untuk karyawan yang sama; key lain atau file yang belum ter-upload / kedaluwarsa → `422 VALIDATION_ERROR`.
 
 ## 4. Wilayah — `GET /core-hr/regions/*`
 **Permission:** cukup login. Untuk dropdown berjenjang.

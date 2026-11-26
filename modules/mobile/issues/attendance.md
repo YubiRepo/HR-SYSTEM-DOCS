@@ -12,7 +12,7 @@ Kekurangan endpoint modul **Attendance** di [API docs](../api/README.md) yang di
 | [ATT-5](#att-5) | Jam di `/me/today` masih UTC | P1 | `Done` |
 | [ATT-6](#att-6) | `/me/today` tidak mengirim `shift` untuk hari dari pola jadwal | P2 | `Done` |
 | [ATT-7](#att-7) | `/leave/me/requests` belum bisa difilter tanggal | P3 | `Done` |
-| [ATT-8](#att-8) | Clock-in tetap diterima saat cuti approved | P2 | Perlu keputusan |
+| [ATT-8](#att-8) | Clock-in tetap diterima saat cuti approved | P2 | `Done` |
 | [ATT-9](#att-9) | `timestamp` clock-in/out dari client tidak dibatasi | P1 | `Done` |
 
 ---
@@ -165,13 +165,14 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 - **Catatan BE:** diselesaikan 26 Nov 2026 (Fase 2): `GET /leave/me/requests?status=&date_from=&date_to=` — overlap rentang, sama dengan `GET /leave/requests` admin. Format bukan `YYYY-MM-DD` → `VALIDATION_ERROR`. Lihat [api/leave.md](../api/leave.md) §5.
 
 ### ATT-8
-**Clock-in tetap diterima saat cuti approved** · P2 · `Perlu keputusan`
+**Clock-in tetap diterima saat cuti approved** · P2 · `Done`
 
 - **Endpoint:** `POST /attendance/clock-in`
 - **Temuan (kode `1adf0b7`, 16 Nov 2026):** `ClockInUseCase.Execute` (`attendancerecord/command/clock_in.go`) me-resolve `day.OnLeave` tetapi hanya meneruskannya ke `ComputeStatus`; tidak ada penolakan. Karyawan yang sedang cuti full-day tetap bisa absen masuk.
 - **Pertanyaan:** disengaja (mis. batal cuti mendadak lalu masuk kerja) atau seharusnya ditolak dengan error khusus (mis. `ON_LEAVE`)? Bila disengaja, bagaimana nasib saldo cuti hari itu?
 - **Di app:** tombol Absen Masuk disembunyikan saat cuti full-day approved (status "Sedang cuti"); validasi akhir tetap di backend.
-- **Catatan BE:** —
+- **Keputusan:** (26 Nov 2026) clock-in saat cuti full-day approved **ditolak** dengan error khusus `ON_LEAVE`. Bila karyawan ternyata masuk kerja, ia membatalkan cutinya dulu (saldo kembali otomatis), lalu absen. Cuti setengah hari tidak terpengaruh.
+- **Catatan BE:** diimplementasikan 26 Nov 2026 (Fase 4). `POST /attendance/clock-in` → `409 ON_LEAVE` bila ada cuti approved yang **bukan** setengah hari pada tanggal itu. Kontrak Leave baru `IsOnFullDayApprovedLeave`; attendance memakainya lewat port opsional `FullDayLeaveProvider` (`dayContext.OnFullDayLeave`). Cuti setengah hari tetap bisa clock-in. Clock-out tidak diubah.
 
 ### ATT-9
 **`timestamp` clock-in/out dari client tidak dibatasi** · P1 · `Done`
