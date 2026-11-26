@@ -28,4 +28,5 @@ Kekurangan endpoint modul **Approval** di [API docs](../api/README.md) yang dite
 - **Dampak:** dua dokumen ini tidak muncul di `GET /approval/inbox`, hanya satu tahap (tidak bisa atasan → HR), tidak punya timeline persetujuan seperti cuti, dan tidak mengikuti approval policy.
 - **Usulan:** daftarkan `overtime_request` dan `attendance_correction` ke engine approval (summarizer + approve/reject path), seperti Leave.
 - **Sementara di app:** **Pusat Persetujuan** menggabungkan `/approval/inbox` dengan `GET /attendance/overtime?status=pending` dan `GET /attendance/corrections?status=pending` dalam satu daftar. Setelah issue ini selesai, app cukup membaca inbox; tampilan kartu sudah generik.
+- **Dicek ulang 26 Nov 2026 (`a51daf4`):** engine masih hanya `leave_request` dan `payroll_run`.
 - **Catatan BE:** —

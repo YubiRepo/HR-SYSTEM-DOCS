@@ -1,7 +1,7 @@
 <!-- 📁 modules/mobile/issues/attendance.md -->
 # Issues Backend — Attendance
 
-Kekurangan endpoint modul **Attendance** di [API docs](../api/README.md) yang ditemukan saat integrasi aplikasi mobile. Tiap issue mengacu ke endpoint yang terdokumentasi dan dicek langsung ke server (akun karyawan `budi@gmail.com`, admin `nurdiansyah@gmail.com`, 11 Nov 2026). Status dicek ulang ke kode backend `1adf0b7` pada 16 Nov 2026. Keterangan status & prioritas: [Issues Backend](./README.md).
+Kekurangan endpoint modul **Attendance** di [API docs](../api/README.md) yang ditemukan saat integrasi aplikasi mobile. Tiap issue mengacu ke endpoint yang terdokumentasi dan dicek langsung ke server (akun karyawan `budi@gmail.com`, admin `nurdiansyah@gmail.com`, 11 Nov 2026). Status dicek ulang ke kode backend `1adf0b7` (16 Nov 2026) dan `a51daf4` (26 Nov 2026). Keterangan status & prioritas: [Issues Backend](./README.md).
 
 | ID | Judul | Prioritas | Status |
 |---|---|---|---|
@@ -13,6 +13,7 @@ Kekurangan endpoint modul **Attendance** di [API docs](../api/README.md) yang di
 | [ATT-6](#att-6) | `/me/today` tidak mengirim `shift` untuk hari dari pola jadwal | P2 | Open |
 | [ATT-7](#att-7) | `/leave/me/requests` belum bisa difilter tanggal | P3 | `Open` |
 | [ATT-8](#att-8) | Clock-in tetap diterima saat cuti approved | P2 | Perlu keputusan |
+| [ATT-9](#att-9) | `timestamp` clock-in/out dari client tidak dibatasi | P1 | `Open` |
 
 ---
 
@@ -94,7 +95,7 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 
 - **Prioritas P2:** absen tetap berjalan tanpa endpoint ini (server memvalidasi semuanya); yang kurang adalah UX (pengingat tidak mengikuti setting HR, karyawan baru tahu aturan setelah ditolak).
 - **Catatan:** validasi tetap di backend saat `POST /attendance/clock-in` / `clock-out`; endpoint ini hanya agar app bisa memberi tahu lebih awal (mis. "Anda di luar radius kantor") sebelum mengirim.
-- **Dicek ulang 16 Nov 2026 (`1adf0b7`):** belum ada. Router `attendancerule` hanya `GET/POST /rules` (admin) dan `GET /me/geofence`.
+- **Dicek ulang 16 & 26 Nov 2026:** belum ada. Router `attendancerule` hanya `GET/POST /rules` (admin) dan `GET /me/geofence`.
 - **Sementara di app:** geofence & akurasi GPS dari `/me/geofence`; pengingat absen pulang memakai offset tetap di app, belum dari `clockout_reminder_min`.
 - **Catatan BE:** —
 
@@ -105,6 +106,7 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 - **Temuan:** libur baru terlihat setelah lewat, dari `status: ["holiday", ...]` di `GET /attendance/me`.
 - **Dampak:** kalender jadwal tidak bisa menampilkan libur nasional / cuti bersama ke depan.
 - **Usulan (pilih salah satu):** izin baca `self` untuk `GET /attendance/holidays`, **atau** tambah `is_holiday` + `holiday_name` per hari di `GET /attendance/me/schedule`.
+- **Terulang (26 Nov 2026, akun `rizky.presensi`, PT Nurdiansyah):** tanggal 26 Nov adalah libur tenant *"Bos Nikah Lagi"*. `GET /attendance/me/today` → `day_kind: "holiday"` (benar), tetapi `GET /attendance/me/schedule` untuk tanggal yang sama → `shift_id` shift *Normal*, `source: "fixed"`. Kalender jadwal di app menampilkan hari itu sebagai hari kerja 08:00, padahal absen akan ditolak.
 - **Catatan BE:** —
 
 ### ATT-3
@@ -136,7 +138,7 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 - **Penyebab:** `GetMyToday` di `attendancerecord/query/attendance_record_queries.go` memformat `record.ClockIn.Format("15:04")` langsung dari nilai UTC, tanpa `In(loc)` zona waktu cabang (padahal clock-in/out sudah memakai `resolveLocation`).
 - **Dampak:** client mana pun yang menampilkan `clock_in` / `clock_out` dari endpoint ini salah 7 jam (WIB). Status `late` / `early_leave` tetap benar karena dihitung dari waktu sebenarnya.
 - **Usulan:** konversi ke zona waktu cabang sebelum format, atau kirim RFC3339 seperti `/attendance/me`.
-- **Dicek ulang 16 Nov 2026 (`1adf0b7`):** belum berubah, `record.ClockIn.Format("15:04")` di baris 237.
+- **Dicek ulang 16 & 26 Nov 2026 (`1adf0b7`, `a51daf4`):** belum berubah, `record.ClockIn.Format("15:04")` di baris 237.
 - **Sementara di app:** jam diambil dari `GET /attendance/me` (RFC3339). Setelah diperbaiki, app tetap kompatibel.
 - **Catatan BE:** —
 
@@ -150,6 +152,7 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 - **Dampak:** client tidak tahu nama & jam shift hari ini dari endpoint ini (mis. untuk peringatan pulang cepat).
 - **Usulan:** `GetMyToday` mengambil shift dari `dayResolver` yang sama dengan clock-in (`day_kind` di endpoint ini sudah dari resolver itu lewat `OvertimeDay`).
 - **Sementara di app:** shift diambil dari `GET /attendance/me/schedule`; tombol absen memakai `day_kind`.
+- **Dicek ulang 26 Nov 2026 (`a51daf4`):** belum berubah, `GetMyToday` masih hanya `scheduleRepo.FindByEmployeeAndDate` (baris 221).
 - **Catatan BE:** —
 
 ### ATT-7
@@ -168,4 +171,14 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 - **Temuan (kode `1adf0b7`, 16 Nov 2026):** `ClockInUseCase.Execute` (`attendancerecord/command/clock_in.go`) me-resolve `day.OnLeave` tetapi hanya meneruskannya ke `ComputeStatus`; tidak ada penolakan. Karyawan yang sedang cuti full-day tetap bisa absen masuk.
 - **Pertanyaan:** disengaja (mis. batal cuti mendadak lalu masuk kerja) atau seharusnya ditolak dengan error khusus (mis. `ON_LEAVE`)? Bila disengaja, bagaimana nasib saldo cuti hari itu?
 - **Di app:** tombol Absen Masuk disembunyikan saat cuti full-day approved (status "Sedang cuti"); validasi akhir tetap di backend.
+- **Catatan BE:** —
+
+### ATT-9
+**`timestamp` clock-in/out dari client tidak dibatasi** · P1 · `Open`
+
+- **Endpoint:** `POST /attendance/clock-in`, `POST /attendance/clock-out` (field opsional `timestamp`).
+- **Temuan (kode `a51daf4`, 26 Nov 2026):** `parseTimestampOrNow` (`attendancerecord/command/clock_in.go:153`) hanya memeriksa format RFC3339. Tidak ada batas terhadap jam server: client bisa mengirim jam masa lalu atau masa depan, dan jam itu yang dicatat sebagai jam absen (window shift dan geofence dicek terhadap jam itu juga).
+- **Dampak (keamanan data kehadiran):** karyawan bisa *backdate* absen masuk (mis. tiba 09:00 tapi mengirim 07:55) atau mengisi absen pulang lebih lambat, sehingga status telat / pulang cepat / lembur bisa dimanipulasi dengan memanggil API langsung.
+- **Konteks:** docs mobile (`api/attendance.md`) menyebut timestamp asli dipakai untuk antrean *offline*. App mobile saat ini **tidak** mengirim `timestamp` (selalu jam server), dan fitur offline ditunda sampai issue ini diputuskan.
+- **Usulan:** batasi selisih `timestamp` vs jam server (mis. maks 5 menit ke depan, maks N jam ke belakang khusus `source=offline`), tandai record offline (`source` / flag) agar HR bisa meninjau, atau abaikan `timestamp` untuk source `mobile`.
 - **Catatan BE:** —
