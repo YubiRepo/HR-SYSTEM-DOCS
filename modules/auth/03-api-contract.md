@@ -18,6 +18,7 @@ Semua endpoint mengikuti envelope response standar HRMS (`success` + `data`/`err
 | POST | `/auth/password/forgot` | Minta reset password | Publik |
 | POST | `/auth/password/reset` | Setel ulang password via token | Publik |
 | POST | `/auth/password/change` | Ganti password (login) | Bearer |
+| GET | `/auth/password/policy` | Aturan password untuk petunjuk & validasi di UI | Publik |
 | POST | `/auth/email/verify` | Verifikasi email | Publik |
 | POST | `/auth/mfa/enroll` | Daftarkan MFA | Bearer |
 | POST | `/auth/mfa/verify` | Verifikasi kode MFA | Publik* |
@@ -212,6 +213,20 @@ Untuk resource server memeriksa token opaque / status revocation.
 { "current_password": "••••••••", "new_password": "••••••••" }
 ```
 **Response `200 OK`**. **Error:** `401 INVALID_CREDENTIALS`, `422 WEAK_PASSWORD`.
+
+---
+
+## 8a. GET /auth/password/policy
+
+Publik (halaman reset password belum punya sesi). Mengembalikan aturan yang sama dengan yang divalidasi server, supaya klien tidak meng-hardcode nilai yang bisa diubah lewat ENV.
+
+**Response `200 OK`**
+```json
+{ "min_length": 12, "passphrase_min_length": 20, "history_count": 5 }
+```
+- `min_length` — `PASSWORD_MIN_LENGTH`.
+- `passphrase_min_length` — mulai panjang ini, password tidak wajib campuran huruf + angka/simbol.
+- `history_count` — `PASSWORD_HISTORY_COUNT`; password baru tidak boleh sama dengan sekian password terakhir (dan tidak boleh sama dengan password saat ini).
 
 ---
 
