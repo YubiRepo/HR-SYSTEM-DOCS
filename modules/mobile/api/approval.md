@@ -109,7 +109,32 @@ Catatan render:
 
 Mengembalikan `detail` (`summary`, `sections[]`, `attachments[]` berupa URL presigned berumur pendek), `can_decide`, dan `approvals[]` (timeline). Contoh lengkap di [kontrak modul Approval](../../approval/04-api-contract.md#tampilan-approver--get-requeststypedocumentid).
 
-## 3. Timeline — `timeline_path` dari item inbox
+## 3. Riwayat Keputusan Saya — `GET /approval/decided?page=1&per_page=20&document_type=`
+**Permission:** cukup login, hanya keputusan pemanggil sendiri. Step yang ia setujui atau tolak, **terbaru dulu**, dengan paginasi standar (`pagination.total_pages`). `per_page` default 20, maks 100. `document_type` opsional.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "request_id": "3aa…", "document_type": "overtime_request", "document_type_label": "Overtime request",
+      "document_id": "91d…", "subject_name": "Rizky", "submitted_by_name": "Rizky",
+      "step_order": 1, "submitted_at": "2026-11-25T09:00:00Z", "assigned": true,
+      "summary": { "title": "Overtime 2026-11-25", "subtitle": "17:00–20:00 (3h)", "fields": [ … ],
+                   "approve_path": "…", "reject_path": "…", "timeline_path": "/api/v1/attendance/overtime/91d…/approval" },
+      "decision": "rejected",
+      "note": "hihu",
+      "decided_at": "2026-11-26T08:25:00Z"
+    }
+  ],
+  "pagination": { "page": 1, "per_page": 20, "total_items": 4, "total_pages": 1 }
+}
+```
+- Bentuk item sama dengan inbox (§1), ditambah `decision` (`approved` / `rejected`), `note` (catatan saat memutuskan, bisa tidak ada), dan `decided_at`.
+- Buka detail lewat `summary.timeline_path`. `approve_path` / `reject_path` tetap ada di `summary`, tetapi jangan ditampilkan sebagai aksi karena dokumennya sudah diputuskan.
+- Hanya keputusan yang lewat **engine approval**. Lembur/koreksi yang diputuskan satu tahap tanpa policy (lihat bagian bawah) tidak tercatat di sini.
+
+## 4. Timeline — `timeline_path` dari item inbox
 `data: null` bila dokumen tidak pernah dirutekan lewat engine approval.
 
 ---

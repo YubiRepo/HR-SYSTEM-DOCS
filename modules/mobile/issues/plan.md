@@ -23,6 +23,7 @@ Ringkasan semua issue di [`issues/`](./README.md) dan urutan pengerjaannya secar
 | [AUTH-2](./auth.md#auth-2) | Confirm avatar key salah → `500` | P3 | Done | Diperbaiki (Fase 3) | 3 ✅ |
 | [APR-1](./approval.md#apr-1) | Contoh respons inbox + seed | P3 | Done | Docs `api/approval.md` (seed tidak dibuat) | 3 ✅ |
 | [APR-2](./approval.md#apr-2) | Lembur & koreksi masuk engine approval | P2 | Done | Sudah (`97b061c`); butuh policy + backfill, belum diuji ke server | 3 ✅ |
+| [APR-3](./approval.md#apr-3) | Riwayat keputusan approver | P2 | Done | `GET /approval/decided` ditambahkan (26 Nov) | — ✅ |
 | [CORE-1](./core-hr.md#core-1) | Karyawan hanya bisa ubah kontak | P1 | Done | Diperbaiki (Fase 4) | 4 ✅ |
 | [CORE-2](./core-hr.md#core-2) | Karyawan upload dokumen sendiri | P1 | Done | Diperbaiki (Fase 4) | 4 ✅ |
 | [CORE-4](./core-hr.md#core-4) | Ubah rekening butuh approval HR | P2 | Perlu keputusan (sementara: terbuka tanpa approval) | — | 0 |
@@ -33,7 +34,7 @@ Ringkasan semua issue di [`issues/`](./README.md) dan urutan pengerjaannya secar
 | [AUTH-3](./auth.md#auth-3) | Cek ketersediaan username / HP | P2 | Done | Done | — |
 | [ATT-4](./attendance.md#att-4) | Jadwal tandai hari cuti | P3 | Done | Done (via Leave) | — |
 
-**Total:** 21 issue · 17 Done · 4 masih perlu keputusan (CORE-4, PLAT-1, PLAT-2, PAY-1).
+**Total:** 22 issue · 18 Done · 4 masih perlu keputusan (CORE-4, PLAT-1, PLAT-2, PAY-1).
 
 ---
 

@@ -7,7 +7,7 @@ Kekurangan endpoint modul **Approval** di [API docs](../api/README.md) yang dite
 |---|---|---|---|
 | [APR-1](#apr-1) | Butuh contoh data & bentuk respons inbox approval | P3 | `Done` |
 | [APR-2](#apr-2) | Lembur & koreksi absen belum masuk engine approval | P2 | `Done` |
-| [APR-3](#apr-3) | Approver tidak punya riwayat keputusannya sendiri | P2 | `Open` |
+| [APR-3](#apr-3) | Approver tidak punya riwayat keputusannya sendiri | P2 | `Done` |
 
 ---
 
@@ -33,11 +33,11 @@ Kekurangan endpoint modul **Approval** di [API docs](../api/README.md) yang dite
 - **Catatan BE:** sudah di kode sejak `97b061c` (26 Nov 2026): `overtime_request` dan `attendance_correction` terdaftar ke engine (`attendance/module.go` `RegisterDocument`), dengan summary, detail approver, timeline (`/attendance/overtime/{id}/approval`, `/attendance/corrections/{id}/approval`), dan approve/reject multi-step. **Syarat:** tenant harus punya approval policy untuk jenis dokumen itu; tanpa policy tetap satu tahap via `attendance:approve` dan tidak muncul di inbox. Policy default dibuat saat provisioning dan lewat backfill `b20261126090000_seed_hr_setting_defaults_for_tenant` (perlu dijalankan untuk tenant lama). Ajuan yang dibuat sebelum policy ada tetap di jalur lama, jadi app sebaiknya tetap menggabungkan daftar `?status=pending` sampai ajuan lama habis. Belum diuji langsung ke server.
 
 ### APR-3
-**Approver tidak punya riwayat keputusannya sendiri** · P2 · `Open`
+**Approver tidak punya riwayat keputusannya sendiri** · P2 · `Done`
 
 - **Endpoint:** `GET /approval/inbox` hanya berisi step `pending`. Setelah approver menyetujui / menolak, dokumen hilang dari inbox dan tidak ada endpoint untuk melihatnya lagi.
 - **Temuan (26 Nov 2026):** di app, atasan menolak lembur Rizky (catatan "hihu"). Setelah itu atasan tidak bisa melihat lagi apa yang sudah ia putuskan. Karyawan masih bisa melihat statusnya (`GET /attendance/me/overtime`, `review_note`) dan timeline per dokumen (`timeline_path`).
 - **Dampak:** atasan tidak bisa mengecek ulang / mempertanggungjawabkan keputusannya, dan tidak bisa membuka timeline dokumen yang sudah diputuskan.
 - **Sementara di app (26 Nov 2026):** riwayat lokal di HP **sudah dihapus** — riwayat harus dari API. Tab **Riwayat** di Pusat Persetujuan sudah siap memanggil `GET /approval/decided?page=&per_page=20` (envelope standar: `data` list + `pagination.total_pages`, tombol "Muat lagi" per halaman), tiap baris membuka timeline lewat `timeline_path`. Selama endpoint belum ada (404 `RESOURCE_NOT_FOUND`) tab menampilkan "Riwayat segera hadir". Begitu endpoint ini rilis dengan bentuk di bawah, app langsung jalan tanpa update.
 - **Usulan:** `GET /approval/decided?page=&per_page=&document_type=` — step yang diputuskan pemanggil (`approved` / `rejected`), dengan bentuk item sama seperti inbox (`request_id`, `document_type`, `document_id`, `subject_name`, `summary`, `timeline_path`) plus `decision`, `note`, `decided_at`, urut terbaru. Data sudah ada di `approval_actions` (`actor_user_id`, `action`, `note`, `created_at`).
-- **Catatan BE:** —
+- **Catatan BE:** diimplementasikan 26 Nov 2026 sesuai usulan: `GET /approval/decided?page=&per_page=&document_type=` (cukup login, hanya keputusan pemanggil). Item = bentuk inbox (`summary` dari provider yang sama, `timeline_path`) + `decision`, `note`, `decided_at`, urut `decided_at` terbaru. Envelope standar dengan `pagination` (`per_page` default 20, maks 100). Sumber data: `approval_request_steps.decided_by`. Dicek ke DB lokal (read-only): penolakan lembur 26 Nov 08:25 ikut muncul. **Batasan:** hanya keputusan lewat engine approval. Lembur/koreksi di tenant tanpa approval policy diputuskan satu tahap di modul attendance dan tidak tercatat di sini (jalankan backfill policy `b20261126090000`). Lihat [api/approval.md](../api/approval.md) §3.

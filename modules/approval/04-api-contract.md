@@ -11,6 +11,7 @@
 | PUT | `/policies/{id}` | `approval:config` | Ganti nama/subtype/aktif + seluruh step |
 | DELETE | `/policies/{id}` | `approval:config` | Dokumen berjalan tidak terpengaruh |
 | GET | `/inbox` | login | Step `pending` yang menunggu pemanggil, lintas document type (lihat di bawah) |
+| GET | `/decided` | login | Riwayat keputusan pemanggil sendiri: step yang ia `approved`/`rejected`, terbaru dulu. `?page=&per_page=` (default 20, maks 100) `&document_type=`. Item = bentuk inbox + `decision`, `note`, `decided_at`. Hanya keputusan lewat engine |
 | GET | `/requests/{type}/{documentId}` | approver dokumen (`CanView`) | Tampilan approver: detail dari modul pemilik + semua approval dokumen + `can_decide` (lihat di bawah). 403 untuk non-approver |
 
 **Contoh `POST /policies`**
