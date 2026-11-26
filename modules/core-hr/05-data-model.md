@@ -54,6 +54,7 @@ Model data konseptual (stack-agnostic). Entitas `users` & `tenants` dimiliki mod
 | `manager_id` | string (FK, nullable) | Atasan (self-ref ke employees) |
 | `current_org_unit_id` | string (FK) | Unit aktif (denormalisasi dari assignment) |
 | `current_position_id` | string (FK) | Posisi aktif |
+| `current_job_grade_id` | string (FK, nullable) | Job grade (jenjang karier) aktif → `job_grades`, denormalisasi dari assignment |
 | `created_at` / `updated_at` | timestamp | |
 
 **Constraint:** `UNIQUE(tenant_id, national_id)`, `UNIQUE(tenant_id, employee_number)`.
@@ -104,7 +105,6 @@ Selain field standar, **tiap tenant dapat mendefinisikan field sendiri** untuk k
 | `title` | string | Nama jabatan |
 | `org_unit_id` | string (FK, nullable) | Unit terkait |
 | `headcount` | int | Kapasitas posisi ini (tenant-wide), ≥ 1 (`chk_positions_headcount_min`). Ditegakkan saat penempatan — lihat `02-org-structure.md` §3.0 |
-| `job_grade_id` | string (FK, nullable) | Grade jabatan → `job_grades`. Karyawan mewarisi grade dari posisinya |
 | `is_active` | boolean | |
 
 ### 2.3a `job_grades` (milik tenant)
@@ -128,6 +128,7 @@ Penempatan karyawan pada unit + posisi (aktif & historis).
 | `employee_id` | string (FK) | |
 | `org_unit_id` | string (FK) | |
 | `position_id` | string (FK) | |
+| `job_grade_id` | string (FK, nullable) | Job grade karyawan pada entri ini → `job_grades` |
 | `type` | enum | `initial`, `transfer`, `promotion`, `demotion` |
 | `start_date` | date | Mulai berlaku |
 | `end_date` | date (nullable) | Null = masih aktif |
@@ -146,7 +147,7 @@ Satu baris = satu perubahan yang menunggu approval untuk satu karyawan, dikelomp
 | `batch_id` | string (FK) | `mutation_request_batches` |
 | `employee_id` | string (FK) | |
 | `status` | enum | `pending`, `scheduled`, `approved`, `rejected`, `failed` — default `pending` |
-| `payload` | jsonb | `kind`, `effective_date`, field sesuai kind (`career_path_type`, `branch_id`, `org_unit_id`, `position_id`, `employee_status`, `revoke_access` / `schedule_type`, `pattern_id` / `compensation{structure_id, schedule_id, reason, notes, overrides[]}`) |
+| `payload` | jsonb | `kind`, `effective_date`, field sesuai kind (`career_path_type`, `branch_id`, `org_unit_id`, `position_id`, `job_grade_id`, `employee_status`, `revoke_access` / `schedule_type`, `pattern_id` / `compensation{structure_id, schedule_id, reason, notes, overrides[]}`) |
 | `reason` | string | Alasan pengajuan |
 | `requested_by` | string | |
 | `requested_at` | timestamp | |
@@ -231,7 +232,6 @@ Response tiap region node: `{code, parent_code, level, name}` — kode memakai f
 | `employees` | `manager_id` | Query bawahan |
 | `org_units` | `parent_id` | Traversal pohon |
 | `job_grades` | `(tenant_id, rank)` | Daftar grade terurut |
-| `positions` | `job_grade_id` | Cek grade dipakai |
 | `assignments` | `(employee_id, end_date)` | Cari assignment aktif |
 | `mutation_requests` | `(tenant_id, status)` | Daftar pengajuan tenant per status |
 | `mutation_requests` | `employee_id` | Riwayat pengajuan per karyawan |
@@ -244,7 +244,7 @@ Response tiap region node: `{code, parent_code, level, name}` — kode memakai f
 
 ## 4. Catatan Desain
 
-- **Denormalisasi terkontrol:** `current_org_unit_id` & `current_position_id` disimpan di `employees` untuk query cepat, tetapi kebenaran historis ada di `assignments`.
+- **Denormalisasi terkontrol:** `current_org_unit_id`, `current_position_id` & `current_job_grade_id` disimpan di `employees` untuk query cepat, tetapi kebenaran historis ada di `assignments`.
 - **Self-reference:** `manager_id` & `org_units.parent_id` membentuk hierarki — siklus dicegah di aplikasi (`MANAGER_CYCLE`, cek reparent org unit). Lihat `02-org-structure.md` §4.
 - **Tenancy 2 level:** `tenant_id` adalah batas isolasi utama; `branch_id` sub-pembeda cabang (sesuai [Tenancy Model](../../architecture/HRMS_Tenancy_Model.md) — final: A2 + B1 shared DB). `employees` membawa `branch_id` (penempatan operasional). Org unit & posisi **tidak** membawa `branch_id` — keduanya milik tenant secara langsung, satu struktur organisasi untuk seluruh tenant (lihat `02-org-structure.md` §0).
 - **Kepatuhan:** `national_id` & data pribadi adalah data sensitif (UU PDP) — pertimbangkan enkripsi at-rest.

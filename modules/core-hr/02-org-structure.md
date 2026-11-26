@@ -58,7 +58,7 @@ Divisi Keuangan
 
 - Position adalah *slot* jabatan, terpisah dari orangnya.
 - Contoh: "Manager Akuntansi", "Staff Pajak".
-- Satu position dapat memiliki atribut: grade (job grade), unit terkait, status aktif.
+- Satu position dapat memiliki atribut: unit terkait, status aktif.
 - Position memudahkan pelaporan headcount & perencanaan (posisi kosong vs terisi).
 
 ### 3.0 Kapasitas (Headcount) — Ditegakkan
@@ -75,9 +75,10 @@ Divisi Keuangan
 
 - **Master data Core HR** per tenant (`job_grades`): `code` (unik per tenant, disimpan huruf besar), `name`, `rank`, `is_active`.
 - **`rank` mengurutkan grade** — makin besar makin senior (mis. Staff 10 → Supervisor 20 → Manager 30 → General Manager 40 → Director 50). Rank boleh sama; logika membandingkan rank (mis. step approval "atasan pertama dengan grade ≥ X"), bukan code/nama.
-- **Position punya grade** (`positions.job_grade_id`, opsional). Hanya grade aktif yang bisa dipasang ke position; position yang grade-nya kemudian dinonaktifkan tetap menyimpan grade tersebut.
-- **Karyawan tidak punya grade sendiri** — grade karyawan = grade jabatan yang sedang dia pegang. Tidak ada syarat grade saat menempatkan karyawan ke jabatan.
-- Grade tidak bisa dinonaktifkan selama masih dipakai position aktif (`409 JOB_GRADE_IN_USE`).
+- **Grade bukan atribut position** (kolom `positions.job_grade_id` dihapus oleh migrasi `20261126000001_drop_position_job_grade`). Grade adalah jenjang karier milik karyawan, di-assign dan diubah lewat mutasi — setara status, position, branch, dan department.
+- Disimpan per entri career path (`assignments.job_grade_id`) dan sebagai grade aktif karyawan (`employees.current_job_grade_id`). Diisi opsional saat Add Employee / import (kolom "Job Grade"), lalu diubah lewat line mutasi `career_path` (`job_grade_id`).
+- Hanya grade aktif yang bisa di-assign; grade yang dinonaktifkan tetap tersimpan pada karyawan dan riwayat yang sudah memakainya.
+- Kolom grade karyawan ditambahkan oleh migrasi `20261126000002_job_grade_on_employee`. Grade lama di position tidak dipindahkan; karyawan yang sudah ada mulai tanpa grade dan diisi lewat mutasi.
 - Tenant yang sudah ada saat migrasi `20261110000001_job_grades` mendapat 5 grade default; tenant baru mulai dari daftar kosong.
 
 ---

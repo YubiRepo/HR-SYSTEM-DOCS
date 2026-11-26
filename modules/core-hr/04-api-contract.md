@@ -138,6 +138,7 @@ Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lew
   "hire_date": "2026-09-01",
   "org_unit_id": "org_01H8...",
   "position_id": "pos_01H8...",
+  "job_grade_id": "jg_01H8...",
   "manager_id": "emp_01H8...",
   "create_account": true,
   "link_user_id": null,
@@ -241,6 +242,7 @@ Mutasi/promosi — membuat assignment baru & menutup yang lama.
 {
   "org_unit_id": "org_02H8...",
   "position_id": "pos_02H8...",
+  "job_grade_id": "jg_02H8...",
   "effective_date": "2027-01-01",
   "type": "promotion"
 }
@@ -294,7 +296,7 @@ Ajukan satu baris mutasi untuk disetujui lebih dulu. Dalam praktiknya UI selalu 
 
 | `kind` | Field wajib | Efek saat diterapkan |
 |---|---|---|
-| `career_path` (default) | `career_path_type` + minimal satu dari `branch_id`/`org_unit_id`/`position_id`/`employee_status` | Entri career path baru (assignment) |
+| `career_path` (default) | `career_path_type` + minimal satu dari `branch_id`/`org_unit_id`/`position_id`/`job_grade_id`/`employee_status` | Entri career path baru (assignment) |
 | `work_policy` | `schedule_type` + `pattern_id` | Entri work policy baru; career path tidak berubah |
 | `compensation` | `compensation.structure_id` | Versi compensation payroll baru dibuat & diaktifkan (versi aktif sebelumnya berakhir sehari sebelum), di branch karyawan per tanggal itu |
 
@@ -481,11 +483,11 @@ Parameter opsional: `?root=org_01H8...` (subtree), `?depth=2` (batasi kedalaman)
 
 **Buat — `POST /positions`**
 ```json
-{ "title": "Manager Akuntansi", "headcount": 1, "org_unit_id": "org_01H8...", "job_grade_id": "jg_..." }
+{ "title": "Manager Akuntansi", "headcount": 1, "org_unit_id": "org_01H8..." }
 ```
-`headcount` ≥ 1 (tidak diisi = 1; `422 INVALID_HEADCOUNT`). `job_grade_id` opsional; harus grade aktif milik tenant (`422 INVALID_JOB_GRADE`). Response memuat `job_grade_id` dan `job_grade` (`{ id, code, name, rank }`).
+`headcount` ≥ 1 (tidak diisi = 1; `422 INVALID_HEADCOUNT`).
 
-**Ubah — `PATCH /positions/{id}`** (`headcount` tidak boleh < 1 atau < jumlah pemegang saat ini → `422 INVALID_HEADCOUNT`; `job_grade_id: ""` = hapus grade; grade hanya divalidasi bila berubah), **Hapus — `DELETE /positions/{id}`** (`204`; `409 POSITION_IN_USE` bila masih dipakai assignment aktif).
+**Ubah — `PATCH /positions/{id}`** (`headcount` tidak boleh < 1 atau < jumlah pemegang saat ini → `422 INVALID_HEADCOUNT`), **Hapus — `DELETE /positions/{id}`** (`204`; `409 POSITION_IN_USE` bila masih dipakai assignment aktif).
 
 ## 13a. Job Grades
 
@@ -495,7 +497,7 @@ Parameter opsional: `?root=org_01H8...` (subtree), `?depth=2` (batasi kedalaman)
 ```
 `code` disimpan huruf besar dan unik per tenant (`409 JOB_GRADE_CODE_TAKEN`). `rank` ≥ 0.
 
-**Ubah — `PATCH /job-grades/{id}`** → `code`/`name`/`rank`/`is_active`. **Hapus — `DELETE /job-grades/{id}`** → nonaktifkan (`204`). Menonaktifkan grade yang masih dipakai position aktif ditolak `409 JOB_GRADE_IN_USE`.
+**Ubah — `PATCH /job-grades/{id}`** → `code`/`name`/`rank`/`is_active`. **Hapus — `DELETE /job-grades/{id}`** → nonaktifkan (`204`).
 
 ---
 
@@ -594,7 +596,6 @@ Commit dua kali atas cek yang sama mengembalikan job impor yang sama. Bila worke
 | `POSITION_IN_USE` | 409 | Posisi masih dipakai assignment aktif |
 | `POSITION_FULL` | 409 | Position sudah penuh (terisi ≥ headcount) — create karyawan, bulk import, assignment, mutasi |
 | `INVALID_HEADCOUNT` | 422 | Headcount < 1 atau di bawah jumlah pemegang saat ini |
-| `JOB_GRADE_IN_USE` | 409 | Grade masih dipakai position aktif |
 | `JOB_GRADE_CODE_TAKEN` | 409 | Code grade sudah dipakai di tenant |
 | `INVALID_JOB_GRADE` | 422 | `job_grade_id` bukan grade aktif milik tenant |
 | `INVALID_JOB_GRADE_ARGUMENT` | 422 | Code/name kosong atau rank negatif |
