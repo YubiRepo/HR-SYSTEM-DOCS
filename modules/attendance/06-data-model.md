@@ -65,6 +65,7 @@ Pola penugasan shift **tenant-wide**; karyawan menempel ke pola lewat `pattern_i
 | `color` | string (nullable) | Warna tampilan pola |
 | `description` | text (nullable) | |
 | `active` | boolean | Pola nonaktif tidak bisa dipakai |
+| `overtime_rule_id` | string (FK, nullable) | Overtime rule (master) untuk lembur karyawan pada pola ini; null = lembur tidak diproses (lihat `13-overtime-management.md` §2) |
 
 > Mode fixed di-resolve langsung saat pembacaan hari (tidak menghasilkan baris `schedules`). Mode rotation baru menghasilkan baris `schedules` lewat aksi Generate; baris `source: manual` tidak ditimpa.
 

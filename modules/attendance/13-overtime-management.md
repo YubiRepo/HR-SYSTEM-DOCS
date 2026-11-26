@@ -9,7 +9,8 @@ Semua durasi dalam **menit**.
 ## 1. Alur
 
 ```
-HR Setting → Overtime Rules        : rule + day types + tiers (OT1, OT2, …); maks 1 rule aktif per tenant
+HR Setting → Overtime Rules        : master rule + day types + tiers (OT1, OT2, …) + break; banyak rule boleh aktif
+HR Setting → Working Patterns      : tiap pattern memilih overtime rule (schedule_patterns.overtime_rule_id)
 HR Setting → Working Time (shift)  : pengukuran OT: mulai setelah / pembulatan / toleransi
 Karyawan / HR → Overtime Request   : window rencana (mulai–selesai) → approve (boleh dipersingkat) / reject / cancel
 Atasan / HR → Overtime Order (SPL) : surat perintah lembur bernomor untuk banyak karyawan → draft → issued / cancelled
@@ -30,13 +31,15 @@ Processing **idempoten**: input yang sama tidak mengubah apa pun.
 
 ## 2. Overtime Rule
 
-Master konfigurasi terpusat, berdiri sendiri, dan **tidak** menempel di Shift/Working Pattern.
+Master konfigurasi. Tenant boleh punya banyak rule aktif; **Working Pattern** memilih rule yang dipakai (`schedule_patterns.overtime_rule_id`).
 
 | Bagian | Isi |
 |---|---|
 | Header | `code`, `name`, kebijakan `unauthorized_policy` & `excess_policy` |
 | Day Type (milik rule) | `code` = salah satu kode klasifikasi (§3, konstanta — kode lain ditolak `INVALID_OVERTIME_RULE_ARGUMENT`), `name`, `sequence` = **prioritas**, `active`, `unauthorized_auto_minutes` & `excess_auto_minutes` = **kuota auto-approve** (§5.3; 0–1440, wajib diisi bila policy terkait `auto_approved`, harus 0 bila tidak) |
-| Detail / Tier (milik day type) | `component_code` (OT1, OT2, … bebas), rentang `(minute_from, minute_to]` dari lembur eligible hari itu (kosong = tak terbatas; UI mengisinya dalam jam × 60), `multiplier` |
+| OT Component (master tenant, `overtime_components`) | `code` (unik per tenant, `^[A-Z][A-Z0-9_]{0,29}$`, **tetap** setelah dibuat), `name`, `description`, `sort_order`, `active`. Tidak bisa dinonaktifkan selama dipakai tier rule aktif (`OVERTIME_COMPONENT_IN_USE`) |
+| Detail / Tier (milik day type) | `component_code` (harus kode OT Component tenant; kode baru harus aktif, kode yang sudah dimiliki rule boleh nonaktif; `component_name` diisi dari master), rentang `(minute_from, minute_to]` dari lembur eligible hari itu (kosong = tak terbatas; UI mengisinya dalam jam × 60), `multiplier` |
+| Break (milik day type) | `min_overtime_minutes` (ambang, 1–1440, unik per day type) dan `break_minutes` (> 0, < ambang). Lihat §2.1 |
 
 Aturan validasi tier untuk setiap day type:
 - dimulai dari 0, dan setiap tier mulai di `minute_to` tier sebelumnya;
@@ -55,10 +58,16 @@ Contoh pembagian, `WORKING_DAY`: OT1 0–60 ×1.5, OT2 60+ ×2 dengan 180 menit 
 | `needs_review` | Transaksi menunggu HR menentukan menit eligible |
 | `auto_approved` | Eligible otomatis s.d. kuota day type (`unauthorized_auto_minutes` / `excess_auto_minutes`); di atas kuota tidak eligible |
 
-**Rule aktif** — Overtime rule berdiri sendiri (tidak dipilih lewat attendance rule). Maks **1 rule aktif per tenant**, dan itulah rule yang dipakai saat processing:
-- create rule baru → langsung aktif, rule aktif lain otomatis dinonaktifkan;
-- activate rule → rule aktif lain otomatis dinonaktifkan;
-- deactivate rule aktif diperbolehkan → tidak ada rule aktif, overtime tidak diproses (*skipped*) sampai ada rule yang diaktifkan.
+**Rule per Working Pattern** — Rule tidak lagi "satu aktif per tenant". Saat processing, rule di-resolve dari career path karyawan di tanggal itu: assignment → `pattern_id` → `schedule_patterns.overtime_rule_id` → rule.
+- create / activate rule tidak menyentuh rule lain;
+- karyawan tanpa pattern, pattern tanpa rule, atau rule nonaktif → *skipped* (dengan alasan);
+- migration `20261126000003_overtime_rule_per_pattern` mengisi `overtime_rule_id` semua pattern dengan rule yang aktif sebelumnya.
+
+### 2.1 Break (potongan istirahat)
+
+Per day type, daftar tier `{min_overtime_minutes, break_minutes}`. Saat processing, setelah day type ter-resolve: `break = break_minutes` dari tier **tertinggi** yang `aktual ≥ min_overtime_minutes` (0 bila tidak ada), lalu `aktual = aktual − break` **sebelum** realisasi (perbandingan dengan approved / kuota) dan breakdown tier. Nilai break disimpan di `facts_snapshot.break_minutes`, tier break di `rule_snapshot.day_type.breaks` (keduanya `omitempty` → input hash transaksi lama tidak berubah).
+
+Contoh `WORKING_DAY` break ≥240 → 30, ≥480 → 60; request 180, aktual 180 → break 0; aktual 300 → 270 (`EXCEEDS_APPROVAL`).
 
 ---
 
@@ -215,7 +224,7 @@ Kondisi yang tidak menghasilkan transaksi (dilaporkan sebagai *skipped*):
 - tidak ada dokumen, tidak ada lembur (termasuk hari dengan kuota yang tidak direalisasi);
 - karyawan belum clock out;
 - hari cuti approved;
-- tidak ada overtime rule aktif di tenant;
+- karyawan tidak punya working pattern, pattern tanpa overtime rule, atau rule-nya nonaktif;
 - day type tidak cocok.
 
 **Transaksi** menyimpan hasil final per karyawan per tanggal beserta snapshot:
@@ -264,7 +273,7 @@ Rincian blok ini:
 - Kode komponen dinamis, mengikuti konfigurasi rule.
 - `pending_review_count > 0` berarti rentang belum final — payroll menolak calculate run selama masih ada (lihat payroll `07` §1.3).
 
-`overtime_hours` sekarang = `total_eligible_minutes / 60` dari transaksi ini (bukan lagi menit approved request), dan `overtime_weighted_hours` = `total_weighted_minutes / 60`. Payroll mengonsumsi variabel per komponen sebagai `ot_min_<KODE>` / `ot_wmin_<KODE>` (payroll `08` §2).
+`overtime_hours` sekarang = `total_eligible_minutes / 60` dari transaksi ini (bukan lagi menit approved request), dan `overtime_weighted_hours` = `total_weighted_minutes / 60`. Payroll mengonsumsi variabel per komponen sebagai `ot_min_<KODE>` / `ot_wmin_<KODE>` (payroll `08` §2); daftar kodenya diambil dari master `overtime_components` (termasuk yang nonaktif), bukan dari tier rule.
 
 ---
 
@@ -277,6 +286,13 @@ Rincian blok ini:
 | POST | `/attendance/overtime-rules/{id}/activate` | config |
 | POST | `/attendance/overtime-rules/{id}/simulate` | config |
 | GET | `/attendance/overtime-rules/classifications` | read·config |
+| GET/POST | `/attendance/overtime-components` (`active`, `search`, `page`, `per_page`; tanpa `per_page` = semua) | read·config / config |
+| GET/PUT/DELETE | `/attendance/overtime-components/{id}` (PUT tidak mengubah `code`) | read·config / config |
+| POST | `/attendance/overtime-components/{id}/activate` | config |
+
+- Body rule: tiap `day_types[]` menerima `breaks: [{id?, min_overtime_minutes, break_minutes}]`; response mengembalikan `breaks` (urut ambang, `sequence` 1..n).
+- `simulate`: `minutes` = lembur aktual; response menambah `break_minutes` dan `net_minutes` (= minutes − break), breakdown dihitung dari `net_minutes`.
+- Schedule pattern (`POST`/`PATCH /attendance/schedule-patterns`) menerima `overtime_rule_id` (PATCH: `""` = kosongkan, tidak dikirim = tetap); rule harus ada dan aktif. Response menambah `overtime_rule_id`, `overtime_rule_name`, `overtime_rule_active`. `GET /attendance/schedule-patterns?overtime_rule_id=<id>` menyaring pattern yang memakai rule tersebut.
 | POST | `/attendance/overtime` | self / write |
 | POST | `/attendance/overtime/{id}/approve` · `/reject` | approve |
 | POST | `/attendance/overtime/{id}/cancel` | self / write |
@@ -305,7 +321,9 @@ Seluruh route di atas berada di balik entitlement `attendance.overtime`.
 | `overtime_rules` | Header rule + kebijakan |
 | `overtime_rule_day_types` | Day type milik rule (`code`, `sequence` unik per rule), `unauthorized_auto_minutes`, `excess_auto_minutes` |
 | `overtime_rule_details` | Tier per day type |
-| `overtime_rules` (index) | unique partial `(tenant_id) WHERE active` — maks 1 rule aktif per tenant |
+| `overtime_components` | Master kode OT per tenant (sumber variabel payroll `ot_min_/ot_wmin_<KODE>`) |
+| `overtime_rule_day_type_breaks` | Tier break per day type (`min_overtime_minutes`, `break_minutes`) |
+| `schedule_patterns.overtime_rule_id` | Rule yang dipakai pattern (nullable; null = lembur tidak diproses) |
 | `overtime_requests` | + window rencana/approved, menit, `reason`, `review_note`, `cancelled_at`; status + `cancelled` |
 | `overtime_approval_claims` | Kunci satu dokumen (request / baris SPL) per karyawan per tanggal (§5.4) |
 | `overtime_orders` / `overtime_order_lines` | SPL: header + baris per karyawan |
@@ -315,4 +333,5 @@ Seluruh route di atas berada di balik entitlement `attendance.overtime`.
 
 Kolom yang dihapus atau dihentikan:
 - `holidays.overtime_multiplier` dihapus; multiplier kini milik day type rule.
+- Index `idx_overtime_rules_tenant_single_active` dihapus (banyak rule boleh aktif).
 - `overtime_requests.requested_hours/approved_hours/multiplier/is_holiday` tidak lagi ditulis dan akan dihapus oleh migration pembersihan.

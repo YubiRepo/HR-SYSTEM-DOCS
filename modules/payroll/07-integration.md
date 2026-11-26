@@ -42,7 +42,7 @@ Attendance (termasuk lembur) dan Leave adalah **sumber variabel** utama: kehadir
 | `shift_days_<KODE_SHIFT>` | Attendance | Hari terjadwal per shift | tunjangan shift malam |
 | `overtime_hours` | Attendance (OT transaction `validated`) | Menit lembur eligible / 60 | uang lembur |
 | `overtime_weighted_hours` | Attendance (OT transaction) | Σ menit × multiplier tier / 60 | uang lembur gaya Kepmen 102 |
-| `ot_min_<KODE>`, `ot_wmin_<KODE>` | Attendance (OT transaction) | Menit (biasa / terbobot) per komponen OT | tarif berbeda per tier |
+| `ot_min_<KODE>`, `ot_wmin_<KODE>` | Attendance (OT transaction) | Menit (biasa / terbobot) per komponen OT; `<KODE>` dari master OT Codes (Overtime Rules → OT Codes) | tarif berbeda per tier |
 | `paid_leave_days`, `unpaid_days` | Leave | Hari cuti berbayar / tak berbayar di dalam rentang (pro-rata per hari kerja) | **potongan cuti tak berbayar** |
 | `leave_days_<KODE_CUTI>` | Leave | Hari cuti per jenis cuti | aturan per jenis (mis. sakit) |
 

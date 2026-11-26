@@ -6,7 +6,7 @@ yang melekat ke satu karyawan: **OT Type** (jenis lembur yang berlaku) dan
 tanggal efektif sehingga riwayatnya bisa ditelusuri.
 
 > **Penting — status: digantikan, tidak akan dibangun.** Aturan lembur kini
-> dipilih per cabang lewat **Attendance Rules → Overtime Rule** (lihat
+> dipilih per Working Pattern (**Working Patterns → Overtime Rule**, lihat
 > [`../hr-setting/11-overtime-rules.md`](../hr-setting/11-overtime-rules.md) dan
 > `modules/attendance/13-overtime-management.md`), dan jam kerja karyawan
 > berasal dari Working Pattern di career path. Dokumen ini disimpan sebagai

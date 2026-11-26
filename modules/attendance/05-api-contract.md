@@ -26,8 +26,8 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 |---|---|---|---|
 | GET | `/attendance/shifts` | Katalog shift | `attendance:read` / `attendance:self` |
 | POST | `/attendance/shifts` | Buat shift | `attendance:config` |
-| GET | `/attendance/schedule-patterns` | Daftar pola kerja | `attendance:read` / `attendance:self` |
-| POST | `/attendance/schedule-patterns` | Buat pola kerja | `attendance:config` |
+| GET | `/attendance/schedule-patterns` | Daftar pola kerja (filter `mode`, `active`, `search`, `overtime_rule_id`) | `attendance:read` / `attendance:self` |
+| POST | `/attendance/schedule-patterns` | Buat pola kerja (opsional `overtime_rule_id`, lihat 13 §9) | `attendance:config` |
 | PATCH | `/attendance/schedule-patterns/{id}` | Ubah pola kerja | `attendance:config` |
 | DELETE | `/attendance/schedule-patterns/{id}` | Nonaktifkan pola | `attendance:config` |
 | POST | `/attendance/schedule-patterns/{id}/activate` | Aktifkan kembali pola | `attendance:config` |

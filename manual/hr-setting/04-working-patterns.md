@@ -206,6 +206,7 @@ menampilkan *No working patterns yet.*
 | **Name** | Titik warna pola, nama pola, dan deskripsi (bila ada) |
 | **Mode** | **Fixed** (biru) atau **Rotation** (biru muda, ikon putar) |
 | **Schedule** | **Fixed:** tujuh kotak hari **Mon**–**Sun** berwarna sesuai shift hari itu (Off = abu-abu), lalu baris nama shift unik yang dipakai (mis. *Reguler / Jumat Pendek / Setengah Hari*). **Rotation:** deretan *leg* berwarna sesuai shift, mis. *3× Shift Pagi Gudang*, *1× Off*, lalu baris *(n)-day cycle • anchor (tanggal) • offset (n)* |
+| **Overtime Rule** | Nama aturan lembur pola ini (badge *Inactive* bila rule-nya nonaktif), atau *None* |
 | **Employees** | Jumlah karyawan yang saat ini memakai pola ini; `-` bila jumlahnya gagal dimuat |
 | **Status** | **Active** (hijau) atau **Inactive** (abu-abu) |
 
@@ -225,6 +226,7 @@ Deskripsi modal berubah sesuai mode:
 | **Mode \*** | pilihan kartu | Ya | **Fixed** — *A shift per weekday*; **Rotation** — *Cycle of shifts and days off*. Default **Fixed**. Saat edit tidak bisa diubah: *"Mode is set at creation and can't be changed."* | Rotation |
 | **Pattern Name \*** | teks | Ya | Placeholder *e.g. Office Mon–Fri* (Fixed) atau *e.g. Security 3-3-1 Rotation* (Rotation) | Rotasi Gudang Regu A |
 | **Color** | pemilih warna | Tidak | Default biru `#3b82f6`; saat edit terisi warna pola (atau warna shift untuk pola Fixed tanpa warna sendiri) | Merah muda |
+| **Overtime Rule** | pilihan | Tidak | Tampil bila fitur `attendance.overtime` aktif. Aturan lembur (master, lihat [`11-overtime-rules.md`](./11-overtime-rules.md)) untuk karyawan pada pola ini; *None — overtime not processed* = lembur tidak diproses. Pola baru otomatis memilih rule bila tenant hanya punya satu rule aktif | OT 5 Hari Kerja |
 | **Description** | teks | Tidak | Placeholder *e.g. Warehouse security crew A* | Kantor Cabang Makassar |
 
 ### Field mode Fixed
@@ -380,6 +382,8 @@ Pola tidak dipasang dari halaman ini, melainkan pada data karyawan:
 ## Catatan & Aturan
 
 - Pola berlaku untuk seluruh perusahaan (tidak per cabang).
+- Lembur karyawan dihitung dengan **Overtime Rule** pola yang berlaku di
+  tanggal itu. Pola tanpa rule (atau rule nonaktif) → lembur tidak diproses.
 - **Mode** tidak bisa diubah setelah pola dibuat; buat pola baru bila perlu
   mode lain.
 - Pola **Fixed** menyimpan satu shift untuk tiap hari kerja, jadi satu pola
