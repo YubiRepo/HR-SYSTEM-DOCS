@@ -13,6 +13,7 @@ Kekurangan endpoint modul **Attendance** di [API docs](../api/README.md) yang di
 | [ATT-6](#att-6) | `/me/today` tidak mengirim `shift` untuk hari dari pola jadwal | P2 | Open |
 | [ATT-7](#att-7) | `/leave/me/requests` belum bisa difilter tanggal | P3 | `Open` |
 | [ATT-8](#att-8) | Clock-in tetap diterima saat cuti approved | P2 | Perlu keputusan |
+| [ATT-9](#att-9) | `timestamp` clock-in/out dari client tidak dibatasi | P1 | `Open` |
 
 ---
 
@@ -170,4 +171,14 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 - **Temuan (kode `1adf0b7`, 16 Nov 2026):** `ClockInUseCase.Execute` (`attendancerecord/command/clock_in.go`) me-resolve `day.OnLeave` tetapi hanya meneruskannya ke `ComputeStatus`; tidak ada penolakan. Karyawan yang sedang cuti full-day tetap bisa absen masuk.
 - **Pertanyaan:** disengaja (mis. batal cuti mendadak lalu masuk kerja) atau seharusnya ditolak dengan error khusus (mis. `ON_LEAVE`)? Bila disengaja, bagaimana nasib saldo cuti hari itu?
 - **Di app:** tombol Absen Masuk disembunyikan saat cuti full-day approved (status "Sedang cuti"); validasi akhir tetap di backend.
+- **Catatan BE:** —
+
+### ATT-9
+**`timestamp` clock-in/out dari client tidak dibatasi** · P1 · `Open`
+
+- **Endpoint:** `POST /attendance/clock-in`, `POST /attendance/clock-out` (field opsional `timestamp`).
+- **Temuan (kode `a51daf4`, 26 Nov 2026):** `parseTimestampOrNow` (`attendancerecord/command/clock_in.go:153`) hanya memeriksa format RFC3339. Tidak ada batas terhadap jam server: client bisa mengirim jam masa lalu atau masa depan, dan jam itu yang dicatat sebagai jam absen (window shift dan geofence dicek terhadap jam itu juga).
+- **Dampak (keamanan data kehadiran):** karyawan bisa *backdate* absen masuk (mis. tiba 09:00 tapi mengirim 07:55) atau mengisi absen pulang lebih lambat, sehingga status telat / pulang cepat / lembur bisa dimanipulasi dengan memanggil API langsung.
+- **Konteks:** docs mobile (`api/attendance.md`) menyebut timestamp asli dipakai untuk antrean *offline*. App mobile saat ini **tidak** mengirim `timestamp` (selalu jam server), dan fitur offline ditunda sampai issue ini diputuskan.
+- **Usulan:** batasi selisih `timestamp` vs jam server (mis. maks 5 menit ke depan, maks N jam ke belakang khusus `source=offline`), tandai record offline (`source` / flag) agar HR bisa meninjau, atau abaikan `timestamp` untuk source `mobile`.
 - **Catatan BE:** —
