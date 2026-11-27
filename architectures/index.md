@@ -5,3 +5,4 @@
 - [HRMS Tenancy Model](/architectures/HRMS_Tenancy_Model)
 - [object storage](/architectures/object-storage)
 - [Trusted proxy & IP client](/architectures/trusted-proxy-client-ip)
+- [Jaringan & IP: localhost, LAN, Docker, publik](/architectures/network-ip-docker-staging)
