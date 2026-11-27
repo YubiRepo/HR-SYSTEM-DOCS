@@ -23,7 +23,8 @@ Engine menyediakan "kamus" variabel. Formula hanya boleh merujuk variabel terdaf
 | Kelompok | Contoh | Sumber |
 |---|---|---|
 | **Komponen lain** | `BASIC`, `TUNJ_JABATAN` | Nilai komponen dalam run yang sama |
-| **Data karyawan** | `grade`, `masa_kerja`, `ptkp_status`, `branch_id` | Core HR |
+| **Data karyawan** | `age_years` (umur, tahun penuh, dari tanggal lahir), `service_years` / `service_months` (masa kerja, tahun / bulan penuh, dari hire date) | Core HR — dihitung per hari terakhir periode, di-snapshot ke `payroll_run_inputs` (source `employee`); tanggal lahir & hire date wajib diisi. Formula yang memakai `age_years` untuk karyawan lama tanpa tanggal lahir → payslip error `MISSING_BIRTH_DATE` |
+| **Data karyawan (rencana)** | `grade`, `ptkp_status`, `branch_id` | Core HR |
 | **Data periode** | `work_days`, `scheduled_days`, `present_days`, `absent_days`, `incomplete_days`, `holiday_count`, `holiday_worked_days`, `day_off_count`, `day_off_worked_days`, `duty_call_days`, `actual_work_minutes` | Attendance (atau input manual) |
 | **Variabel input** | `late_count`, `late_minutes`, `early_leave_count`, `early_leave_minutes`, `auto_clock_out_count`, `overtime_hours`, `overtime_weighted_hours` | Attendance |
 | **Variabel input** | `paid_leave_days`, `unpaid_days` | Leave |
