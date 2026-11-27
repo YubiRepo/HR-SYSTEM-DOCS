@@ -8,6 +8,7 @@ Kekurangan endpoint modul **Approval** di [API docs](../api/README.md) yang dite
 | [APR-1](#apr-1) | Butuh contoh data & bentuk respons inbox approval | P3 | `Done` |
 | [APR-2](#apr-2) | Lembur & koreksi absen belum masuk engine approval | P2 | `Done` |
 | [APR-3](#apr-3) | Approver tidak punya riwayat keputusannya sendiri | P2 | `Done` |
+| [APR-4](#apr-4) | Nama approver di timeline tampil sebagai email | P3 | `Open` |
 
 ---
 
@@ -41,3 +42,14 @@ Kekurangan endpoint modul **Approval** di [API docs](../api/README.md) yang dite
 - **Sementara di app (26 Nov 2026):** riwayat lokal di HP **sudah dihapus** — riwayat harus dari API. Tab **Riwayat** di Pusat Persetujuan sudah siap memanggil `GET /approval/decided?page=&per_page=20` (envelope standar: `data` list + `pagination.total_pages`, tombol "Muat lagi" per halaman), tiap baris membuka timeline lewat `timeline_path`. Selama endpoint belum ada (404 `RESOURCE_NOT_FOUND`) tab menampilkan "Riwayat segera hadir". Begitu endpoint ini rilis dengan bentuk di bawah, app langsung jalan tanpa update.
 - **Usulan:** `GET /approval/decided?page=&per_page=&document_type=` — step yang diputuskan pemanggil (`approved` / `rejected`), dengan bentuk item sama seperti inbox (`request_id`, `document_type`, `document_id`, `subject_name`, `summary`, `timeline_path`) plus `decision`, `note`, `decided_at`, urut terbaru. Data sudah ada di `approval_actions` (`actor_user_id`, `action`, `note`, `created_at`).
 - **Catatan BE:** diimplementasikan 26 Nov 2026 sesuai usulan: `GET /approval/decided?page=&per_page=&document_type=` (cukup login, hanya keputusan pemanggil). Item = bentuk inbox (`summary` dari provider yang sama, `timeline_path`) + `decision`, `note`, `decided_at`, urut `decided_at` terbaru. Envelope standar dengan `pagination` (`per_page` default 20, maks 100). Sumber data: `approval_request_steps.decided_by`. Dicek ke DB lokal (read-only): penolakan lembur 26 Nov 08:25 ikut muncul. **Batasan:** hanya keputusan lewat engine approval. Lembur/koreksi di tenant tanpa approval policy diputuskan satu tahap di modul attendance dan tidak tercatat di sini (jalankan backfill policy `b20261126090000`). Lihat [api/approval.md](../api/approval.md) §3.
+
+### APR-4
+**Nama approver di timeline tampil sebagai email** · P3 · `Open`
+
+- **Endpoint:** timeline dokumen (`timeline_path`, mis. `GET /attendance/overtime/{id}/approval`, `GET /leave/requests/{id}/approval`) — field `actions[].actor_name`.
+- **Temuan (27 Nov 2026, server lokal):** penolakan lembur & cuti Rizky oleh admin PT Nurdiansyah tampil `"actor_name": "nurdiansyah@gmail.com"`. Karyawan yang membuka "Riwayat persetujuan" melihat email atasan, bukan namanya.
+- **Penyebab (dibaca dari kode, belum diubah):** akun `nurdiansyah@gmail.com` tidak punya data karyawan di tenant itu (`GET /core-hr/me/employee` → nama kosong), jadi `ResolveAccountName` jatuh ke fallback. Padahal akun itu punya `display_name: "Nurdiansyah Bin"` (`GET /auth/me`), tetapi `/auth/me` sendiri juga mengembalikan `name: "nurdiansyah@gmail.com"`. Kemungkinan resolver nama di timeline (`approval/application/engine/views.go` → `name(...)`) dan `GetMe` tidak memakai `display_name` sebelum email, atau `display_name` belum terbaca dari repo.
+- **Dampak:** kecil (tampilan), tetapi terlihat oleh karyawan di setiap keputusan admin tanpa data karyawan.
+- **Usulan:** urutan nama: `full_name` karyawan di tenant → `display_name` → `username` → email, sama di `/auth/me` dan `actor_name` timeline / inbox.
+- **Catatan BE:** —
+
