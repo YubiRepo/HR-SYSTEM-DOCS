@@ -4,3 +4,4 @@
 - [HRMS Module Architecture](/architectures/HRMS_Module_Architecture)
 - [HRMS Tenancy Model](/architectures/HRMS_Tenancy_Model)
 - [object storage](/architectures/object-storage)
+- [Trusted proxy & IP client](/architectures/trusted-proxy-client-ip)

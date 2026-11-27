@@ -45,6 +45,7 @@ Modul kehadiran untuk HR Management System. Mencatat kapan karyawan masuk & pula
 | [`12-agent-ingestion.md`](./12-agent-ingestion.md) | Agent lokal (pull mesin) & kontrak ingestion netral vendor |
 | [`13-overtime-management.md`](./13-overtime-management.md) | Overtime rule, klasifikasi hari, request, realisasi, transaksi & breakdown, rekap per komponen |
 | [`14-office-wifi.md`](./14-office-wifi.md) | Wajib WiFi kantor (SSID/BSSID) per attendance rule, mode gabung dengan geofence (`all`/`any`) |
+| [`15-web-clock-office-ip.md`](./15-web-clock-office-ip.md) | Absen via ESS web hanya dari IP publik kantor (opt-in per attendance rule), deteksi channel browser, `TRUSTED_PROXIES` |
 
 ---
 

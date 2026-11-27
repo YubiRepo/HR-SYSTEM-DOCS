@@ -9,7 +9,7 @@ Opsi pada **attendance rule**: absen dari app mobile hanya sah bila HP tersambun
 |---|---|
 | **Level konfigurasi** | Attendance rule: default tenant + override per cabang (sama dengan geofence) |
 | **Sumber data** | SSID/BSSID yang dibaca HP dan dikirim saat clock-in/out |
-| **Dicek untuk** | `source` = `mobile` dan `web` (web selalu gagal WiFi, lihat §4) |
+| **Dicek untuk** | `source` = `mobile`. `web` tidak dicek WiFi karena sudah wajib lolos cek IP kantor, lihat [15](./15-web-clock-office-ip.md) |
 | **Tidak dicek** | `kiosk`, `machine`, `manual` |
 
 ---
@@ -21,7 +21,7 @@ Opsi pada **attendance rule**: absen dari app mobile hanya sah bila HP tersambun
   - **BSSID** adalah MAC address access point, unik per perangkat AP. Ini pencocokan yang disarankan.
   - **SSID** adalah nama jaringan, yang mudah ditiru (hotspot HP bisa diberi nama yang sama). Hanya dipakai bila entri tidak punya BSSID.
   - Kantor dengan banyak AP mendaftarkan **setiap** BSSID-nya (satu entri per AP).
-- **Batasan, sengaja diterima:** SSID/BSSID adalah **klaim dari HP**. Server tidak bisa memverifikasinya sendiri, sehingga pemanggilan API langsung atau HP yang di-root bisa memalsukan nilainya. Ini setara dengan koordinat GPS yang juga dikirim HP. Penguatan yang mungkin di masa depan (di luar scope): allowlist **IP publik kantor** yang dicek server dari IP asal request.
+- **Batasan, sengaja diterima:** SSID/BSSID adalah **klaim dari HP**. Server tidak bisa memverifikasinya sendiri, sehingga pemanggilan API langsung atau HP yang di-root bisa memalsukan nilainya. Ini setara dengan koordinat GPS yang juga dikirim HP. Untuk absen via web, allowlist **IP publik kantor** sudah tersedia, lihat [15 · Absen via Web](./15-web-clock-office-ip.md).
 
 ---
 
@@ -143,7 +143,7 @@ Contoh per source saat WiFi aktif:
 | `web` dalam radius | ❌ `WIFI_UNVERIFIABLE` | ✅ (lewat geofence) | ❌ `WIFI_UNVERIFIABLE` |
 | `kiosk` / `machine` / `manual` | ✅ tidak dicek | ✅ tidak dicek | ✅ tidak dicek |
 
-> Web ESS tidak bisa membaca WiFi (batasan browser). Dengan WiFi wajib, absen dari web hanya mungkin di mode `any` lewat geofence. Di mode lain karyawan diarahkan ke app mobile.
+> **Diperbarui (27 Nov 2026):** baris `web` di tabel ini sudah tidak berlaku. Web kini wajib lolos cek IP publik kantor ([15](./15-web-clock-office-ip.md)) dan cek WiFi dilewati untuk web. `WIFI_UNVERIFIABLE` tidak lagi dikeluarkan.
 
 ### 4.4 Error Baru
 
