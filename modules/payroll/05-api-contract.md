@@ -150,7 +150,7 @@ Kompensasi (`POST /payroll/employees/{id}/compensations` dan `/compensations/bul
 | POST | `/payroll/payments/{paymentId}/transactions` | `{ status: paid\|failed, external_ref?, note? }` — run otomatis `paid` saat semua net terbayar | `payroll:approve` |
 
 ### Laporan Setoran (P13)
-Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `format=csv` (opsional, unduhan CSV). Hanya run `approved`/`paid`/`closed` dihitung; run lain di `pending` / `runs[].final = false`. Period salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`. Endpoint PPh 21 juga butuh benefit plan `payroll.tax`.
+Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `format=csv` (opsional, unduhan CSV). Hanya run `approved`/`paid`/`closed` dihitung; run lain di `pending` / `runs[].final = false`. Period salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`. Endpoint PPh 21 termasuk benefit `payroll` (tidak ada benefit terpisah).
 | Method | Endpoint | Deskripsi |
 |---|---|---|
 | GET | `/payroll/reports/bpjs` | Rekap per lembaga & program: `institutions[].programs[]` (participants, base, employee, employer, total), total, `without_breakdown`, `pending`, `runs` |
@@ -159,7 +159,7 @@ Semua `payroll:read`, query `period=YYYY-MM` (wajib), `branch_id` (opsional), `f
 | GET | `/payroll/reports/pph21/withholdings` | Per karyawan: NIK, NPWP, PTKP, TER, metode, perlakuan, bruto, PPh |
 
 ### Laporan Register (matriks karyawan × komponen)
-Semua `payroll:read`. Query: `schedule_id` + `period_id` (periode payroll schedule tsb) **atau** `schedule_id=all` + `period=YYYY-MM` (bulan pajak, semua schedule); `group_by=department|schedule|none` (default `department`, departemen = org unit karyawan **saat ini**); `org_unit_id` (opsional: hanya karyawan di org unit itu **dan semua unit di bawahnya**; grup departemen lalu di-roll up ke anak langsung unit tsb — karyawan yang langsung di unit itu masuk grup unit itu sendiri; org unit tak dikenal → 422); `branch_id` (opsional); `format=xlsx` (unduhan Excel: judul, header beku, baris grup, subtotal per grup, grand total). Hanya run `approved`/`paid`/`closed`; slip run lain dihitung di `pending_payslips`. Argumen salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`. `pph21/matrix` butuh benefit `payroll.tax`.
+Semua `payroll:read`. Query: `schedule_id` + `period_id` (periode payroll schedule tsb) **atau** `schedule_id=all` + `period=YYYY-MM` (bulan pajak, semua schedule); `group_by=department|schedule|none` (default `department`, departemen = org unit karyawan **saat ini**); `org_unit_id` (opsional: hanya karyawan di org unit itu **dan semua unit di bawahnya**; grup departemen lalu di-roll up ke anak langsung unit tsb — karyawan yang langsung di unit itu masuk grup unit itu sendiri; org unit tak dikenal → 422); `branch_id` (opsional); `format=xlsx` (unduhan Excel: judul, header beku, baris grup, subtotal per grup, grand total). Hanya run `approved`/`paid`/`closed`; slip run lain dihitung di `pending_payslips`. Argumen salah → `422 INVALID_PAYROLL_REPORT_ARGUMENT`.
 | Method | Endpoint | Kolom |
 |---|---|---|
 | GET | `/payroll/reports/register` | Earning per komponen (urut `sequence`), Gross, deduction per komponen, BPJS (Employee), PPh 21, Net Pay, BPJS (Employer) |

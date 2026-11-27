@@ -22,15 +22,12 @@ Resolver `nil` (modul dibangun tanpa platform, mis. di test) mematikan gate.
 
 | Route / aksi | Benefit |
 |---|---|
-| `/api/v1/core-hr/*` | `core_hr` |
-| `/api/v1/core-hr/employees/import*` | + `core_hr.bulk_import` |
-| `/api/v1/attendance/*` | `attendance` |
-| `/attendance/agents`, `/devices`, `/employee-mappings`, `/raw-events` | + `attendance.device` |
+| `/api/v1/core-hr/*` (termasuk import karyawan) | `core_hr` |
+| `/api/v1/attendance/*` (termasuk mesin absensi: agents, devices, employee-mappings, raw-events) | `attendance` |
 | `/attendance/overtime*`, `/attendance/me/overtime` | + `attendance.overtime` |
-| `/api/v1/attendance/agent/*` (X-Agent-Key) | `attendance` + `attendance.device`, dicek di `AuthenticateAgent` |
+| `/api/v1/attendance/agent/*` (X-Agent-Key) | `attendance`, dicek di `AuthenticateAgent` |
 | `/api/v1/leave/*` | `leave` |
-| `/api/v1/payroll/*` | `payroll` |
-| `/payroll/employees/{id}/tax-profile` | + `payroll.tax` |
+| `/api/v1/payroll/*` (termasuk PPh 21: tax profile, tax year, laporan PPh 21) | `payroll` |
 | Create employee / bulk import | quota `max_employees` |
 | Tambah cabang | quota `max_branches` |
 | Daftar / aktivasi mesin | quota `max_devices` |

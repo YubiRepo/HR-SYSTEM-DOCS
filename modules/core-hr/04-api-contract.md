@@ -507,7 +507,7 @@ Parameter opsional: `?root=org_01H8...` (subtree), `?depth=2` (batasi kedalaman)
 
 ## 14. Bulk Import (Async)
 
-Untuk migrasi/onboarding tenant baru yang sudah punya banyak data karyawan. Satu file maksimal **1.000 baris / 5 MB** (`.xlsx` atau `.csv`). Semua route impor memerlukan benefit paket `core_hr.bulk_import`. Mode yang tersedia saat ini: **tambah karyawan baru saja** — NIK yang sudah terdaftar menjadi baris bermasalah (mode *upsert* belum tersedia).
+Untuk migrasi/onboarding tenant baru yang sudah punya banyak data karyawan. Satu file maksimal **1.000 baris / 5 MB** (`.xlsx` atau `.csv`). Semua route impor termasuk benefit paket `core_hr`. Mode yang tersedia saat ini: **tambah karyawan baru saja** — NIK yang sudah terdaftar menjadi baris bermasalah (mode *upsert* belum tersedia).
 
 ### 14.1 Template
 **`GET /employees/import/template`** → `employees-import-template.xlsx` dengan tiga sheet:

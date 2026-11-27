@@ -6,10 +6,11 @@ Semua yang bisa diberikan sebuah plan didefinisikan sebagai **Benefit** di katal
 
 | Tipe | Sifat | Contoh key |
 |---|---|---|
-| `feature` | tersedia / tidak | `core_hr`, `attendance`, `leave`, `payroll`, `core_hr.bulk_import`, `attendance.device`, `attendance.overtime`, `payroll.tax` |
+| `feature` | tersedia / tidak | `core_hr`, `attendance`, `attendance.overtime`, `leave`, `payroll` |
 | `quota` | tersedia + angka batas (`-1` = unlimited) | `max_employees`, `max_branches`, `max_devices`, `max_users` |
 
-- Key berbentuk segmen `snake_case` dipisah titik. Benefit modul (mis. `attendance`) menggerbang seluruh modul; sub-benefit (mis. `attendance.device`) menggerbang sub-fitur di dalamnya.
+- Key berbentuk segmen `snake_case` dipisah titik. Benefit modul (mis. `attendance`) menggerbang seluruh modul; sub-benefit (mis. `attendance.overtime`) menggerbang sub-fitur di dalamnya.
+- Katalog awal: fitur `core_hr`, `attendance`, `attendance.overtime`, `leave`, `payroll`; quota `max_employees`, `max_branches`, `max_devices`, `max_users`. Import karyawan, mesin absensi, dan PPh 21 ikut modul induknya (bukan benefit terpisah). `core_hr.bulk_import`, `attendance.device`, `payroll.tax`, `performance`, `recruitment` dinonaktifkan (migration `20261128000001`).
 - Key dan tipe **tidak bisa diubah** setelah dibuat, karena sel plan dan snapshot subscription dibaca lewat keduanya.
 - Benefit tidak dihapus, hanya dinonaktifkan. Penonaktifan ditolak (`BENEFIT_IN_USE`) selama masih diaktifkan di plan yang aktif.
 

@@ -8,7 +8,7 @@ Mengacu strategi di [Business Model](../../../business/HRMS_Business_Model.md). 
 
 | Komponen | Sifat | Contoh |
 |---|---|---|
-| **Feature** | on/off | `core_hr`, `payroll`, `sso`, `recruitment` |
+| **Feature** | on/off | `core_hr`, `attendance`, `attendance.overtime`, `leave`, `payroll` |
 | **Limit (global)** | angka, milik tenant | `max_employees`, `max_branches`, `storage_gb` |
 | **Limit (per-fitur)** | angka, milik fitur | `payroll.max_payslips_month`, `recruitment.max_open_jobs` |
 | **Plan** | rakitan Feature + Limit + harga | Free, Starter, Pro, Enterprise, custom |

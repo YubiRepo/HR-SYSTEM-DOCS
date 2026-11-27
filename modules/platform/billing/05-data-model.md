@@ -24,7 +24,7 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 ### 2.1 `benefits` (master)
 | Field | Tipe | Keterangan |
 |---|---|---|
-| `key` | string (PK) | mis. `payroll`, `attendance.device`, `max_employees` |
+| `key` | string (PK) | mis. `payroll`, `attendance.overtime`, `max_employees` |
 | `name` | string | |
 | `description` | string | |
 | `module` | string | Modul pemilik (info & pengelompokan matriks) |

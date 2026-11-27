@@ -8,7 +8,7 @@ dikonfirmasi.
 
 **Akses:** `/tenants/employee/import`, dibuka dari tombol **Import Excel** di
 halaman **Employees Info** · **Permission:** `employees:write` · **Paket:**
-benefit `core_hr.bulk_import` (tombol & menu tidak tampil tanpa benefit ini).
+termasuk benefit `core_hr` (tombol & menu tidak tampil tanpa benefit ini).
 Riwayat impor: menu **Employees → Import History**.
 
 ## Gambaran Alur
