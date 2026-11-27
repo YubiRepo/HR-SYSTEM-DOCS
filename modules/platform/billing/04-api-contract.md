@@ -133,11 +133,11 @@ Parameter: `filter[status]`, `sort=-due_date`, pagination.
 ## 6. Pembayaran Manual (Kirim Bukti)
 
 Tenant membayar via transfer manual dan **mengunggah bukti sebagai file**
-(MinIO/S3, **bucket private**). Alur tiga langkah upload → submit → verifikasi:
+(object storage S3 — SeaweedFS, **bucket private**). Alur tiga langkah upload → submit → verifikasi:
 
 ```
 1. POST proof/presign ──▶ presigned PUT URL + key pending/payment-proofs/{tenant}/{uuid}{ext}
-2. Browser PUT file langsung ke MinIO (private bucket)
+2. Browser PUT file langsung ke object storage (private bucket)
 3. POST payments/manual {proof_key} ──▶ backend Confirm+Promote ──▶ payment pending
    ├─ staff approve ──▶ payment succeeded, invoice paid, reverse dunning
    └─ staff reject ──▶ payment failed, invoice tetap open
@@ -149,7 +149,7 @@ Tenant membayar via transfer manual dan **mengunggah bukti sebagai file**
 ```
 **Response `200 OK`:**
 ```json
-{ "presign_url": "https://minio/.../X-Amz-Signature=...", "key": "pending/payment-proofs/ten_1/abc.pdf", "expires_in": 900 }
+{ "presign_url": "https://storage.example/.../X-Amz-Signature=...", "key": "pending/payment-proofs/ten_1/abc.pdf", "expires_in": 900 }
 ```
 **Error:** `422 VALIDATION_ERROR` (format bukan jpg/png/webp/pdf).
 
@@ -167,7 +167,7 @@ bukti:
   "success": true,
   "data": {
     "id": "pay_01H8...", "invoice_id": "inv_01H8...", "amount": 5000000,
-    "method": "transfer", "status": "pending", "proof_url": "https://minio/.../X-Amz-Signature=...",
+    "method": "transfer", "status": "pending", "proof_url": "https://storage.example/.../X-Amz-Signature=...",
     "notes": "BRIVA 1234567890"
   }
 }

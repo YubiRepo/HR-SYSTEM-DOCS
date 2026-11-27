@@ -176,26 +176,26 @@ Kontrak kerja karyawan sebagai entity mandiri — berdampingan dengan (bukan pen
 | `created_at` / `updated_at` | timestamp | |
 
 ### 2.5c `contract_documents`
-Dokumen terlampir per kontrak (mis. PDF kontrak yang ditandatangani) — skema identik `employee_documents` di bawah, tapi FK ke `contracts(id)`, bukan `employees(id)`. Alur upload sama persis (presign → MinIO → konfirmasi).
+Dokumen terlampir per kontrak (mis. PDF kontrak yang ditandatangani) — skema identik `employee_documents` di bawah, tapi FK ke `contracts(id)`, bukan `employees(id)`. Alur upload sama persis (presign → object storage → konfirmasi).
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | |
 | `contract_id` | string (FK) | |
 | `type` | enum | `contract_file`, `addendum`, `other` |
 | `file_name` | string | |
-| `file_ref` | string | Key objek MinIO (bucket privat) |
+| `file_ref` | string | Key objek storage (bucket privat) |
 | `uploaded_by` | string | Aktor |
 | `uploaded_at` | timestamp | |
 
 ### 2.6 `employee_documents`
-Dokumen milik karyawan (kontrak, KTP, sertifikat) — file sebenarnya disimpan di MinIO (object storage), bucket privat; `file_ref` hanya menyimpan key objeknya, bukan isi filenya. Alur upload: klien minta presigned PUT URL (`POST /employees/{id}/documents/presign`), upload langsung ke MinIO, lalu kirim key-nya ke `POST /employees/{id}/documents` untuk dikonfirmasi & dipromosikan ke key final. Setiap pembacaan (list/get) me-resolve `file_ref` menjadi presigned download URL baru berumur pendek — tidak pernah ada URL publik permanen untuk dokumen.
+Dokumen milik karyawan (kontrak, KTP, sertifikat) — file sebenarnya disimpan di object storage (SeaweedFS), bucket privat; `file_ref` hanya menyimpan key objeknya, bukan isi filenya. Alur upload: klien minta presigned PUT URL (`POST /employees/{id}/documents/presign`), upload langsung ke object storage, lalu kirim key-nya ke `POST /employees/{id}/documents` untuk dikonfirmasi & dipromosikan ke key final. Setiap pembacaan (list/get) me-resolve `file_ref` menjadi presigned download URL baru berumur pendek — tidak pernah ada URL publik permanen untuk dokumen.
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | `doc_...` |
 | `employee_id` | string (FK) | |
 | `type` | enum | `contract`, `id_card`, `certificate`, `tax`, `other` |
 | `file_name` | string | Nama berkas |
-| `file_ref` | string | Key objek MinIO (bucket privat) |
+| `file_ref` | string | Key objek storage (bucket privat) |
 | `uploaded_by` | string | Aktor |
 | `uploaded_at` | timestamp | |
 

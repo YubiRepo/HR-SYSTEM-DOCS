@@ -26,7 +26,7 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | GET | `/employees/{id}/subordinates` | Daftar bawahan langsung | `employees:read` |
 | GET | `/employees/{id}/reporting-line` | Atasan efektif (manager_id → fallback kepala unit) | `employees:read` |
 | GET | `/employees/{id}/documents` | Daftar dokumen | `employees:read` |
-| POST | `/employees/{id}/documents/presign` | Minta presigned upload URL (MinIO) | `employees:write` |
+| POST | `/employees/{id}/documents/presign` | Minta presigned upload URL (object storage) | `employees:write` |
 | POST | `/employees/{id}/documents` | Konfirmasi dokumen ter-upload | `employees:write` |
 | GET | `/documents/{doc_id}` | Detail/unduh dokumen | `employees:read` |
 | DELETE | `/documents/{doc_id}` | Hapus dokumen | `employees:write` |
@@ -53,7 +53,7 @@ Kontrak kerja sebagai entity mandiri — berdampingan dengan `employees.contract
 | GET | `/contracts/{id}` | Detail satu kontrak | `contracts:read` |
 | PATCH | `/contracts/{id}` | Ubah `remark`, atau set `status="terminated"` (penutupan dini manual — `active`/`expired`/`superseded` diatur sistem) | `contracts:write` |
 | GET | `/contracts/{id}/documents` | Daftar dokumen kontrak | `contracts:read` |
-| POST | `/contracts/{id}/documents/presign` | Minta presigned upload URL (MinIO) | `contracts:write` |
+| POST | `/contracts/{id}/documents/presign` | Minta presigned upload URL (object storage) | `contracts:write` |
 | POST | `/contracts/{id}/documents` | Konfirmasi dokumen ter-upload | `contracts:write` |
 | GET | `/contract-documents/{doc_id}` | Detail/unduh dokumen kontrak | `contracts:read` |
 | DELETE | `/contract-documents/{doc_id}` | Hapus dokumen kontrak | `contracts:write` |
@@ -392,7 +392,7 @@ Atasan **efektif** karyawan — sama dengan yang dipakai routing approval (`02-o
 
 ## 10. Dokumen Karyawan
 
-File tersimpan di MinIO (bucket privat) — alur upload dua langkah: minta presigned URL, upload langsung ke storage dari klien, lalu konfirmasi ke backend.
+File tersimpan di object storage (bucket privat) — alur upload dua langkah: minta presigned URL, upload langsung ke storage dari klien, lalu konfirmasi ke backend.
 
 **Daftar — `GET /employees/{id}/documents`**
 ```json
@@ -411,7 +411,7 @@ File tersimpan di MinIO (bucket privat) — alur upload dua langkah: minta presi
 ```
 **Response `200 OK`**
 ```json
-{ "success": true, "data": { "presign_url": "https://minio.../pending/...", "key": "pending/employee-documents/emp_.../uuid.pdf", "expires_in": 900 } }
+{ "success": true, "data": { "presign_url": "https://storage.example/.../pending/...", "key": "pending/employee-documents/emp_.../uuid.pdf", "expires_in": 900 } }
 ```
 Klien lalu `PUT` file langsung ke `presign_url`.
 
@@ -421,7 +421,7 @@ Klien lalu `PUT` file langsung ke `presign_url`.
 ```
 **Response `201 Created`.** Backend mengonfirmasi upload benar terjadi, mempromosikan objek dari staging ke key final, lalu menyimpan record. Tipe: `contract`, `id_card`, `certificate`, `tax`, `other`.
 
-**Hapus — `DELETE /documents/{doc_id}`** → `204 No Content`. Menghapus record sekaligus objek MinIO-nya.
+**Hapus — `DELETE /documents/{doc_id}`** → `204 No Content`. Menghapus record sekaligus objek storage-nya.
 
 > Dokumen berisi data pribadi/sensitif — akses dibatasi RBAC & disimpan di bucket privat (UU PDP).
 

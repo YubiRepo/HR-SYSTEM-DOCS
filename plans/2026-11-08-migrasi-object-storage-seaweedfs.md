@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Rencana — belum dikerjakan.** |
+| **Status** | **Diimplementasikan (2026-11-27)** — kode, infra dev, tooling migrasi, docs. Eksekusi migrasi data (`make dev-storage-migrate`) & verifikasi §8 langkah 3–7 dijalankan user. |
 | **Tanggal** | 2026-11-08 |
 | **Pemicu** | Object storage (avatar, bukti bayar, dokumen karyawan) dipindah dari MinIO ke **SeaweedFS** lewat S3 gateway-nya. MinIO jadi deprecated. |
 | **Keputusan user** | (1) Cakupan **termasuk migrasi data** objek yang sudah ada. (2) Client Go yang baru memakai **aws-sdk-go-v2**, bukan `minio-go`. (3) Implementasi MinIO **tidak dihapus**: kodenya ditandai deprecated dan masih bisa dipakai lewat `STORAGE_DRIVER=minio` untuk rollback. Lihat §2. |
@@ -196,3 +196,17 @@ Setiap fase bisa di-merge sendiri.
 | `CopyObject` dengan key yang mengandung karakter khusus. | Escape `CopySource` per segmen dan tambahkan unit test untuk key dengan spasi atau unicode. |
 | Objek yang ditulis setelah cutover hilang saat rollback. | Runbook §5.2 langkah 6: sync balik sebelum rollback. |
 | Kredensial dev ikut terbawa ke produksi. | `s3.json` produksi dibuat terpisah dan tidak di-commit. Repo hanya berisi contoh dev. |
+
+## 10. Catatan implementasi (deviasi dari rencana)
+
+| Rencana | Implementasi | Alasan |
+|---|---|---|
+| `cmd/worker` tetap noop (§3.3). | `cmd/worker` ternyata sudah memakai `NewMinioFileUploader` untuk import karyawan, jadi ikut di-switch. Pemilihan driver dipusatkan di `storage.NewFileUploader(driver, ...)` dan dipakai `cmd/api` maupun `cmd/worker`. | Kalau tidak, worker tetap ke MinIO setelah cutover. |
+| Pemetaan metode §3.1 tanpa `GetObject`. | `GetObject` diimplementasikan dengan `s3.GetObject` (eager, tanpa `Stat` tambahan). | `GetObject` ada di interface `FileUploader`. |
+| — | Checksum otomatis SDK dimatikan (`RequestChecksumCalculation`/`ResponseChecksumValidation = WhenRequired`). | Default SDK menambah `x-amz-checksum-*` ke presigned PUT, yang tidak dikirim browser sehingga tanda tangan gagal. |
+| Escape `CopySource` per segmen. | `url.PathEscape` per segmen + `+` di-escape jadi `%2B`. | Sebagian gateway men-decode `+` sebagai spasi. |
+| Kredensial dev = kredensial MinIO. | Kredensial dev SeaweedFS `seaweedfsadmin`/`seaweedfsadmin` (di `s3.json` dan `.env.example`); MinIO tetap `minioadmin` lewat `MINIO_*` / `MIGRATE_SRC_*`. | Memisahkan sumber dan tujuan migrasi. |
+| Target Makefile `seaweedfs-init`, `storage-migrate`. | `dev-seaweedfs-init`, `dev-storage-migrate` (ikut konvensi prefix `dev-`); `dev-minio-init` kini memakai `--profile legacy`. | Konsistensi dengan target lain. |
+| Healthcheck `wget http://localhost:9333/...` (§4.1). | Memakai `http://127.0.0.1:9333/cluster/status`. | Busybox wget me-resolve `localhost` ke `::1` lebih dulu, sedangkan master hanya listen IPv4, jadi container selalu unhealthy. |
+| `-master.volumeSizeLimitMB` tidak disebut (§4.1). | `-master.volumeSizeLimitMB=64 -volume.max=0` (dev). | Dengan volume 1 GB dan disk dev hampir penuh, slot volume habis dipakai collection pertama sehingga PUT ke bucket `public` gagal 500 ("No writable volumes and no free volumes left"). Produksi: sesuaikan ukuran volume dengan kapasitas disk. |
+| Image dipin. | `chrislusf/seaweedfs:4.53`, `amazon/aws-cli:2.41.0`, `rclone/rclone:1.75.0`. | — |
