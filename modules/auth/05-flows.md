@@ -74,9 +74,10 @@ U → C : klik "lupa password", isi email
 C → A : POST /auth/password/forgot { email, tenant_id }
 A     : (selalu) balas 202  ← cegah user enumeration
 A     : bila akun ada → buat password_reset (token hash, exp 30 mnt)
-A → Email : kirim tautan berisi reset_token
+A → Email : kirim tautan BACKOFFICE_URL/auth/reset-password?token=<reset_token>
+            (tanpa SMTP: tautan ditulis ke log API, noop sender)
 ──────────────────────────────────────────────
-U → C : buka tautan, isi password baru
+U → C : buka tautan (halaman /auth/reset-password), isi password baru
 C → A : POST /auth/password/reset { reset_token, new_password }
 A     : validasi token (belum dipakai, belum exp), cek kekuatan password
 A     : update password_hash, tandai token used

@@ -25,7 +25,8 @@ Parameter konfigurasi modul Auth. Nilai bersifat contoh/rekomendasi — sesuaika
 | `PASSWORD_HASH_ALGO` | `argon2id` | Algoritma hashing |
 | `PASSWORD_HISTORY_COUNT` | `5` | Jumlah riwayat yang dicegah |
 | `PASSWORD_BREACH_CHECK` | `true` | Cek terhadap daftar breach |
-| `RESET_TOKEN_TTL` | `30m` | Umur token reset |
+| `RESET_TOKEN_TTL_SECONDS` | `1800` (30 menit) | Umur tautan reset password |
+| `BACKOFFICE_URL` | `http://localhost:3132` | Basis tautan di email (reset password, verifikasi signup) |
 
 ---
 

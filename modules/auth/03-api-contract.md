@@ -196,7 +196,7 @@ Untuk resource server memeriksa token opaque / status revocation.
 ```json
 { "identifier": "budi@example.com", "tenant_id": "tenant_01H8..." }
 ```
-**Response `202 Accepted`** — selalu balas sukses walau identifier tak terdaftar (cegah user enumeration). Instruksi reset dikirim ke kanal terverifikasi milik akun (email dan/atau SMS) bila akun ada.
+**Response `202 Accepted`** — selalu balas sukses walau identifier tak terdaftar (cegah user enumeration). Bila akun ada dan punya email, dikirim email berisi tautan `BACKOFFICE_URL/auth/reset-password?token=<reset_token>` (berlaku `RESET_TOKEN_TTL_SECONDS`, sekali pakai). Halaman itu memanggil `POST /auth/password/reset`. Tautan yang sama juga dipakai untuk kirim ulang undangan aktivasi akun.
 
 ---
 
