@@ -12,7 +12,7 @@ Modul Tenant melahirkan & mengelola "wadah" pelanggan. Setiap perusahaan yang be
 |---|---|
 | **Tenant** | Organisasi pelanggan (perusahaan) — unit isolasi & billing |
 | **Branch** | Cabang di dalam tenant (tenancy 2-level) |
-| **Slug** | Nama unik URL-friendly → dasar subdomain (`acme.hrms.com`) |
+| **Slug (kode tenant)** | Kode pendek unik (mis. `pt-acme`), dibuat otomatis dari nama perusahaan. Hanya label di samping ID; **tidak** dipakai sebagai subdomain, URL, atau untuk login |
 | **Lifecycle** | Status hidup tenant (trial, active, suspended, dst) |
 
 ---

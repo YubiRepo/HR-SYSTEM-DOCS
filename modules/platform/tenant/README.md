@@ -15,7 +15,7 @@ Bagian dari **Platform/Backoffice**. Mengelola siklus hidup tenant (perusahaan p
 ## Ruang Lingkup
 
 - Provisioning tenant baru + cabang default
-- Identitas tenant (slug/subdomain)
+- Identitas tenant (nama, kode tenant/slug)
 - Manajemen cabang (tenancy 2-level)
 - Lifecycle: trial → active → suspended → terminated
 - Termination & retensi data

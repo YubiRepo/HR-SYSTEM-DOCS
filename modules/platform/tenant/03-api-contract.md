@@ -23,6 +23,13 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
 | POST | `/platform/tenants/{id}/terminate` | Hentikan permanen (re-auth) | super_admin |
 | GET | `/platform/tenants/{id}/branches` | Lihat cabang (dukungan) | viewer+ |
 
+### Publik (self signup — tanpa login, rate limit auth per IP)
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| POST | `/signup` | Daftar perusahaan; kirim email verifikasi |
+| POST | `/signup/verify` | Verifikasi tautan → provisioning tenant |
+| GET | `/signup/plans` | Plan yang bisa dipilih di form signup |
+
 ### Tenant-facing (tenant admin — kelola cabang sendiri)
 | Method | Endpoint | Deskripsi | Izin (RBAC) |
 |---|---|---|---|
@@ -43,7 +50,6 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
 ```json
 {
   "name": "PT Acme Indonesia",
-  "slug": "acme",
   "plan_id": "plan_pro",
   "billing_cycle": "monthly",
   "admin": { "display_name": "Siti", "email": "siti@acme.com" },
@@ -68,7 +74,9 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
 ```
 `admin_existing_account: true` = email sudah punya akun → diundang (tanpa `admin_temp_password`).
 
-**Error:** `409 SLUG_TAKEN`, `422 INVALID_PLAN`, `400 VALIDATION_ERROR` (`admin.display_name` kosong untuk email baru).
+`slug` (kode tenant) opsional dan biasanya tidak dikirim: API membuatnya dari `name` (`pt-acme-indonesia`, lalu `-2`, `-3` bila sudah dipakai). Bila dikirim, harus unik.
+
+**Error:** `409 SLUG_TAKEN` (hanya bila `slug` dikirim dan sudah dipakai), `422 INVALID_PLAN`, `400 VALIDATION_ERROR` (`admin.display_name` kosong untuk email baru).
 
 ### GET /platform/tenants/admin-account?email=
 
@@ -143,11 +151,32 @@ Parameter: `page`, `per_page`, `sort`, `search`, `filter[status]`, `filter[plan_
 
 ---
 
+## 6a. Self signup (publik)
+
+Lihat alurnya di [02-lifecycle.md §1.0](02-lifecycle.md).
+
+### POST /signup
+```json
+{ "company_name": "PT Maju Jaya", "plan_id": "<id dari /signup/plans>", "admin_name": "Budi", "email": "budi@majujaya.co.id", "password": "••••••••" }
+```
+**202** `{ "email": "budi@majujaya.co.id", "expires_at": "2026-11-29T10:00:00Z" }` — email berisi tautan verifikasi. Error: `INVALID_PLAN` 422 (plan tidak ditawarkan di signup), `EMAIL_ALREADY_EXISTS` 409, `WEAK_PASSWORD` 422, `VALIDATION_ERROR` 400.
+
+### POST /signup/verify
+```json
+{ "token": "<dari tautan email>" }
+```
+**200** `{ "tenant_name": "PT Maju Jaya", "email": "budi@majujaya.co.id" }`. Idempoten: token yang sudah dipakai tetap 200. Error: `SIGNUP_TOKEN_INVALID` 400, `SIGNUP_TOKEN_EXPIRED` 410 (kedaluwarsa atau sudah diganti pendaftaran baru). Kode tenant dibuat otomatis dari `company_name`; tenant trial di `plan_id` pendaftaran.
+
+### GET /signup/plans
+**200** daftar plan (bentuk sama dengan `GET /platform/plans`) yang publik, aktif, dan gratis (flat Rp 0) atau punya `trial_days > 0`, urut `sort_order`.
+
+---
+
 ## 7. Ringkasan Error
 
 | Code | HTTP | Arti |
 |---|---|---|
-| `SLUG_TAKEN` | 409 | Slug sudah dipakai |
+| `SLUG_TAKEN` | 409 | Slug yang dikirim eksplisit sudah dipakai |
 | `INVALID_PLAN` | 422 | Plan tidak valid saat provisioning |
 | `TENANT_NOT_FOUND` | 404 | Tenant tidak ada |
 | `BRANCH_LIMIT_REACHED` | 403 | Limit `max_branches` habis (upgrade plan) |
@@ -155,3 +184,6 @@ Parameter: `page`, `per_page`, `sort`, `search`, `filter[status]`, `filter[plan_
 | `CANNOT_CLOSE_DEFAULT_BRANCH` | 409 | Cabang default tak bisa ditutup |
 | `BRANCH_HAS_ACTIVE_EMPLOYEES` | 409 | Masih ada karyawan aktif (pindah dulu) |
 | `REAUTH_REQUIRED` | 401 | Aksi berbahaya butuh re-auth |
+| `EMAIL_ALREADY_EXISTS` | 409 | Self signup: email sudah punya akun (login saja) |
+| `SIGNUP_TOKEN_INVALID` | 400 | Tautan verifikasi tidak dikenal |
+| `SIGNUP_TOKEN_EXPIRED` | 410 | Tautan kedaluwarsa / sudah diganti |

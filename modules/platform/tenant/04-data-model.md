@@ -21,7 +21,7 @@ Entitas milik modul Tenant. `users` (admin) dirujuk dari Auth; subscription/invo
 | Field | Tipe | Keterangan |
 |---|---|---|
 | `id` | string (PK) | `tenant_...` |
-| `slug` | string | Unik; dasar subdomain |
+| `slug` | string | Kode tenant unik, dibuat otomatis dari nama (bukan subdomain) |
 | `name` | string | Nama perusahaan |
 | `status` | enum | `trial`, `active`, `past_due`, `suspended`, `expired`, `terminated` |
 | `default_branch_id` | string (FK) | Cabang bawaan |
@@ -67,15 +67,32 @@ Jejak perubahan status (audit lifecycle).
 | `changed_by` | string | Admin platform |
 | `created_at` | timestamp | |
 
+### 2.4 `tenant_signups`
+Pendaftaran self signup yang menunggu (atau sudah) verifikasi email. Tenant baru dibuat saat verifikasi.
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `id` | uuid (PK) | |
+| `company_name` | string | Nama perusahaan → nama tenant |
+| `plan_id` | uuid | Plan yang dipilih untuk trial |
+| `admin_name` | string | Display name admin |
+| `email` | string | Email admin (lowercase) |
+| `password_hash` | string | Hash password pilihan pendaftar; dikosongkan setelah selesai/kedaluwarsa |
+| `token_hash` | char(64) unik | SHA-256 token tautan (token asli tidak disimpan) |
+| `status` | enum | `pending` · `completed` · `expired` (diganti pendaftaran baru) |
+| `tenant_id` | uuid (FK, nullable) | Tenant hasil verifikasi |
+| `expires_at` | timestamp | Batas tautan (`SIGNUP_TOKEN_TTL_HOURS`) |
+| `created_at` / `completed_at` | timestamp | |
+
 ---
 
 ## 3. Indeks
 
 | Tabel | Indeks | Alasan |
 |---|---|---|
-| `tenants` | `slug` unik, `status` | Resolusi & filter |
+| `tenants` | `slug` unik, `status` | Keunikan kode & filter |
 | `branches` | `(tenant_id, code)` unik, `status` | Daftar & filter cabang |
 | `tenant_status_history` | `tenant_id` | Audit lifecycle |
+| `tenant_signups` | `token_hash` unik; `email` unik parsial `WHERE status='pending'` | Lookup tautan; satu tautan aktif per email |
 
 ---
 

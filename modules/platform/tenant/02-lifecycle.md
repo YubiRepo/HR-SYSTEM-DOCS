@@ -4,13 +4,31 @@
 
 Membuat tenant baru = melahirkan "wadah" pelanggan. Langkah saat provisioning:
 
-1. Buat record **tenant** (nama, slug/subdomain, status awal).
+1. Buat record **tenant** (nama, kode tenant/slug yang dibuat otomatis dari nama, status awal).
 2. Buat **cabang default** (tenancy 2-level selalu punya minimal 1 cabang).
 3. Tetapkan **subscription** awal (plan + trial bila ada).
 4. Buat akun **tenant admin** pertama (via modul Auth) & kirim undangan.
 5. Seed peran sistem tenant (via modul RBAC).
 6. Hitung **entitlement** awal dari plan.
 7. Seed **data awal modul** (best-effort; kegagalan satu modul tidak menggagalkan provisioning): Leave (jenis cuti + policy approval cuti), Payroll (BPJS, PPh 21, PTKP, TER, jadwal payroll bulanan (periode tgl 25 bulan lalu s/d 24, cutoff absensi tgl 20, gajian hari kerja terakhir; **periode tidak di-generate** — HR generate sendiri), komponen sistem, komponen **Basic Salary** + struktur **Standard Monthly**), common codes, lalu **HR setting defaults** (§1.1).
+
+### 1.0 Jalur provisioning
+
+Tenant bisa lahir lewat dua jalur. Langkah di atas sama untuk keduanya.
+
+| Jalur | Siapa | Plan & trial | Akun admin |
+|---|---|---|---|
+| **Admin platform** (`POST /platform/tenants`) | super admin Yubiteck | dipilih admin (default: plan default, trial mengikuti plan) | password sementara, ditampilkan sekali ke admin platform; email yang sudah punya akun diundang |
+| **Self signup** (`POST /signup` → `POST /signup/verify`) | calon customer sendiri, dari halaman publik `/auth/register` | dipilih pendaftar dari `GET /signup/plans` (plan publik & aktif yang **gratis atau punya trial**); trial sesuai `trial_days` plan itu, plan gratis langsung `active` | password pilihan pendaftar; email sudah terverifikasi |
+
+**Alur self signup:**
+1. Pendaftar mengisi nama perusahaan, memilih plan (plan featured terpilih lebih dulu), lalu nama, email kerja, dan password. Plan berbayar tanpa trial tidak ditawarkan agar pendaftar tidak langsung ditagih saat verifikasi. Email dicek; email yang sudah punya akun ditolak (`EMAIL_ALREADY_EXISTS`) — membuka perusahaan tambahan untuk akun yang sudah ada tetap lewat admin platform.
+2. API menyimpan pendaftaran di `tenant_signups` (password sudah di-hash, token hanya disimpan hash-nya) dan mengirim email berisi tautan `BACKOFFICE_URL/auth/verify-email?token=…`. **Belum ada tenant** di tahap ini.
+3. Pendaftar membuka tautan → tenant di-provision dengan langkah §1 pada plan pilihannya (trial, tanpa invoice), admin langsung `active` dengan `tenant_admin`. Tautan yang dibuka lagi tetap sukses tanpa membuat tenant kedua (signup di-*claim* atomik sebelum provisioning).
+4. Selama trial, tenant admin menekan **"Continue with <plan> after trial"** atau ganti plan di halaman Billing. Saat trial berakhir plan itu lanjut berbayar dan invoice pertama terbit. Tanpa konfirmasi, tenant dipindah ke plan default (aktif) — lihat billing/03-subscription-billing.md.
+5. Daftar ulang dengan email yang sama sebelum verifikasi membatalkan tautan lama. Tautan mengarah ke `BACKOFFICE_URL/auth/verify-email` dan kedaluwarsa setelah `SIGNUP_TOKEN_TTL_HOURS` (default 24 jam).
+
+Audit `tenant.created` mencatat `source` (`platform` / `self_signup`). Belum ada captcha; endpoint publik dibatasi rate limit auth per IP.
 
 ### 1.1 HR setting defaults
 
@@ -42,11 +60,11 @@ POST /platform/tenants
 | Atribut | Fungsi |
 |---|---|
 | `id` | ID internal (`tenant_...`) |
-| `slug` | Nama unik URL-friendly (mis. `acme`) → dasar subdomain `acme.hrms.com` |
+| `slug` | Kode tenant unik (mis. `pt-acme`), dibuat otomatis dari nama; bila sudah dipakai diberi nomor (`pt-acme-2`) |
 | `name` | Nama perusahaan tampil |
 | `status` | Status lifecycle (lihat bawah) |
 
-Slug dipakai untuk resolusi tenant saat login (subdomain), sesuai Tenancy Model.
+Slug hanya label pengenal (tampil di daftar/detail tenant dan konfirmasi terminate). **Tidak ada subdomain per tenant** dan slug tidak dipakai saat login — tenant dipilih lewat ID (`select-tenant`). Form provisioning maupun signup tidak meminta slug.
 
 ---
 
