@@ -7,8 +7,8 @@ Endpoint Leave (cuti) untuk aplikasi mobile. Prefix `/api/v1/leave`, envelope st
 
 ---
 
-## 1. Jenis Cuti — `GET /leave/types`
-**Permission:** `leave:self`. Isi dropdown jenis cuti. Field `requires_document` menandai jenis cuti yang wajib lampiran.
+## 1. Jenis Cuti — `GET /leave/me/types`
+**Permission:** `leave:self`. *(Sebelumnya `GET /leave/types` — sekarang khusus HR, `leave:read`.)* Isi dropdown jenis cuti. Field `requires_document` menandai jenis cuti yang wajib lampiran.
 
 ## 2. Saldo Saya — `GET /leave/me/balance` · `GET /leave/me/balance/preview`
 **Permission:** `leave:self`.
@@ -38,8 +38,8 @@ Endpoint Leave (cuti) untuk aplikasi mobile. Prefix `/api/v1/leave`, envelope st
 
 Format yang didukung: jpg, png, webp, pdf. Saat ajuan dikirim, server mengecek bahwa upload benar ada dan milik karyawan tersebut, lalu memindahkannya ke lokasi permanen.
 
-## 4. Ajukan Cuti — `POST /leave/requests`
-**Permission:** `leave:self`. Untuk caller self-service, `employee_id` selalu diisi server dari login.
+## 4. Ajukan Cuti — `POST /leave/me/requests`
+**Permission:** `leave:self`. Tidak perlu `employee_id`: server mengisinya dari login (nilai di body diabaikan). *(Sebelumnya `POST /leave/requests` — sekarang khusus HR on-behalf, `leave:config`.)*
 ```json
 {
   "type_code": "annual",
@@ -59,8 +59,8 @@ Response `201`:
 ## 5. Riwayat Saya — `GET /leave/me/requests?status=pending&date_from=&date_to=`
 **Permission:** `leave:self`. Semua filter opsional. `date_from` / `date_to` (`YYYY-MM-DD`) menyaring ajuan yang rentangnya **overlap** dengan jendela itu (sama dengan `GET /leave/requests`), mis. cek cuti hari ini: `?status=approved&date_from=2026-11-26&date_to=2026-11-26`. Format salah → `VALIDATION_ERROR`. Bila ajuan punya lampiran hasil upload, response menyertakan `document_url`: link unduh sementara yang berlaku 15 menit.
 
-## 6. Batalkan — `POST /leave/requests/{id}/cancel`
-**Permission:** `leave:self` (hanya ajuan sendiri). Status menjadi `cancelled` dan saldo dikembalikan.
+## 6. Batalkan — `POST /leave/me/requests/{id}/cancel`
+**Permission:** `leave:self` (hanya ajuan sendiri; ajuan orang lain → `403`). *(Sebelumnya `POST /leave/requests/{id}/cancel`.)* Status menjadi `cancelled` dan saldo dikembalikan.
 
 ## 7. Approve / Reject — `POST /leave/requests/{id}/approve` · `/reject`
 **Permission:** `leave:approve`. Body `{ "note": "…" }`.

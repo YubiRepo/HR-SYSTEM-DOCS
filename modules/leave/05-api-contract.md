@@ -10,6 +10,7 @@ Prefix `/api/v1/leave`. Envelope standar HRMS. Dijaga Entitlement (fitur `leave`
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
 | GET | `/leave/types` | Daftar jenis cuti | `leave:read` |
+| GET | `/leave/me/types` | Daftar jenis cuti untuk form pengajuan sendiri (ESS/mobile; isi sama dengan `GET /leave/types`) | `leave:self` |
 | POST | `/leave/types` | Buat jenis (custom) | `leave:config` |
 | PATCH | `/leave/types/{id}` | Ubah jenis/aturan | `leave:config` |
 | GET | `/leave/approval-flows` | Daftar alur approval | `leave:read` |
@@ -28,12 +29,14 @@ Prefix `/api/v1/leave`. Envelope standar HRMS. Dijaga Entitlement (fitur `leave`
 ### Pengajuan & Approval
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| POST | `/leave/requests` | Ajukan cuti | `leave:self` |
+| POST | `/leave/me/requests` | Ajukan cuti sendiri (`employee_id` diambil dari token, nilai di body diabaikan) | `leave:self` |
+| POST | `/leave/requests` | Ajukan cuti atas nama karyawan (HR). `employee_id` wajib, dibatasi cabang | `leave:config` |
 | GET | `/leave/me/requests` | Riwayat pengajuan sendiri (filter `status`, `date_from`, `date_to` — overlap rentang) | `leave:self` |
 | GET | `/leave/requests` | Daftar pengajuan (manajer/HR). Filter: `employee_id`, `status`, `type_code`, `date_from`/`date_to` (overlap) | `leave:read` |
 | POST | `/leave/requests/{id}/approve` | Setujui (step berjalan) | — (hanya approver step aktif; `leave:approve` untuk step *any approver*) |
 | POST | `/leave/requests/{id}/reject` | Tolak | — (sama dengan approve) |
-| POST | `/leave/requests/{id}/cancel` | Batalkan (karyawan) | `leave:self` |
+| POST | `/leave/me/requests/{id}/cancel` | Batalkan ajuan sendiri | `leave:self` |
+| POST | `/leave/requests/{id}/cancel` | Batalkan atas nama karyawan (HR), dibatasi cabang | `leave:config` |
 | GET | `/leave/requests/{id}/approval` | Timeline approval (step, approver, log) — lihat [approval/04-api-contract.md](../approval/04-api-contract.md) | `leave:read` / `leave:approve` / pemilik (`leave:self`) |
 | GET | `/leave/calendar` | Kalender cuti tim | `leave:read` |
 

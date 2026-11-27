@@ -19,7 +19,8 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 | GET | `/attendance/records` | Daftar catatan (filter) | `attendance:read` |
 | POST | `/attendance/records` | Input manual (HR) | `attendance:write` |
 | POST | `/attendance/records/evaluate` | Evaluasi periode: `{date_from, date_to, branch_id?}` (maks 31 hari, s/d kemarin). Hari tanpa record diisi record `source=system` (absent, workday tertutup cuti, holiday, day_off); record system lama dihitung ulang; record ber-clock-in/manual/terkoreksi tidak disentuh. Response: ringkasan jumlah per status + yang di-skip | `attendance:write` |
-| POST | `/attendance/records/{id}/correction` | Ajukan/terapkan koreksi (self hanya untuk catatan miliknya sendiri) | `attendance:self` / `attendance:write` |
+| POST | `/attendance/me/records/{id}/correction` | Ajukan koreksi atas catatan milik sendiri | `attendance:self` |
+| POST | `/attendance/records/{id}/correction` | Ajukan/terapkan koreksi atas nama karyawan (HR), dibatasi cabang | `attendance:write` |
 | GET | `/attendance/me/corrections` | Status pengajuan koreksi milik sendiri | `attendance:self` |
 | POST | `/attendance/corrections/{id}/approve` · `/reject` | Setujui/tolak koreksi. Body `{ "notes": "..." }` (alias `note`) | approver step aktif (policy) atau `attendance:approve` — lihat §3c |
 | GET | `/attendance/corrections/{id}/approval` | Timeline approval koreksi (`null` bila tidak dirutekan) | `attendance:read` (scope), pemilik, atau approver |
@@ -27,9 +28,10 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 ### Shift & Schedule
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| GET | `/attendance/shifts` | Katalog shift | `attendance:read` / `attendance:self` |
+| GET | `/attendance/shifts` | Katalog shift | `attendance:read` |
+| GET | `/attendance/me/shifts` · `/attendance/me/shifts/{id}` | Katalog shift untuk karyawan (label jadwal sendiri; isi sama dengan `/attendance/shifts`) | `attendance:self` |
 | POST | `/attendance/shifts` | Buat shift | `attendance:config` |
-| GET | `/attendance/schedule-patterns` | Daftar pola kerja (filter `mode`, `active`, `search`, `overtime_rule_id`) | `attendance:read` / `attendance:self` |
+| GET | `/attendance/schedule-patterns` | Daftar pola kerja (filter `mode`, `active`, `search`, `overtime_rule_id`) | `attendance:read` |
 | POST | `/attendance/schedule-patterns` | Buat pola kerja (opsional `overtime_rule_id`, lihat 13 §9) | `attendance:config` |
 | PATCH | `/attendance/schedule-patterns/{id}` | Ubah pola kerja | `attendance:config` |
 | DELETE | `/attendance/schedule-patterns/{id}` | Nonaktifkan pola | `attendance:config` |
@@ -46,12 +48,14 @@ Prefix `/api/v1/attendance`. Envelope standar HRMS. Dijaga Entitlement (fitur `a
 ### Overtime & Rekap
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
-| POST | `/attendance/overtime` | Ajukan lembur (self hanya untuk dirinya sendiri) | `attendance:self` / `attendance:write` |
+| POST | `/attendance/me/overtime` | Ajukan lembur sendiri (`employee_id` diambil dari token) | `attendance:self` |
+| POST | `/attendance/overtime` | Ajukan lembur atas nama karyawan (HR). `employee_id` wajib, dibatasi cabang | `attendance:write` |
 | GET | `/attendance/me/overtime` | Status pengajuan lembur milik sendiri | `attendance:self` |
 | POST | `/attendance/overtime/{id}/approve` | Setujui lembur (boleh mempersingkat window) | approver step aktif (policy) atau `attendance:approve` — lihat §3c |
 | POST | `/attendance/overtime/{id}/reject` | Tolak lembur | approver step aktif (policy) atau `attendance:approve` — lihat §3c |
 | GET | `/attendance/overtime/{id}/approval` | Timeline approval lembur (`null` bila tidak dirutekan) | `attendance:read` (scope), pemilik, atau approver |
-| POST | `/attendance/overtime/{id}/cancel` | Batalkan (pending, atau approved sebelum mulai) | `attendance:self` / `attendance:write` |
+| POST | `/attendance/me/overtime/{id}/cancel` | Batalkan ajuan sendiri (pending, atau approved sebelum mulai) | `attendance:self` |
+| POST | `/attendance/overtime/{id}/cancel` | Batalkan atas nama karyawan (HR), dibatasi cabang | `attendance:write` |
 | — | `/attendance/overtime-rules…`, `/attendance/overtime/transactions…` | Overtime rule & transaksi — lihat [13 §9](./13-overtime-management.md#9-api) | |
 | GET | `/attendance/summary` | Rekap periode (untuk Payroll) | `attendance:read` |
 

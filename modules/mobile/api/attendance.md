@@ -123,14 +123,14 @@ Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`,
   "holiday_name": "Bos Nikah Lagi"
 }
 ```
-- `shift` adalah ringkasan `shift_id` (tidak perlu memanggil `/attendance/shifts`); tidak ada bila hari itu tanpa shift.
+- `shift` adalah ringkasan `shift_id` (tidak perlu memanggil `/attendance/me/shifts`). Bila butuh katalog shift lengkap untuk label, pakai `GET /attendance/me/shifts` (`attendance:self`); tidak ada bila hari itu tanpa shift.
 - `is_holiday` / `holiday_name`: libur yang berlaku (`is_observed`) untuk tenant atau cabang karyawan — sama dengan yang dipakai clock-in. Di hari libur `shift` tetap ditampilkan bila terjadwal, tetapi clock-in mengikuti aturan hari libur (perlu lembur, lihat §3).
 
 ## 5. Riwayat Absen Saya — `GET /attendance/me?date_from=…&date_to=…`
 **Permission:** `attendance:self`.
 
-## 6. Koreksi (Lupa Absen) — `POST /attendance/records/{record_id}/correction`
-**Permission:** `attendance:self`. Koreksi selalu menempel pada record hari itu.
+## 6. Koreksi (Lupa Absen) — `POST /attendance/me/records/{record_id}/correction`
+**Permission:** `attendance:self`. Koreksi selalu menempel pada record hari itu, dan record harus milik sendiri. *(Sebelumnya `POST /attendance/records/{record_id}/correction` — sekarang khusus HR, `attendance:write`.)*
 ```json
 { "field": "clock_out", "new_value": "2026-08-31T17:00:00+07:00", "reason": "lupa absen pulang" }
 ```
@@ -141,13 +141,13 @@ Response berisi record absen: `id`, `date`, `clock_in`, `clock_out`, `status[]`,
 ## 7. Lembur Saya
 | Endpoint | Fungsi |
 |---|---|
-| `POST /attendance/overtime` | Ajukan lembur: `date`, `planned_start_at`, `planned_end_at`, `reason`, `task_description` |
+| `POST /attendance/me/overtime` | Ajukan lembur: `date`, `planned_start_at`, `planned_end_at`, `reason`, `task_description` (tanpa `employee_id`) |
 | `GET /attendance/me/overtime` | Ajuan lembur saya |
-| `POST /attendance/overtime/{id}/cancel` | Batalkan ajuan (yang sudah approved hanya bisa dibatalkan sebelum mulai) |
+| `POST /attendance/me/overtime/{id}/cancel` | Batalkan ajuan sendiri (yang sudah approved hanya bisa dibatalkan sebelum mulai) |
 | `GET /attendance/me/overtime-orders` · `/{id}/pdf` | Surat Perintah Lembur yang menyebut saya |
 | `GET /attendance/me/overtime/transactions` | Realisasi lembur |
 
-> `employee_id` saat ini wajib ada di body `POST /attendance/overtime`. Untuk caller self-service, nilainya selalu ditimpa server dengan employee milik caller.
+> Sebelumnya mobile memakai `POST /attendance/overtime` dan `/attendance/overtime/{id}/cancel` dengan `employee_id` di body. Kedua endpoint itu sekarang khusus HR (`attendance:write`). Pakai route `/me` di atas; `employee_id` tidak perlu dikirim.
 
 ## 8. Approval (Manajer/HR)
 **Permission:** `attendance:approve`.

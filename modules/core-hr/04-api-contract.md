@@ -21,7 +21,8 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | POST | `/employees/{id}/offboarding` | Mulai proses keluar | `employees:write` |
 | GET | `/employees/{id}/history` | Riwayat kepegawaian | `employees:read` |
 | GET | `/employees/{id}/export/{kind}` | Unduh PDF profil: `kind=cv` (CV profesional) / `biodata` (biodata lengkap); `?lang=id\|en` | `employees:read` |
-| GET | `/me/employee/export/{kind}` | Sama, untuk profil karyawan sendiri (ESS) | `employees:self` / `employees:read` |
+| GET | `/me/employee/export/{kind}` | Sama, untuk profil karyawan sendiri (ESS) | `employees:self` |
+| GET | `/me/directory?search=` | Direktori rekan kerja (nama, jabatan, unit, email kerja; aktif saja, satu tenant penuh) | `directory:self` |
 | GET | `/employees/{id}/subordinates` | Daftar bawahan langsung | `employees:read` |
 | GET | `/employees/{id}/reporting-line` | Atasan efektif (manager_id → fallback kepala unit) | `employees:read` |
 | GET | `/employees/{id}/documents` | Daftar dokumen | `employees:read` |
@@ -104,6 +105,7 @@ Job terjadwal harian (`core_hr.contract.expiry_check`) menandai kontrak yang lew
 | Method | Endpoint | Deskripsi | Izin |
 |---|---|---|---|
 | GET | `/employee-fields` | Daftar definisi field custom | `employees:read` |
+| GET | `/me/employee-fields` | Definisi field custom untuk profil sendiri (ESS/mobile; isi sama dengan `/employee-fields`) | `employees:self` |
 | POST | `/employee-fields` | Buat field custom | `settings:write` |
 | PATCH | `/employee-fields/{id}` | Ubah field custom | `settings:write` |
 | DELETE | `/employee-fields/{id}` | Hapus/nonaktifkan field | `settings:write` |

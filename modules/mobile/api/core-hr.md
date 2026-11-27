@@ -8,7 +8,7 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dir
 ---
 
 ## 1. Profil Saya — `GET /core-hr/me/employee`
-**Permission:** `employees:self` atau `employees:read`. Mengembalikan record karyawan lengkap milik user login, antara lain:
+**Permission:** `employees:self`. Mengembalikan record karyawan lengkap milik user login, antara lain:
 - identitas: `id`, `employee_number`, `full_name`, `email`, `phone`, `address`, `emergency_contact`
 - penempatan: `position_name`, `org_unit_name`, `branch_name`, `status`
 - lainnya: `custom_fields`, `avatar_url`
@@ -22,7 +22,7 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dir
 |---|---|
 | `branch_id`, `org_unit_id`, `position_id` | Penempatan, hanya lewat mutasi |
 | `manager_id` | Atasan diatur HR |
-| `custom_fields` | Field tambahan tenant |
+| `custom_fields` | Field tambahan tenant. Label/tipe/opsinya dari `GET /core-hr/me/employee-fields` (`employees:self`) |
 | `appraisal_records`, `reward_warning_records` | Catatan penilaian / penghargaan & SP milik HR |
 
 Field di luar body admin (`employee_number`, status, job grade, dll) juga ditolak. Field yang ditolak membuat **seluruh** request gagal dengan `422 VALIDATION_ERROR` (pesan menyebut nama field), bukan diabaikan diam-diam.
@@ -43,7 +43,7 @@ Contoh (kontak):
 - Response `200` berisi profil terbaru. Perubahan langsung berlaku; belum ada approval HR, **termasuk untuk `bank_accounts`** (keputusan sementara, lihat [issue CORE-4](../issues/core-hr.md#core-4)).
 
 ## 3. Dokumen Saya — `GET /core-hr/me/documents` · `GET /core-hr/me/documents/{doc_id}`
-**Permission:** `employees:self` atau `employees:read`.
+**Permission:** `employees:self`.
 ```json
 { "success": true, "data": [ { "id": "…", "type": "contract", "type_name": "Contract", "file_name": "Kontrak_2024.pdf", "file_url": "https://…", "uploaded_at": "…" } ] }
 ```
@@ -68,8 +68,8 @@ GET /core-hr/regions/villages?district=31.71.01
 { "success": true, "data": [ { "code": "31.71", "name": "Jakarta Pusat" } ] }
 ```
 
-## 5. Direktori — `GET /core-hr/directory?search=sari&page=1&per_page=20`
-**Permission:** `employees:directory`. Role `employee` memilikinya secara default; tenant bisa mencabutnya per role.
+## 5. Direktori — `GET /core-hr/me/directory?search=sari&page=1&per_page=20`
+**Permission:** `directory:self`. *(Sebelumnya `GET /core-hr/directory` dengan `employees:directory`.)* Role `employee` memilikinya secara default; tenant bisa mencabutnya per role.
 ```json
 {
   "success": true,
@@ -82,7 +82,7 @@ GET /core-hr/regions/villages?district=31.71.01
 Hanya karyawan aktif yang ditampilkan, dengan `per_page` maksimal 50. Data pribadi (NIK, alamat, kontak pribadi) tidak pernah muncul di sini.
 
 ## 6. Riwayat, Work Policy, Kontrak & Atasan Saya
-**Permission:** `employees:self` atau `employees:read`. Read-only, selalu untuk karyawan milik user login (tanpa `{id}`).
+**Permission:** `employees:self`. Read-only, selalu untuk karyawan milik user login (tanpa `{id}`).
 
 - `GET /core-hr/me/history` — bentuk sama dengan `GET /employees/{id}/history` (`assignments`; riwayat status ada di `employee_status` tiap entri). Tiap assignment juga membawa `branch_name`, `org_unit_name`, `position_name` (opsional; kosong bila lookup gagal), karena karyawan tidak punya izin memanggil endpoint lookup branch/org unit/posisi.
 - `GET /core-hr/me/work-policies` — bentuk sama dengan `GET /employees/{id}/work-policies`, plus `pattern_name` (opsional) untuk nama schedule pattern dari modul attendance.
@@ -92,5 +92,7 @@ Hanya karyawan aktif yang ditampilkan, dengan `per_page` maksimal 50. Data priba
 ---
 
 ## Catatan Mobile
+- Semua route `/core-hr/me/*` hanya butuh `employees:self`; `employees:read` tidak lagi diterima di sini.
+- Definisi field custom: `GET /core-hr/me/employee-fields` *(sebelumnya `GET /core-hr/employee-fields`, sekarang khusus HR)*.
 - Registrasi karyawan, kelola org/katalog, dan master data tetap di web.
 - Foto profil akun memakai `POST /auth/me/avatar/presign` → `/confirm`.

@@ -50,11 +50,13 @@ Contoh: `employee` punya `payslip:self` (scope `self`, endpoint `/me/payslips`);
 
 Data-scope dievaluasi **setelah** izin fungsional lolos, dengan menyaring query data per cabang untuk `branch`.
 
-**Aturan scope `self` (ditegakkan API):** akses "data milik sendiri" diwujudkan lewat **permission self-service** khusus — `profile:read`, `profile:write`, `employees:self`, `attendance:self`, `leave:self`, `payslip:self` — yang endpoint-nya (`/me/...`, `/auth/me`) mengambil subjek dari token, bukan dari parameter. Bukan dengan mempersempit `:read`/`:write` ke scope `self`.
+**Aturan scope `self` (ditegakkan API):** akses "data milik sendiri" diwujudkan lewat **permission self-service** khusus — `employees:self`, `directory:self`, `attendance:self`, `leave:self`, `payslip:self` — yang endpoint-nya (`/me/...`) mengambil subjek dari token, bukan dari parameter. Bukan dengan mempersempit `:read`/`:write` ke scope `self`.
 
 - Permission self-service **wajib** ber-scope `self`.
 - Scope `self` **hanya boleh** dipakai pada permission self-service. `payslip:read` / `attendance:read` / `*:approve` dengan scope `self` **ditolak** saat membuat/mengubah role atau template (`INVALID_PERMISSION`).
 - Saat evaluasi, permission self-service selalu dihitung `self`; baris lama berisi permission non-self-service dengan scope `self` diabaikan (fail-safe deny) — gate route hanya mencocokkan key, dan handler `:read`/`:write` tidak menyaring ke data sendiri, sehingga grant semacam itu justru akan membuka data seluruh tenant/cabang.
+- Akun login sendiri (`/auth/me`, avatar, ganti password) **tidak** memakai key: setiap user yang terautentikasi memilikinya. `directory:self` adalah pengecualian semantik (isinya rekan kerja, bukan data sendiri), tetapi direktori selalu satu tenant penuh sehingga scope branch/tenant tidak bermakna.
+- **Endpoint ESS/mobile = `/me/...` + key `*:self` saja.** Gate route tidak boleh mencampur key self dengan key admin (mis. `attendance:self` ATAU `attendance:write`). Aksi karyawan untuk dirinya sendiri lewat `/me/...`, aksi HR atas nama karyawan lewat endpoint admin (`:write`/`:config`). Data katalog yang dibutuhkan ESS (shift, jenis cuti, definisi field custom) juga disajikan ulang di bawah `/me`. Aturan ini dijaga test `internal/modules/selfgate_test.go`.
 
 ---
 

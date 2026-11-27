@@ -12,6 +12,26 @@ Subset endpoint HRMS yang dipakai aplikasi mobile. Mobile adalah **klien** dari 
 
 ---
 
+## ⚠️ Perubahan Endpoint (Breaking) — November 2026
+
+Semua endpoint ESS/mobile sekarang berada di **`/me/...`** dan hanya butuh key **`*:self`**. Endpoint di kolom kiri kini khusus HR/admin dan mengembalikan **`403 PERMISSION_DENIED`** untuk role `employee`. Mobile wajib pindah ke kolom kanan, dirilis bersamaan dengan API.
+
+| Endpoint lama (sekarang khusus HR) | Endpoint mobile baru | Permission | Catatan |
+|---|---|---|---|
+| `GET /leave/types` | `GET /leave/me/types` | `leave:self` | Isi sama |
+| `POST /leave/requests` | `POST /leave/me/requests` | `leave:self` | Tanpa `employee_id` |
+| `POST /leave/requests/{id}/cancel` | `POST /leave/me/requests/{id}/cancel` | `leave:self` | Hanya ajuan sendiri |
+| `POST /attendance/overtime` | `POST /attendance/me/overtime` | `attendance:self` | Tanpa `employee_id` |
+| `POST /attendance/overtime/{id}/cancel` | `POST /attendance/me/overtime/{id}/cancel` | `attendance:self` | Hanya ajuan sendiri |
+| `POST /attendance/records/{id}/correction` | `POST /attendance/me/records/{id}/correction` | `attendance:self` | Hanya record sendiri |
+| `GET /attendance/shifts` · `/{id}` | `GET /attendance/me/shifts` · `/{id}` | `attendance:self` | Isi sama |
+| `GET /core-hr/employee-fields` | `GET /core-hr/me/employee-fields` | `employees:self` | Isi sama |
+| `GET /core-hr/directory` (`employees:directory`) | `GET /core-hr/me/directory` | `directory:self` | Key di-rename; isi sama |
+
+Tidak berubah: clock-in/out, approval (`/approval/*`, approve/reject), dan semua `GET .../me/...` yang sudah ada. Key `profile:read`, `profile:write`, dan `team:read` dihapus: `/auth/me` (termasuk avatar) cukup dengan login, jadi kalau menu mobile mengecek key itu, ganti dengan "selalu tampil". Route `/core-hr/me/*` kini hanya menerima `employees:self` (sebelumnya juga `employees:read`).
+
+---
+
 ## File
 
 | File | Isi | Status |
@@ -31,12 +51,14 @@ Subset endpoint HRMS yang dipakai aplikasi mobile. Mobile adalah **klien** dari 
 
 | Permission | Dipakai untuk |
 |---|---|
-| `profile:read` / `profile:write` | Akun login sendiri (`/auth/me`) |
+| *(tanpa key, cukup login)* | Akun login sendiri (`/auth/me`, avatar, ganti password) |
 | `employees:self` | Data karyawan sendiri, update kontak, dokumen sendiri |
-| `employees:directory` | Direktori rekan kerja |
+| `directory:self` | Direktori rekan kerja |
 | `attendance:self` | Absen, jadwal, koreksi, lembur sendiri |
 | `leave:self` | Saldo & ajuan cuti sendiri |
 | `payslip:self` | Slip gaji sendiri |
+
+**Aturan:** setiap endpoint yang dipanggil mobile untuk data/aksi milik sendiri berada di `/me/...` dan hanya di-gate key di atas. Mobile tidak memanggil endpoint admin (`:read`/`:write`/`:config`) untuk kebutuhan self-service.
 
 Approval memakai permission yang sudah ada (`attendance:approve`, `leave:approve`, `payroll:approve`).
 
