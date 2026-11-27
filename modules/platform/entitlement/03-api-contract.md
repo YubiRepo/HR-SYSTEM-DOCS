@@ -32,6 +32,8 @@ Mengikuti envelope standar HRMS. Prefix platform staff: `/api/v1/platform`. Pref
 | GET | `/entitlement/me` | Entitlement efektif tenant sendiri (tanpa permission, untuk gating menu) |
 | GET | `/entitlement/subscription` | Subscription tenant sendiri (termasuk snapshot) |
 | POST | `/entitlement/subscription/change` | Ganti plan self-service (`period_end` diabaikan) |
+| POST | `/entitlement/subscription/scheduled-change/cancel` | Batalkan downgrade terjadwal |
+| POST | `/entitlement/subscription/trial-choice/cancel` | Batalkan konfirmasi "lanjut setelah trial" |
 | GET | `/entitlement/usage` | Pemakaian tenant sendiri |
 
 ---

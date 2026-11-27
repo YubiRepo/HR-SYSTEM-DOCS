@@ -73,15 +73,23 @@ Diskon cycle panjang mendorong komitmen & menurunkan churn; pembayaran di muka j
 
 Plan custom tidak punya rate katalog: harga nego per tenant diisi staff platform (`custom_rate`, wajib) saat assign/ubah subscription. Subscription custom tanpa `custom_rate` ditolak saat assign (`CUSTOM_RATE_REQUIRED`), dan tidak di-invoice (renewal dilewati) sampai rate diisi — tidak pernah ditagih Rp 0. Self-service tenant tidak bisa memilih plan custom.
 
+Seat yang **ditagih** (PEPM) = `max(seat_count, plan.min_seats)` — `min_seats` diatur per plan (default 1). Provisioning tanpa trial: admin boleh mengisi perkiraan jumlah karyawan (`initial_seats`) untuk invoice periode pertama, karena tenant baru belum punya karyawan; invoice berikutnya memakai jumlah aktif sebenarnya.
+
 `seat_count` bersumber dari Core HR (karyawan aktif tenant, minimal 1) dan dihitung ulang otomatis saat assign/ubah plan, saat *issue invoice now*, dan saat renewal — bukan input manual. Nilai `seat_count` di request hanya dipakai sebagai fallback bila hitungan Core HR tidak tersedia. Multi-year ditangani lewat plan custom/enterprise, atau sebagai cycle tambahan bila diperlukan.
 
 ---
 
 ## 5. Trial
 
-- Mengikuti `trial_days` plan (mis. Pro 14–30 hari).
-- Trial habis tanpa bayar → tenant **turun ke Free** (bukan blokir total), agar data aman & funnel terjaga.
-- Notifikasi menjelang & saat trial berakhir.
+- Mengikuti `trial_days` plan (mis. Pro 14–30 hari). Saat provisioning, `start_trial: false` melewati trial (subscription & tenant langsung `active`); tanpa field itu, ikut `trial_days` plan. Plan dengan `trial_days = 0` selalu tanpa trial.
+- Selama trial: akses penuh sesuai plan, tidak ada invoice.
+- **Memilih plan saat trial** (staff atau self-service): sisa trial **tetap berjalan**, tanggal akhir tidak diperpanjang, dan subscription ditandai `convert_after_trial`. Pengecualian, trial langsung berakhir dan periode berbayar mulai hari ini bila: `end_trial: true`, `period_end` kontrak diisi, atau pindah ke plan lain yang tidak punya trial (mis. custom/Enterprise). Mengonfirmasi plan yang sedang di-trial selalu mempertahankan sisa trial — tombol **"Continue after trial"** di halaman billing tenant dan di tenant detail (staff) melakukan ini.
+- **Trial habis** (diproses di awal job harian `entitlement.subscription.renewal_check`, sebelum renewal):
+  - sudah memilih plan (`convert_after_trial`) atau trial di plan default → menjadi `active` di plan itu; renewal di run yang sama langsung menerbitkan invoice periode pertama;
+  - belum memilih plan → **turun ke plan default** (`is_default`, mis. Free) sebagai `active` mulai hari ini (bukan blokir total), agar data aman & funnel terjaga. Kuota tidak divalidasi saat turun: data yang ada tetap, hanya penambahan baru yang dibatasi;
+  - tidak ada plan default aktif → tenant menjadi **`expired`** (read-only) sampai plan dipilih (ganti plan → `active`), atau sampai plan default diset (job berikutnya menurunkan ke plan default → `active`).
+  - Selain kasus `expired`, status tenant berubah `trial` → `active`.
+- Notifikasi menjelang & saat trial berakhir: **belum diimplementasikan** (ditunda).
 
 ---
 
@@ -95,21 +103,60 @@ awal periode ──▶ hitung tagihan (PEPM × seat / flat)
                    └─ gagal  → past_due → retry → (grace habis) suspend
 ```
 
+Kapan invoice terbit:
+
+| Kejadian | Invoice |
+|---|---|
+| Provisioning **tanpa** trial | Periode pertama, saat itu juga |
+| Ganti plan / "end trial now" (periode baru mulai hari ini) | Periode baru, dalam transaksi yang sama (belum ada kredit proration sisa periode lama) |
+| Memilih plan saat trial (trial tetap jalan) | Tidak ada; ditagih saat trial habis |
+| Trial habis & dikonversi | Periode pertama berbayar, oleh renewal di run job yang sama |
+| Renewal (akhir periode) | Periode berikutnya |
+| Total Rp 0 (mis. Free) | Tidak pernah diterbitkan — invoice Rp 0 yang open tidak akan dibayar dan akan memicu dunning |
+
 | Entitas | Fungsi |
 |---|---|
 | **Invoice** | Tagihan satu periode (jumlah, pajak, status) |
 | **Payment** | Pembayaran atas invoice |
 | **Adjustment** | Koreksi (refund, diskon, proration) |
 
-Status tenant `suspended` dipicu dari sini (via modul Tenant) saat grace habis.
+### Jatuh tempo & dunning
+
+- **Jatuh tempo** = tanggal invoice terbit + `BILLING_PAYMENT_TERM_DAYS` (default **0** = bayar di muka, jatuh tempo hari itu juga). Dulu jatuh tempo = akhir periode yang ditagih, sehingga tenant memakai satu periode penuh sebelum dianggap telat.
+- Job dunning harian (03:00): invoice `open` lewat jatuh tempo → subscription `past_due`; lewat jatuh tempo + `BILLING_GRACE_PERIOD_DAYS` (default 7) → tenant di-suspend dengan `suspension_kind = nonpayment`. Dengan default, tenant yang tidak bayar ter-suspend di hari ke-8.
+- **Pembayaran** (webhook / approve bukti manual):
+  - subscription `past_due` → `active` hanya bila **tidak ada lagi** invoice yang lewat jatuh tempo;
+  - tenant diaktifkan lagi hanya bila suspend-nya `nonpayment` **dan** tidak ada lagi invoice yang lewat grace — supaya tidak bolak-balik suspend/aktif;
+  - suspend **manual** (keputusan admin) tidak pernah terangkat oleh pembayaran; hanya admin yang bisa reactivate.
+
+### Renewal & status tenant
+
+| Status tenant | Renewal menerbitkan invoice? |
+|---|---|
+| `active` / `trial` | Ya |
+| `suspended` (`nonpayment`) | Ya — tunggakan tetap bertambah |
+| `suspended` (`manual`) | Tidak — dilewati sampai admin mengaktifkan lagi |
+| `terminated` | Tidak — subscription dibatalkan saat terminate |
+
+**Suspend manual = pause.** Saat admin mengaktifkan kembali tenant yang di-suspend manual, `period_end` subscription diperpanjang sepanjang masa suspend (`tenants.suspended_at` → saat reactivate), bila periode itu masih berjalan saat suspend dimulai. Hari yang sudah dibayar tidak hilang, hari selama suspend tidak ditagih. Sebagai pengaman, bila renewal tetap tertinggal lebih dari satu periode penuh, periode baru dimulai hari itu (tidak ditagih mundur).
 
 ---
 
 ## 7. Proration (Perubahan Tengah Periode)
 
-- **Upgrade** → hitung selisih pro-rata sisa periode; tagih segera / masuk invoice berikutnya.
-- **Downgrade** → berlaku periode berikutnya (hindari refund rumit) atau beri kredit.
-- **Perubahan seat (PEPM)** → sesuaikan di invoice berikutnya (tentukan kebijakan: rata-rata / nilai akhir).
+Berlaku untuk subscription di periode berbayar yang berjalan (`active`/`past_due`, bukan trial, tanpa `period_end` kontrak). Plan lama dan baru dihitung dengan seat saat ini lalu dibandingkan **per bulan** (termasuk diskon cycle):
+
+| Perubahan | Perilaku |
+|---|---|
+| Plan & cycle sama | Hanya seat/custom rate yang diperbarui; perubahan terjadwal dibatalkan; tanpa invoice |
+| **Lebih murah per bulan (downgrade)** | **Dijadwalkan** (`pending_plan_id`, `pending_billing_cycle`, `pending_custom_rate`) dan diterapkan oleh renewal di akhir periode — harga, invoice & snapshot benefit periode berikutnya memakai plan baru. Tanpa refund. Bisa dibatalkan (`…/subscription/scheduled-change/cancel`) |
+| **Sama/lebih mahal, cycle sama (upgrade)** | Berlaku **sekarang**, `period_end` tetap. Invoice `kind = proration` sebesar `baru × sisa/total hari − lama × sisa/total hari` |
+| **Sama/lebih mahal, cycle beda** | Periode baru mulai sekarang. Invoice `proration` = periode baru penuh − kredit sisa periode lama |
+
+Invoice lama tetap berlaku (dibayar/terutang penuh); kredit di invoice proration yang mengimbangi bagian yang tidak terpakai. Hari dihitung utuh (sisa hari dibulatkan ke atas). Bila hasil bersih ≤ 0 tidak ada invoice.
+
+- **Perubahan seat (PEPM) di tengah periode** → tidak diprorata; jumlah karyawan aktif dipakai di invoice berikutnya (renewal).
+- `period_end` kontrak (staff) tetap memulai periode kontrak baru yang ditagih penuh, tanpa kredit.
 
 ---
 

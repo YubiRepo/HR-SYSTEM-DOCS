@@ -41,6 +41,7 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 | `pricing` | json | `{ model, currency, ... }` |
 | `is_public` | boolean | Publik vs privat (custom) |
 | `trial_days` | int | 0 = tanpa trial |
+| `min_seats` | int | Minimal seat ditagih (PEPM), ≥ 1 |
 | `is_featured` | boolean | Badge "Popular" di katalog (presentational) |
 | `is_default` | boolean | Plan default saat provisioning tanpa `plan_id`; unik (partial index `WHERE is_default`) |
 | `is_active` | boolean | |
@@ -112,7 +113,8 @@ Opsi jangka waktu + diskon per plan (configurable).
 | `currency` | string | `IDR` |
 | `tax` | int | mis. PPN |
 | `status` | enum | `draft`, `open`, `paid`, `void`, `uncollectible` |
-| `due_date` | date | |
+| `due_date` | date | Tanggal terbit + `BILLING_PAYMENT_TERM_DAYS` |
+| `pricing_model`, `seat_count`, `unit_rate`, `months`, `discount_pct`, `base_amount`, `discount_amount` | nullable | Rincian perhitungan: PEPM = `unit_rate × seat_count × months − discount_amount`; flat/custom = `unit_rate × months − discount_amount`. NULL pada invoice lama |
 
 ### 2.8 `payments`
 | Field | Tipe | Keterangan |

@@ -122,12 +122,13 @@ tenant admin buat cabang
 ### Transisi utama
 | Dari | Ke | Pemicu |
 |---|---|---|
-| `trial` | `active` | Pembayaran pertama |
-| `trial` | `expired` | Masa trial habis tanpa bayar |
+| `trial` | `active` | Trial berakhir: dikonversi ke plan pilihan, turun ke plan default, atau plan diubah dengan trial diakhiri. Tenant tanpa trial langsung `active` saat provisioning |
+| `trial` | `expired` | Trial habis tanpa konfirmasi plan **dan** tidak ada plan default aktif (bila ada plan default, tenant turun ke sana dan menjadi `active`) |
+| `expired` | `active` | Plan dipilih (staff/self-service), atau plan default diset lalu job trial-expiry berikutnya |
 | `active` | `past_due` | Invoice gagal dibayar |
 | `past_due` | `active` | Pembayaran berhasil |
 | `past_due` | `suspended` | Grace period habis |
-| `suspended` | `active` | Pelunasan |
+| `suspended` | `active` | Pelunasan — otomatis hanya untuk suspend `nonpayment` setelah tidak ada lagi invoice lewat grace; suspend `manual` hanya oleh admin |
 | `suspended`/`expired` | `terminated` | Tidak diselesaikan dalam batas waktu |
 
 ---
@@ -144,8 +145,10 @@ tenant admin buat cabang
 
 Saat tenant `terminated`:
 1. Akses dicabut total (semua akun tenant dinonaktifkan via Auth).
+   Subscription dibatalkan (`canceled`) sehingga renewal berhenti menerbitkan invoice.
 2. Data diarsipkan (tidak langsung dihapus).
-3. Setelah periode retensi (mis. 30–90 hari, sesuai kebijakan & UU PDP), data dapat diekspor untuk pelanggan lalu dihapus permanen.
+3. Setelah periode retensi (`data_retention_days`, default 90 hari, sesuai kebijakan & UU PDP), data dapat diekspor untuk pelanggan lalu dihapus permanen.
+   **Saat ini manual:** tidak ada job penghapusan otomatis. Admin platform meninjau sendiri tenant `terminated` yang masa retensinya sudah lewat, lalu melakukan ekspor & penghapusan secara manual.
 
 > Sediakan **ekspor data** sebelum penghapusan sebagai kewajiban & goodwill.
 

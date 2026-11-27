@@ -37,6 +37,8 @@ Flag per tenant (`billing_mode`: `self_service` / `managed`) menentukan apakah e
 | GET | `/platform/tenants/{id}/subscription` | Subscription tenant | viewer+ |
 | POST | `/platform/tenants/{id}/subscription` | Buat/ubah (upgrade/downgrade) | billing+ |
 | POST | `/platform/tenants/{id}/subscription/cancel` | Batalkan | billing+ |
+| POST | `/platform/tenants/{id}/subscription/scheduled-change/cancel` | Batalkan downgrade terjadwal | billing+ |
+| POST | `/platform/tenants/{id}/subscription/trial-choice/cancel` | Batalkan konfirmasi "lanjut setelah trial" (trial tetap jalan, habis → plan default) | billing+ |
 | POST | `/platform/tenants/{id}/overrides` | Terapkan override Feature/Limit | super_admin |
 
 ### Tenant-facing (tenant admin — langganan sendiri, mode self-service)
