@@ -42,6 +42,7 @@ Tidak berubah: clock-in/out, approval (`/approval/*`, approve/reject), dan semua
 | [`payroll.md`](./payroll.md) | Slip gaji (list, detail, PDF), approve run | Tersedia (pinjaman belum) |
 | [`approval.md`](./approval.md) | Inbox persetujuan lintas modul (cuti, lembur, koreksi, payroll run), detail approver | Tersedia |
 | [`core-hr.md`](./core-hr.md) | Profil, update kontak, CV saya & export PDF, dokumen, wilayah, direktori | Tersedia |
+| [`notification.md`](./notification.md) | Registrasi token push (FCM), inbox, badge, tandai dibaca, preferensi | Tersedia (event bisnis menyusul) |
 | [`performance.md`](./performance.md) | Goal, review, 360 | **Belum tersedia di API** |
 | [`recruitment.md`](./recruitment.md) | Kandidat, evaluasi, offer | **Belum tersedia di API** |
 
@@ -51,7 +52,7 @@ Tidak berubah: clock-in/out, approval (`/approval/*`, approve/reject), dan semua
 
 | Permission | Dipakai untuk |
 |---|---|
-| *(tanpa key, cukup login)* | Akun login sendiri (`/auth/me`, avatar, ganti password) |
+| *(tanpa key, cukup login)* | Akun login sendiri (`/auth/me`, avatar, ganti password), notifikasi sendiri (`/notifications/*`) |
 | `employees:self` | Data karyawan sendiri, update kontak, dokumen sendiri |
 | `directory:self` | Direktori rekan kerja |
 | `attendance:self` | Absen, jadwal, koreksi, lembur sendiri |

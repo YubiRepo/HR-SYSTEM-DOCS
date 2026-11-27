@@ -99,7 +99,7 @@ Lapisan yang dipakai bersama oleh semua modul — memastikan konsistensi keamana
 | **Auth & RBAC** | SSO, OAuth2/JWT, kontrol akses berbasis peran |
 | **API Gateway** | REST, rate limiting, versioning, gerbang integrasi |
 | **Data & Storage** | Database terpusat, penyimpanan dokumen, audit trail |
-| **Notifikasi & Event** | Email, webhook, pemrosesan job async |
+| **Notifikasi & Event** | Inbox in-app, email, push mobile, realtime ke backoffice — modul [notification](../modules/notification/README.md); event outbox + job async — modul messaging |
 | **Reporting & Analytics** | Dashboard, laporan pajak, metrik HR |
 
 ---
