@@ -1,7 +1,7 @@
 <!-- 📁 modules/mobile/api/core-hr.md -->
 # Mobile API · Core HR
 
-Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, direktori, serta riwayat/work policy/kontrak diri. Prefix `/api/v1/core-hr`. Pengelolaan karyawan, katalog, dan master data tetap di web.
+Endpoint Core HR untuk mobile: profil diri, update kontak, CV saya & export PDF, dokumen, wilayah, direktori, serta riwayat/work policy/kontrak diri. Prefix `/api/v1/core-hr`. Pengelolaan karyawan, katalog, dan master data tetap di web.
 
 > Referensi lengkap: [`../../core-hr/04-api-contract.md`](../../core-hr/04-api-contract.md).
 
@@ -11,6 +11,7 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dir
 **Permission:** `employees:self`. Mengembalikan record karyawan lengkap milik user login, antara lain:
 - identitas: `id`, `employee_number`, `full_name`, `email`, `phone`, `address`, `emergency_contact`
 - penempatan: `position_name`, `org_unit_name`, `branch_name`, `status`
+- CV: `profile_summary` ("Tentang saya"), `skill_records` (lihat §7)
 - lainnya: `custom_fields`, `avatar_url`
 
 `id` di sini adalah **employee id** karyawan.
@@ -27,7 +28,7 @@ Endpoint Core HR untuk mobile: profil diri, update kontak, dokumen, wilayah, dir
 
 Field di luar body admin (`employee_number`, status, job grade, dll) juga ditolak. Field yang ditolak membuat **seluruh** request gagal dengan `422 VALIDATION_ERROR` (pesan menyebut nama field), bukan diabaikan diam-diam.
 
-Yang boleh, antara lain: `full_name`, `short_name`, `email`, `phone`, `address`, `emergency_contact`, `national_id`, `birth_date`, `birth_place`, `gender`, `marital_status`, `religion`, `nationality`, `number_of_children`, `is_pregnant`, `id_card_address`, `family_card_number`, `height_cm`, `weight_kg`, `tax_identity_type` / `tax_identity_number` (atau `npwp`), `bank_accounts`, serta daftar riwayat `academic_records`, `prior_employment_records`, `certificates`, `family_records`, `training_records`, `medical_records`, `insurance_records` (tiap daftar diganti utuh). Validasi sama dengan admin, mis. format & keunikan NIK.
+Yang boleh, antara lain: `full_name`, `short_name`, `email`, `phone`, `address`, `emergency_contact`, `national_id`, `birth_date`, `birth_place`, `gender`, `marital_status`, `religion`, `nationality`, `number_of_children`, `is_pregnant`, `id_card_address`, `family_card_number`, `height_cm`, `weight_kg`, `tax_identity_type` / `tax_identity_number` (atau `npwp`), `bank_accounts`, `profile_summary`, serta daftar riwayat `skill_records`, `academic_records`, `prior_employment_records`, `certificates`, `family_records`, `training_records`, `medical_records`, `insurance_records` (tiap daftar diganti utuh). Validasi sama dengan admin, mis. format & keunikan NIK.
 
 Contoh (kontak):
 ```json
@@ -88,6 +89,50 @@ Hanya karyawan aktif yang ditampilkan, dengan `per_page` maksimal 50. Data priba
 - `GET /core-hr/me/work-policies` — bentuk sama dengan `GET /employees/{id}/work-policies`, plus `pattern_name` (opsional) untuk nama schedule pattern dari modul attendance.
 - `GET /core-hr/me/contracts?status=&type=&page=1&per_page=20` — bentuk dan filter sama dengan `GET /employees/{id}/contracts` (paginated, `type_name` sebagai label).
 - `GET /core-hr/me/reporting-line?levels=1` — atasan efektif sendiri, bentuk sama dengan `GET /employees/{id}/reporting-line` (`levels` 1–10, default 1). Tiap item: `level`, `employee_id`, `full_name`, `user_id`, `has_account`, `source` (`manager_id` / `org_unit_head`). Daftar kosong = atasan tidak ditemukan.
+
+## 7. CV Saya & Export Profil (PDF) — *baru, November 2026*
+**Permission:** `employees:self`. Web ESS sudah punya halaman **My CV**; mobile bisa menyajikan fitur yang sama. Tidak ada endpoint khusus CV untuk edit: semuanya lewat `GET`/`PATCH /core-hr/me/employee` (§1–§2).
+
+### 7a. Export PDF — `GET /core-hr/me/employee/export/{kind}?lang=id|en`
+| `kind` | Isi |
+|---|---|
+| `cv` | CV profesional: foto, nama, jabatan, unit/cabang, kontak kerja, ringkasan, keahlian, pengalaman kerja (karier internal + riwayat kerja sebelumnya), pendidikan, sertifikasi, pelatihan, penghargaan. **Tanpa** data sensitif (NIK, KK, NPWP, rekening, keluarga, medis, gaji, sanksi). Section kosong tidak dicetak. |
+| `biodata` | Biodata lengkap (bertanda **RAHASIA**): semua data pribadi, kepegawaian, pajak, rekening, keluarga, riwayat, kesehatan, asuransi, dll. |
+
+- `lang`: `id` (default) atau `en`, untuk bahasa label dokumen.
+- Response **binary** `application/pdf` (bukan envelope JSON) dengan `Content-Disposition: attachment; filename="CV-<no_karyawan>-<nama>.pdf"`. Simpan/buka dengan viewer PDF atau share sheet. Error tetap envelope JSON (cek `Content-Type`).
+- `kind` selain `cv`/`biodata` → `400 VALIDATION_ERROR`.
+- Foto diambil dari avatar. Kalau gagal dimuat, PDF tetap dibuat tanpa foto.
+
+### 7b. Edit CV — `PATCH /core-hr/me/employee`
+Urutan layar mengikuti urutan CV. Field yang bisa diubah karyawan sendiri:
+
+| Section CV | Field | Catatan |
+|---|---|---|
+| Tentang saya | `profile_summary` | Teks bebas, maks. 2000 karakter; `""` mengosongkan. Bila kosong, CV memakai ringkasan otomatis (jabatan, perusahaan, penempatan). |
+| Keahlian | `skill_records[]` | `{ skill_type, skill_name, skill_level, remark }`. `skill_name` wajib. `skill_type` = common code `skill_type`, `skill_level` = common code `skill_level`. Respons menambah `skill_type_name`, `skill_level_name`. |
+| Pengalaman kerja sebelumnya | `prior_employment_records[]` | Field baru: `department`, `location`, `job_level` (teks), `employment_type` (common code `contract_type`, respons `employment_type_name`), `job_description`, `reason_for_leaving` (hanya dicetak di biodata). Label UI: `last_position` = Jabatan/Position, `last_job` = Fungsi pekerjaan/Job function. |
+| Pendidikan | `academic_records[]` | `grade_point` (IPK) desimal. Kirim sebagai angka (`3.75`); tampilkan dengan koma untuk bahasa Indonesia. |
+| Sertifikasi | `certificates[]` | Field baru `document_url` (opsional). |
+| Pelatihan | `training_records[]` | Field baru `document_url` (opsional). |
+| Karier internal, Penghargaan | — | Read-only. Dikelola HR; ambil dari `GET /core-hr/me/history` (§6). |
+
+- Tiap daftar **diganti utuh**: kirim seluruh array setelah add/edit/hapus satu item, bukan item itu saja.
+- `document_url`: URL `http`/`https` absolut, maks. 500 karakter, kosong = hapus. Di CV dicetak sebagai link "Lihat dokumen / View document". Di mobile tampilkan sebagai tombol buka link eksternal.
+- Opsi dropdown `skill_type`, `skill_level`, dan `contract_type` diambil dari common code tenant, sama seperti field common code lain di profil.
+
+Contoh:
+```json
+{
+  "profile_summary": "HR generalist dengan 5 tahun pengalaman di payroll dan rekrutmen.",
+  "skill_records": [
+    { "skill_type": "language", "skill_name": "English", "skill_level": "advanced", "remark": "TOEFL 560" }
+  ],
+  "certificates": [
+    { "certificate_name": "Certified HR Professional", "certificate_date": "2025-03-10", "document_url": "https://drive.example.com/cert.pdf" }
+  ]
+}
+```
 
 ---
 

@@ -37,6 +37,7 @@ Peran paling sering memakai mobile — kebutuhan harian.
 | **Sisa hutang/cicilan** | Payroll (loan) | Outstanding pinjaman & riwayat cicilan |
 | **Self-assessment** | Performance | Isi penilaian diri saat siklus review |
 | **Data diri & dokumen** | Core HR | Lihat/perbarui info pribadi, unduh dokumen |
+| **CV saya & export** | Core HR | Edit CV (tentang saya, keahlian, pengalaman, pendidikan, sertifikasi, pelatihan); unduh CV / biodata PDF |
 | **Koreksi lupa absen** | Attendance | Ajukan koreksi bila lupa clock in/out |
 | **Notifikasi** | Notification | Pengingat absen, status ajuan, slip terbit |
 

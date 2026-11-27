@@ -41,7 +41,7 @@ Tidak berubah: clock-in/out, approval (`/approval/*`, approve/reject), dan semua
 | [`leave.md`](./leave.md) | Saldo, ajuan, lampiran, riwayat, batal, approval | Tersedia |
 | [`payroll.md`](./payroll.md) | Slip gaji (list, detail, PDF), approve run | Tersedia (pinjaman belum) |
 | [`approval.md`](./approval.md) | Inbox persetujuan lintas modul (cuti, lembur, koreksi, payroll run), detail approver | Tersedia |
-| [`core-hr.md`](./core-hr.md) | Profil, update kontak, dokumen, wilayah, direktori | Tersedia |
+| [`core-hr.md`](./core-hr.md) | Profil, update kontak, CV saya & export PDF, dokumen, wilayah, direktori | Tersedia |
 | [`performance.md`](./performance.md) | Goal, review, 360 | **Belum tersedia di API** |
 | [`recruitment.md`](./recruitment.md) | Kandidat, evaluasi, offer | **Belum tersedia di API** |
 
