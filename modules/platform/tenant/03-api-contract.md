@@ -15,6 +15,7 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
 |---|---|---|---|
 | GET | `/platform/tenants` | Daftar tenant (filter/search) | viewer+ |
 | POST | `/platform/tenants` | Provisioning tenant baru | super_admin |
+| GET | `/platform/tenants/admin-account?email=` | Cek apakah email admin sudah punya akun & company-nya | super_admin |
 | GET | `/platform/tenants/{id}` | Detail tenant | viewer+ |
 | PATCH | `/platform/tenants/{id}` | Ubah data tenant | super_admin |
 | POST | `/platform/tenants/{id}/suspend` | Tangguhkan | super_admin |
@@ -45,11 +46,11 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
   "slug": "acme",
   "plan_id": "plan_pro",
   "billing_cycle": "monthly",
-  "admin": { "full_name": "Siti", "email": "siti@acme.com" },
+  "admin": { "display_name": "Siti", "email": "siti@acme.com" },
   "start_trial": true
 }
 ```
-`admin.full_name` disimpan sebagai `display_name` akun admin (hanya bila akun belum punya nama — email yang sudah terdaftar tetap memakai namanya sendiri).
+`admin.display_name` = `users.display_name` akun admin (bukan `full_name` employee). **Wajib hanya bila email belum punya akun**; bila email sudah terdaftar, akun itu diundang ke tenant baru, tetap memakai namanya sendiri, dan `display_name` diabaikan (boleh dikosongkan).
 **Response `201 Created`**
 ```json
 {
@@ -60,11 +61,32 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
     "status": "trial",
     "default_branch_id": "branch_01H8...",
     "subscription": { "plan_id": "plan_pro", "status": "trialing", "trial_ends": "2026-08-25" },
-    "admin_invited": true
+    "admin_invited": true,
+    "admin_existing_account": false
   }
 }
 ```
-**Error:** `409 SLUG_TAKEN`, `422 INVALID_PLAN`.
+`admin_existing_account: true` = email sudah punya akun → diundang (tanpa `admin_temp_password`).
+
+**Error:** `409 SLUG_TAKEN`, `422 INVALID_PLAN`, `400 VALIDATION_ERROR` (`admin.display_name` kosong untuk email baru).
+
+### GET /platform/tenants/admin-account?email=
+
+Dipakai form provisioning sebelum submit, agar admin platform tahu email admin sudah terdaftar di company mana.
+
+```json
+{
+  "success": true,
+  "data": {
+    "exists": true,
+    "display_name": "Siti Rahmawati",
+    "companies": [
+      { "tenant_id": "…", "name": "PT Acme Indonesia", "slug": "acme", "tenant_status": "active", "membership_status": "active" }
+    ]
+  }
+}
+```
+Email belum terdaftar → `{ "exists": false, "companies": [] }`. Membership berstatus `removed` tidak ikut.
 
 > Provisioning memicu lintas modul: Billing (subscription), Auth (undang admin), RBAC (seed peran), Entitlement (hitung awal).
 
