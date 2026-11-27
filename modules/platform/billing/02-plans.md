@@ -38,6 +38,8 @@ Plan "Pro"
 | `cycles` | Opsi jangka waktu + diskon (monthly/quarterly/annual, configurable) |
 | `is_public` | Tampil di halaman harga atau plan privat (custom) |
 | `trial_days` | Durasi trial bila ada |
+| `is_featured` | Ditandai "Popular" di katalog (hanya tampilan) |
+| `is_default` | Plan yang dipakai saat tenant di-provision tanpa `plan_id` (maksimal satu; tidak bisa di-archive) |
 
 ---
 

@@ -41,6 +41,8 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 | `pricing` | json | `{ model, currency, ... }` |
 | `is_public` | boolean | Publik vs privat (custom) |
 | `trial_days` | int | 0 = tanpa trial |
+| `is_featured` | boolean | Badge "Popular" di katalog (presentational) |
+| `is_default` | boolean | Plan default saat provisioning tanpa `plan_id`; unik (partial index `WHERE is_default`) |
 | `is_active` | boolean | |
 
 ### 2.3 `plan_benefits` (matriks plan)
@@ -49,7 +51,7 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 | `plan_id` | string (FK) | |
 | `benefit_key` | string (FK) | |
 | `enabled` | boolean | Termasuk dalam plan |
-| `quota` | int (nullable) | Hanya untuk `quota`; −1 = unlimited |
+| `quota` | int (nullable) | Hanya untuk `quota`; −1 = unlimited, 0 = tidak termasuk (selalu disimpan `enabled = false`) |
 > PK `(plan_id, benefit_key)`. Baris tidak ada = benefit tidak termasuk.
 
 ### 2.4 `subscription_benefits` (snapshot)
@@ -75,6 +77,7 @@ Entitas milik modul Billing. `tenants` dirujuk dari modul Tenant.
 | `billing_cycle` | string | Kode cycle terpilih (`monthly`, `quarterly`, `annual`, ...) |
 | `period_start` / `period_end` | date | `period_end` = "aktif sampai"; lewat `period_end + grace` → read-only |
 | `seat_count` | int | Basis PEPM (karyawan **aktif** saja) |
+| `custom_rate` | bigint, nullable | Harga nego per bulan (IDR) — wajib bila plan `custom`, NULL untuk plan lain |
 | `trial_ends_at` | date (nullable) | |
 
 ### 2.5b `plan_billing_cycles`

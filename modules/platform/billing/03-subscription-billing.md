@@ -36,6 +36,8 @@ Plan "Pro"
 | `discount_pct` | Diskon untuk cycle ini (0 = tanpa diskon) |
 | `is_active` | Cycle tersedia untuk dipilih atau tidak |
 
+Cycle diatur per plan dari backoffice (form plan). Menghapus cycle **tidak** menghapus barisnya, hanya `is_active = false`: cycle itu tidak ditawarkan lagi untuk subscription baru, tetapi subscription yang sudah memakainya tetap di-renew dan di-invoice dengan cycle tersebut. Menambah lagi code yang sama mengaktifkan kembali baris lama.
+
 **Contoh umum:** monthly (0%), quarterly (~5%), annual (~15%). Angka diskon dapat diatur per plan.
 
 ---
@@ -67,9 +69,11 @@ Diskon cycle panjang mendorong komitmen & menurunkan churn; pembayaran di muka j
 |---|---|---|
 | **PEPM** | Harga/karyawan × seat × bulan (− diskon cycle) | Basis utama |
 | **Flat** | Harga tetap per periode | Plan sederhana/promo |
-| **Custom** | Nego (enterprise), termasuk multi-year | Plan privat |
+| **Custom** | `custom_rate` (harga nego per bulan, disimpan di subscription) × bulan — **tanpa** diskon cycle | Plan privat |
 
-`seat_count` bersumber dari Core HR (karyawan aktif tenant). Multi-year ditangani lewat plan custom/enterprise, atau sebagai cycle tambahan bila diperlukan.
+Plan custom tidak punya rate katalog: harga nego per tenant diisi staff platform (`custom_rate`, wajib) saat assign/ubah subscription. Subscription custom tanpa `custom_rate` ditolak saat assign (`CUSTOM_RATE_REQUIRED`), dan tidak di-invoice (renewal dilewati) sampai rate diisi — tidak pernah ditagih Rp 0. Self-service tenant tidak bisa memilih plan custom.
+
+`seat_count` bersumber dari Core HR (karyawan aktif tenant, minimal 1) dan dihitung ulang otomatis saat assign/ubah plan, saat *issue invoice now*, dan saat renewal — bukan input manual. Nilai `seat_count` di request hanya dipakai sebagai fallback bila hitungan Core HR tidak tersedia. Multi-year ditangani lewat plan custom/enterprise, atau sebagai cycle tambahan bila diperlukan.
 
 ---
 
