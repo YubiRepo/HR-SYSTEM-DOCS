@@ -20,6 +20,8 @@ Mengikuti envelope standar HRMS (`success` + `data`/`error` + `meta`), prefix `/
 | GET | `/employees/{id}/assignments` | Daftar assignment (aktif+historis) | `employees:read` |
 | POST | `/employees/{id}/offboarding` | Mulai proses keluar | `employees:write` |
 | GET | `/employees/{id}/history` | Riwayat kepegawaian | `employees:read` |
+| GET | `/employees/{id}/export/{kind}` | Unduh PDF profil: `kind=cv` (CV profesional) / `biodata` (biodata lengkap); `?lang=id\|en` | `employees:read` |
+| GET | `/me/employee/export/{kind}` | Sama, untuk profil karyawan sendiri (ESS) | `employees:self` / `employees:read` |
 | GET | `/employees/{id}/subordinates` | Daftar bawahan langsung | `employees:read` |
 | GET | `/employees/{id}/reporting-line` | Atasan efektif (manager_id → fallback kepala unit) | `employees:read` |
 | GET | `/employees/{id}/documents` | Daftar dokumen | `employees:read` |
@@ -580,6 +582,26 @@ Commit dua kali atas cek yang sama mengembalikan job impor yang sama. Bila worke
 - Data besar → `202 Accepted` + `job_id`, unduh via `result_url` saat selesai.
 
 **Kegunaan:** backup, laporan, dan edit massal (export → ubah di Excel → import kembali dengan `mode: upsert`).
+
+### 15.1 Export profil karyawan (PDF)
+
+**`GET /employees/{id}/export/{kind}`** (`employees:read`, dibatasi cabang) dan **`GET /me/employee/export/{kind}`** (ESS, profil sendiri). Respons `application/pdf` dengan `Content-Disposition: attachment`.
+
+| `kind` | Isi | Tujuan |
+|---|---|---|
+| `cv` | Header (foto, nama, jabatan, unit/cabang, email kerja, telepon, kota), ringkasan profil, keahlian, pengalaman kerja (karier internal + riwayat kerja sebelumnya), pendidikan, sertifikasi, pelatihan, penghargaan. Section kosong tidak dicetak. | Dokumen profesional untuk dibagikan — **tanpa** data sensitif (NIK, KK, NPWP, rekening, keluarga, medis, gaji, sanksi). |
+| `biodata` | Seluruh data profil: data pribadi (+ pasfoto 3x4), alamat, kepegawaian, identitas pajak, rekening, kontak darurat, keluarga, pendidikan, riwayat kerja sebelumnya, karier internal, sertifikasi, pelatihan, kesehatan, penilaian, penghargaan & sanksi, asuransi, custom fields, blok tanda tangan. Section kosong tetap dicetak ("Tidak ada data"). | Arsip HR — bertanda **RAHASIA**. |
+
+- **Ringkasan CV** memakai `profile_summary` karyawan ("Tentang saya", teks bebas maks. 2000 karakter, boleh diubah sendiri lewat `PATCH /me/employee` — `""` mengosongkan). Bila kosong, ringkasan dibuat otomatis dari jabatan, perusahaan, tanggal bergabung, dan penempatan. Field ini ikut di respons `GET /employees/{id}` dan `GET /me/employee`.
+- **Keahlian (Skills)** adalah record list `skill_records`: `{skill_type, skill_name, skill_level, remark}`. `skill_type` dan `skill_level` adalah common code (kategori `skill_type`: technical, computer, language, soft_skill, managerial, license, other; kategori `skill_level`: beginner, intermediate, advanced, expert — tenant bisa mengubahnya). `skill_name` wajib. Respons menyertakan `skill_type_name`/`skill_level_name`. Diganti utuh (whole-array replace) seperti record lain, bisa diubah karyawan sendiri. Tampil di tab Others profil karyawan, di CV (dikelompokkan per jenis, dilewati bila kosong), dan di biodata (tabel).
+- **Riwayat pekerjaan sebelumnya** (`prior_employment_records[]`) punya field tambahan agar di CV tampil seperti karier internal: `department`, `location`, `job_level` (teks bebas), `employment_type` (common code `contract_type`; respons menyertakan `employment_type_name`), `job_description`, dan `reason_for_leaving` (hanya dicetak di biodata). Di CV: "Jabatan — Perusahaan", lalu "Departemen · Lokasi · Level · Jenis kontrak", lalu deskripsi pekerjaan. Label UI: `last_position` = Position, `last_job` = Job Function (nama field API tidak berubah).
+- **Link dokumen eksternal**: `certificates[].document_url` dan `training_records[].document_url` (opsional, URL `http/https` absolut, maks. 500 karakter; kosong = hapus; selain itu `400 VALIDATION_ERROR`). Di CV dicetak sebagai link "Lihat dokumen / View document" yang bisa diklik; di biodata ditulis di kolom keterangan.
+- Halaman ESS **My CV** memakai `PATCH /me/employee` untuk `profile_summary`, `skill_records`, `prior_employment_records`, `academic_records`, `certificates`, `training_records`. Karier internal serta penghargaan/sanksi tetap dikelola HR.
+- `lang=id` (default) atau `lang=en` — bahasa label dokumen.
+- Nama file: `CV-<no_karyawan>-<nama>.pdf` / `Biodata-<no_karyawan>-<nama>.pdf`.
+- Foto diambil dari avatar karyawan (JPG/PNG, maks 3 MB); bila gagal dimuat, dokumen tetap dibuat tanpa foto.
+- Penghargaan di CV hanya entri reward/warning yang jenisnya terbaca sebagai penghargaan (mis. "Reward", "Penghargaan"); sanksi hanya muncul di biodata.
+- `kind` lain → `400 VALIDATION_ERROR`.
 
 ---
 
