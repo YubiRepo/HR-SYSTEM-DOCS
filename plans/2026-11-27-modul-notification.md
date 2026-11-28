@@ -3,7 +3,7 @@
 
 | | |
 |---|---|
-| **Status** | **Kode selesai, menunggu uji E2E.** Fase 1–16 selesai (API, BO, dokumen modul [notification](../modules/notification/README.md) & [mobile](../modules/mobile/api/notification.md)). Fase 17: migrasi `20261127000009_notification_tables` belum dijalankan; skenario uji ada di [05-operations](../modules/notification/05-operations.md). |
+| **Status** | **Kode selesai, menunggu uji E2E.** Fase 1–16 selesai (API, BO, dokumen modul [notification](../modules/notification/README.md) & [mobile](../modules/mobile/api/notification.md)). Fase 18 (push browser BO) dan Fase 19 (penataan UI preferensi & tes) selesai. Fase 17: migrasi `20261128000003_notification_tables` belum dijalankan; skenario uji ada di [05-operations](../modules/notification/05-operations.md). |
 | **Tanggal** | 2026-11-27 |
 | **Pemicu** | Belum ada notifikasi untuk user. Approval berjenjang, kontrak yang mau habis, dan slip gaji tidak memberi tahu siapa pun. Email hanya dipakai auth (verifikasi/reset/undangan), dan sender kontrak core-hr masih `Noop`. |
 | **Cakupan** | **Arsitektur saja**: dari modul pengirim mem-publish ke outbox sampai notifikasi terkirim (in-app, email, push, realtime), plus inbox & preferensi. **Daftar event dan integrasi ke modul pengirim (approval, core-hr, payroll, attendance) menyusul** di plan terpisah. Verifikasi end-to-end memakai event uji `system.test`. |
@@ -189,7 +189,7 @@ Di plan ini katalog hanya berisi satu event:
 
 | Event key | Penerima | Pemicu | Channel default |
 |---|---|---|---|
-| `system.test` | User yang memanggil | `POST /notifications/test` (hanya aktif bila `NOTIFICATION_TEST_ENDPOINT_ENABLED=true`, untuk dev/staging) | in-app, email, push |
+| `system.test` | User yang memanggil | `POST /notifications/test` (staf platform dengan `platform_support`; awalnya flag `NOTIFICATION_TEST_ENDPOINT_ENABLED`, diganti permission pada 2026-11-28) | in-app, email, push |
 
 Event ini dipakai untuk menguji seluruh jalur (outbox → worker → inbox → email/push → realtime) tanpa menyentuh modul bisnis.
 
@@ -284,7 +284,7 @@ Catatan desain:
 | `DELETE /notifications/devices/:id` | Hapus device (juga dipanggil saat logout di mobile) |
 | `POST /notifications/stream/ticket` | Ticket sekali pakai untuk membuka WebSocket (§2.7) |
 | `GET /notifications/stream?ticket=` | WebSocket realtime (di luar auth middleware, otorisasi lewat ticket). Event: `connected`, `notification.created` (berisi notifikasi baru). Tidak ada event `unread_count`: BO memanggil `unread-count` saat menerima `notification.created` |
-| `POST /notifications/test` | Kirim `system.test` ke diri sendiri. Hanya aktif bila `NOTIFICATION_TEST_ENDPOINT_ENABLED=true` |
+| `POST /notifications/test` | Kirim `system.test` ke diri sendiri. Hanya staf platform (`platform_support:read`/`:write`) |
 
 Tidak ada permission RBAC khusus: semua endpoint hanya mengakses data milik user sendiri.
 
@@ -307,8 +307,6 @@ NOTIFICATION_PUSH_ENABLED=false
 FCM_PROJECT_ID=
 FCM_CREDENTIALS_FILE=                    # path service account JSON
 NOTIFICATION_RETENTION_DAYS=180          # notifikasi yang sudah dibaca dihapus setelah N hari
-NOTIFICATION_BO_BASE_URL=                # untuk link absolut di email
-NOTIFICATION_TEST_ENDPOINT_ENABLED=false # true hanya di dev/staging
 ```
 
 ---
@@ -355,7 +353,7 @@ NOTIFICATION_TEST_ENDPOINT_ENABLED=false # true hanya di dev/staging
 - Platform session (tanpa tenant) melihat notifikasi `tenant_id IS NULL`.
 
 #### Fase 6 — Channel email `[HR-API]`
-- `infrastructure/email`: SMTP memakai konfigurasi `SMTP_*` yang ada, template HTML + teks satu layout (judul, isi, tombol ke `NOTIFICATION_BO_BASE_URL + link`).
+- `infrastructure/email`: SMTP memakai konfigurasi `SMTP_*` yang ada, template HTML + teks satu layout (judul, isi, tombol ke `BACKOFFICE_URL + link`; awalnya `NOTIFICATION_BO_BASE_URL`, disatukan ke `BACKOFFICE_URL` pada 2026-11-28).
 - Handler `notification.deliver.email`: error jaringan/SMTP 4xx → `Retryable`; alamat invalid → `Fatal` + status `failed`.
 
 #### Fase 7 — Event uji `[HR-API]`
@@ -403,6 +401,17 @@ NOTIFICATION_TEST_ENDPOINT_ENABLED=false # true hanya di dev/staging
 #### Fase 16 — Kontrak mobile `[DOCS]`
 - `modules/mobile/api/`: endpoint inbox, device registration, format payload push & deep link.
 
+#### Fase 18 — Push browser di BO `[HR-BO]` `[HR-API]` (tambahan 2026-11-28)
+- BO: config Firebase web di `runtimeConfig.public.firebase` (`NUXT_PUBLIC_FIREBASE_*`), dependensi `firebase` (hanya untuk `getToken`, dimuat lazy). Composable `useWebPush` (enable/disable/sync/unregister), plugin `web-push.client.ts` (sync setelah login, klik dari service worker → mark read + navigasi).
+- `public/sw.js` menangani event `push` & `notificationclick` sendiri; notifikasi dilewati bila ada tab BO yang fokus (sudah ada toast realtime).
+- Kartu *Browser notifications* di halaman preferensi (Turn on/off); label channel `push` menjadi "Push". Logout menghapus device `web` browser itu.
+- API: pesan FCM menambah `webpush.headers.Urgency = high`.
+
+#### Fase 19 — Penataan UI preferensi & tes `[HR-BO]` `[HR-API]` (tambahan 2026-11-28)
+- Preferensi dipindah ke shell "My Profile" tiap portal (tab *Notifications*: `/platform/settings/notifications`, `/tenants/account/notifications`, `/ess/account/notifications`) + menu avatar *Notification Settings*. `/notifications/settings` menjadi redirect.
+- Sidebar *Platform Settings*: item *Notifications* kini membuka halaman tes (`/platform/settings/notification-test`) — kirim `system.test` ke diri sendiri + status channel.
+- API: `POST /notifications/test` dijaga `platform_support:read|write`; flag `NOTIFICATION_TEST_ENDPOINT_ENABLED` dan error `NOTIFICATION_TEST_DISABLED` dihapus, sehingga tes juga bisa dipakai di production oleh staf platform.
+
 #### Fase 17 — Uji E2E
 Semua skenario memakai `POST /notifications/test` (`system.test`):
 - Jalur lengkap: panggil endpoint → baris `event_outbox` → worker → baris `notifications` → badge BO bertambah tanpa reload (realtime) → email masuk → push masuk di device uji.
@@ -435,4 +444,3 @@ Semua skenario memakai `POST /notifications/test` (`system.test`):
 - SMS / WhatsApp.
 - Do Not Disturb dan digest harian/mingguan.
 - Pengaturan event per tenant (tenant mematikan event tertentu).
-- Push web (browser) — kolom `platform = 'web'` sudah disiapkan.

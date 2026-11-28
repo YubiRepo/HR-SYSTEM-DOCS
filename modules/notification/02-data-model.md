@@ -1,7 +1,7 @@
 <!-- 📁 modules/notification/02-data-model.md -->
 # 02 · Data Model
 
-Migrasi: `HR-SYSTEM-API/migrations/20261127000009_notification_tables`.
+Migrasi: `HR-SYSTEM-API/migrations/20261128000003_notification_tables`.
 
 ## `notifications` — inbox, 1 baris per penerima
 

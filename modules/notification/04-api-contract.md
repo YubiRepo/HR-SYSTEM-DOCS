@@ -17,7 +17,7 @@ Semua endpoint (kecuali `stream`) wajib login, tanpa permission khusus: hanya me
 | DELETE | `/devices/{id}` | 204. `404 NOTIFICATION_DEVICE_NOT_FOUND` |
 | POST | `/stream/ticket` | `{ "ticket": "…", "expires_in": 30 }` — ticket sekali pakai |
 | GET | `/stream?ticket=` | WebSocket, **tanpa** header Authorization (otorisasi lewat ticket) |
-| POST | `/test` | Kirim `system.test` ke diri sendiri. 202. `404 NOTIFICATION_TEST_DISABLED` bila flag mati |
+| POST | `/test` | Kirim `system.test` ke diri sendiri. 202. Hanya staf platform: permission `platform_support:read` atau `platform_support:write`, selain itu `403 PERMISSION_DENIED` |
 
 **Item inbox**
 ```json

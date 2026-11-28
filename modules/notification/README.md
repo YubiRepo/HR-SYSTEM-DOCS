@@ -1,7 +1,7 @@
 <!-- 📁 modules/notification/README.md -->
 # Notification Module
 
-Mengirim notifikasi ke user: **inbox in-app**, **email**, **push mobile (FCM)**, dan **realtime** ke tab backoffice yang sedang terbuka. Modul lain cukup memanggil satu pintu (`notification.Contract.Notify`) di dalam transaksi bisnisnya; pengiriman berjalan asinkron di worker.
+Mengirim notifikasi ke user: **inbox in-app**, **email**, **push (FCM) ke app mobile dan browser backoffice**, dan **realtime** ke tab backoffice yang sedang terbuka. Modul lain cukup memanggil satu pintu (`notification.Contract.Notify`) di dalam transaksi bisnisnya; pengiriman berjalan asinkron di worker.
 
 | | |
 |---|---|

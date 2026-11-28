@@ -6,14 +6,26 @@
 | Env | Default | Keterangan |
 |---|---|---|
 | `NOTIFICATION_EMAIL_ENABLED` | `true` | Channel email; juga butuh `SMTP_HOST` + `SMTP_USERNAME`. Tanpa SMTP → in-app saja |
-| `NOTIFICATION_BO_BASE_URL` | `http://localhost:3000` | Prefix link absolut di email |
-| `NOTIFICATION_TEST_ENDPOINT_ENABLED` | `false` | `POST /notifications/test` — hanya dev/staging |
-| `NOTIFICATION_PUSH_ENABLED` | `false` | Channel push FCM |
+| `BACKOFFICE_URL` (umum) | `http://localhost:3132` | Prefix link absolut di email (sama dengan link email auth) |
+| `NOTIFICATION_PUSH_ENABLED` | `false` | Channel push FCM (app mobile + browser BO) |
 | `FCM_PROJECT_ID` | | ID project Firebase |
 | `FCM_CREDENTIALS_FILE` | | Path file service account JSON (harus ter-mount di container api & worker) |
 | `NOTIFICATION_RETENTION_DAYS` | `180` | `0` = retensi mati |
 
 Push aktif tetapi kredensial FCM tidak ada/rusak → api dan worker **gagal start** (sengaja, agar salah konfigurasi langsung terlihat).
+
+### Push browser (backoffice)
+
+BO mendaftarkan browser sebagai device `platform = "web"` lewat endpoint device yang sama dengan mobile. Konfigurasi di `.env` BO (section *Notification: browser push*), dibaca saat container start:
+
+| Env BO | Keterangan |
+|---|---|
+| `NUXT_PUBLIC_FIREBASE_API_KEY` | Kosong = push browser mati |
+| `NUXT_PUBLIC_FIREBASE_PROJECT_ID` | Harus sama dengan `FCM_PROJECT_ID` API |
+| `NUXT_PUBLIC_FIREBASE_APP_ID`, `NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Dari Firebase console → *Project settings* → *Your apps* → Web |
+| `NUXT_PUBLIC_FIREBASE_VAPID_KEY` | Opsional. *Cloud Messaging* → *Web Push certificates*. Kosong = key default Firebase |
+
+Alur: user menekan **Turn on** di *Notification settings*, browser meminta izin, lalu `getToken` (Firebase SDK, memakai service worker `public/sw.js`) dan `POST /notifications/devices`. Setelah itu setiap login mendaftarkan ulang token tanpa prompt, dan logout menghapus device (komputer bersama tidak menerima notifikasi user sebelumnya). `public/sw.js` menampilkan notifikasi sendiri (tanpa Firebase SDK di service worker) dan melewatkannya bila ada tab BO yang sedang fokus, karena tab itu sudah menampilkan toast realtime. Klik notifikasi membuka `link`; bila ada tab terbuka, notifikasi ditandai dibaca. Push browser butuh HTTPS (kecuali `localhost`).
 
 ## Proses
 
@@ -32,15 +44,17 @@ WebSocket butuh header `Upgrade`/`Connection` dan HTTP/1.1. Staging: `deploy/sta
 
 - Bell di `AppNavbar` (semua portal): badge unread, popover 10 terbaru, *Mark all as read*, link ke inbox & pengaturan.
 - `plugins/notifications.client.ts`: satu koneksi WebSocket per tab (ticket → `wss://…/stream`), reconnect dengan backoff 1–30 detik, berhenti 5 menit bila server menjawab realtime tidak tersedia; polling `unread-count` tiap 60 detik dan saat tab kembali terlihat; toast untuk notifikasi baru.
-- Halaman `/notifications` (Inbox) dan `/notifications/settings` (preferensi), di luar lane `/tenants`/`/ess`/`/platform` sehingga bisa diakses semua tier. `/platform/settings/notifications` memakai komponen preferensi yang sama.
+- Halaman `/notifications` (Inbox), di luar lane `/tenants`/`/ess`/`/platform` sehingga bisa diakses semua tier.
+- **Preferensi milik user pribadi**: tab *Notifications* di shell "My Profile" tiap portal — `/platform/settings/notifications`, `/tenants/account/notifications`, `/ess/account/notifications` (komponen `NotificationsPreferences` yang sama), juga lewat menu avatar *Notification Settings*, tombol gear di bell, dan tab *Settings* di inbox. `/notifications/settings` hanya redirect ke halaman itu.
+- **Tes notifikasi** (`/platform/settings/notification-test`, menu *Platform Settings → Notifications*): alat operasional platform. Mengirim `system.test` ke diri sendiri dan menampilkan status channel server (email/push) serta push browser ini. Butuh permission `platform_support:read` atau `:write`.
 
 ## Skenario uji E2E
 
-Prasyarat: migrasi `20261127000009` dijalankan, `RABBITMQ_ENABLED=true`, `NOTIFICATION_TEST_ENDPOINT_ENABLED=true`, Redis aktif; untuk email isi `SMTP_*`, untuk push isi kredensial FCM dan daftarkan device.
+Prasyarat: migrasi `20261128000003` dijalankan, `RABBITMQ_ENABLED=true`, Redis aktif, login sebagai staf platform dengan `platform_support`; untuk email isi `SMTP_*`, untuk push isi kredensial FCM dan daftarkan device.
 
 | # | Skenario | Hasil yang diharapkan |
 |---|---|---|
-| 1 | Buka BO, lalu panggil `POST /api/v1/notifications/test` dengan token sesi yang sama (curl/HTTP client) | Baris `event_outbox` → baris `notifications`; badge bertambah tanpa reload; toast muncul |
+| 1 | Di BO buka *Platform Settings → Notifications*, klik **Send test notification** | Baris `event_outbox` → baris `notifications`; badge bertambah tanpa reload; toast muncul |
 | 2 | Email aktif | Email masuk; delivery `sent`; tombol membuka `/notifications` |
 | 3 | Push aktif, device terdaftar | Push masuk; data berisi `notification_id`, `tenant_id` |
 | 4 | Matikan email kategori *System* di Settings, ulangi #1 | Hanya in-app; tidak ada delivery email |
@@ -50,3 +64,5 @@ Prasyarat: migrasi `20261127000009` dijalankan, `RABBITMQ_ENABLED=true`, `NOTIFI
 | 8 | Token FCM sudah di-uninstall | Device `active = false`, delivery `failed` |
 | 9 | Matikan Redis | `stream/ticket` 503; badge tetap ter-update lewat polling |
 | 10 | Jalankan `notification.retention.purge` dengan data lama | Notifikasi lama terhapus sesuai cutoff |
+| 11 | Push browser: *Turn on* di Settings, tutup/blur tab BO, ulangi #1 | Notifikasi sistem muncul; klik → tab BO fokus, buka `link`, notifikasi terbaca. Saat tab fokus: hanya toast |
+| 12 | Push browser: logout, lalu kirim tes untuk user itu | Device `web` terhapus; tidak ada push di browser tersebut |

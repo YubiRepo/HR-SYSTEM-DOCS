@@ -18,7 +18,7 @@ Katalog ada di kode (`internal/modules/notification/application/catalog/catalog.
 
 | Event key | Kategori | Channel | Penerima | Pemicu |
 |---|---|---|---|---|
-| `system.test` | system | in-app, email, push | Pemanggil | `POST /api/v1/notifications/test` (hanya bila `NOTIFICATION_TEST_ENDPOINT_ENABLED=true`) |
+| `system.test` | system | in-app, email, push | Pemanggil | `POST /api/v1/notifications/test` (staf platform, `platform_support`; BO: *Platform Settings → Notifications*) |
 
 Event bisnis (approval, kontrak hampir habis, slip gaji, auto clock-out) menyusul di plan daftar event.
 
