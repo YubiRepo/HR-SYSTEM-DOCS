@@ -71,7 +71,7 @@ Diskon cycle panjang mendorong komitmen & menurunkan churn; pembayaran di muka j
 | **Flat** | Harga tetap per periode | Plan sederhana/promo |
 | **Custom** | `custom_rate` (harga nego per bulan, disimpan di subscription) × bulan — **tanpa** diskon cycle | Plan privat |
 
-Plan custom tidak punya rate katalog: harga nego per tenant diisi staff platform (`custom_rate`, wajib) saat assign/ubah subscription. Subscription custom tanpa `custom_rate` ditolak saat assign (`CUSTOM_RATE_REQUIRED`), dan tidak di-invoice (renewal dilewati) sampai rate diisi — tidak pernah ditagih Rp 0. Self-service tenant tidak bisa memilih plan custom.
+Plan custom tidak punya rate katalog: harga nego per tenant diisi staff platform (`custom_rate`, wajib) saat provisioning tenant maupun assign/ubah subscription. Subscription custom tanpa `custom_rate` ditolak (`CUSTOM_RATE_REQUIRED`; pada provisioning, sebelum tenant dibuat), dan tidak di-invoice (renewal dilewati) sampai rate diisi — tidak pernah ditagih Rp 0. Self-service tenant tidak bisa memilih plan custom.
 
 Seat yang **ditagih** (PEPM) = `max(seat_count, plan.min_seats)` — `min_seats` diatur per plan (default 1). Provisioning tanpa trial: admin boleh mengisi perkiraan jumlah karyawan (`initial_seats`) untuk invoice periode pertama, karena tenant baru belum punya karyawan; invoice berikutnya memakai jumlah aktif sebenarnya.
 

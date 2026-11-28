@@ -57,6 +57,8 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
 }
 ```
 `admin.display_name` = `users.display_name` akun admin (bukan `full_name` employee). **Wajib hanya bila email belum punya akun**; bila email sudah terdaftar, akun itu diundang ke tenant baru, tetap memakai namanya sendiri, dan `display_name` diabaikan (boleh dikosongkan).
+
+`custom_rate` (int, IDR/bulan, ≥ 0) = harga nego. **Wajib bila plan bermodel `custom`** — tanpa itu provisioning ditolak `CUSTOM_RATE_REQUIRED` sebelum tenant dibuat (aturan sama dengan assign plan, lihat billing/03-subscription-billing.md §4). Diabaikan untuk plan katalog. Tanpa trial, invoice periode pertama langsung terbit memakai rate ini.
 **Response `201 Created`**
 ```json
 {
@@ -76,7 +78,7 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
 
 `slug` (kode tenant) opsional dan biasanya tidak dikirim: API membuatnya dari `name` (`pt-acme-indonesia`, lalu `-2`, `-3` bila sudah dipakai). Bila dikirim, harus unik.
 
-**Error:** `409 SLUG_TAKEN` (hanya bila `slug` dikirim dan sudah dipakai), `422 INVALID_PLAN`, `400 VALIDATION_ERROR` (`admin.display_name` kosong untuk email baru).
+**Error:** `409 SLUG_TAKEN` (hanya bila `slug` dikirim dan sudah dipakai), `422 INVALID_PLAN`, `400 VALIDATION_ERROR` (`admin.display_name` kosong untuk email baru), `CUSTOM_RATE_REQUIRED` (plan custom tanpa `custom_rate`).
 
 ### GET /platform/tenants/admin-account?email=
 
