@@ -14,9 +14,10 @@ Kekurangan / ketidaksesuaian API yang ditemukan saat integrasi aplikasi mobile, 
 | [Attendance](./attendance.md) | 9 | ATT-1 … ATT-9 |
 | [Core HR](./core-hr.md) | 4 | CORE-1 … CORE-4 |
 | [Auth](./auth.md) | 3 | AUTH-1 … AUTH-3 |
-| [Approval](./approval.md) | 3 | APR-1 … APR-3 |
+| [Approval](./approval.md) | 4 | APR-1 … APR-4 |
 | [Payroll](./payroll.md) | 1 | PAY-1 |
 | [Platform](./platform.md) | 2 | PLAT-1 … PLAT-2 |
+| [Notification](./notification.md) | 4 | NOTIF-1 … NOTIF-4 |
 
 > **Urutan pengerjaan bertahap:** lihat [Plan Pengerjaan](./plan.md).
 

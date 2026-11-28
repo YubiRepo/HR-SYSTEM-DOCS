@@ -25,6 +25,10 @@ Ringkasan semua issue di [`issues/`](./README.md) dan urutan pengerjaannya secar
 | [APR-2](./approval.md#apr-2) | Lembur & koreksi masuk engine approval | P2 | Done | Sudah (`97b061c`); butuh policy + backfill, belum diuji ke server | 3 ✅ |
 | [APR-3](./approval.md#apr-3) | Riwayat keputusan approver | P2 | Done | `GET /approval/decided` ditambahkan (26 Nov) | — ✅ |
 | [APR-4](./approval.md#apr-4) | Nama approver di timeline tampil sebagai email | P3 | Done | Fallback nama approval pakai `display_name`; kasus Rizky = data `full_name` karyawan berisi email | — ✅ |
+| [NOTIF-1](./notification.md#notif-1) | Event bisnis notifikasi (katalog lengkap) | P2 | Open | Hanya `system.test` | — |
+| [NOTIF-2](./notification.md#notif-2) | Bahasa push mengikuti bahasa app | P3 | Open | — | — |
+| [NOTIF-3](./notification.md#notif-3) | Kontrak `data` push untuk mobile | P2 | Open | Sebagian (api/notification.md §3) | — |
+| [NOTIF-4](./notification.md#notif-4) | Lifecycle device & token FCM | P2 | Open | Register/hapus ada; revoke otomatis belum | — |
 | [CORE-1](./core-hr.md#core-1) | Karyawan hanya bisa ubah kontak | P1 | Done | Diperbaiki (Fase 4) | 4 ✅ |
 | [CORE-2](./core-hr.md#core-2) | Karyawan upload dokumen sendiri | P1 | Done | Diperbaiki (Fase 4) | 4 ✅ |
 | [CORE-4](./core-hr.md#core-4) | Ubah rekening butuh approval HR | P2 | Perlu keputusan (sementara: terbuka tanpa approval) | — | 0 |
@@ -35,7 +39,7 @@ Ringkasan semua issue di [`issues/`](./README.md) dan urutan pengerjaannya secar
 | [AUTH-3](./auth.md#auth-3) | Cek ketersediaan username / HP | P2 | Done | Done | — |
 | [ATT-4](./attendance.md#att-4) | Jadwal tandai hari cuti | P3 | Done | Done (via Leave) | — |
 
-**Total:** 23 issue · 19 Done · 4 masih perlu keputusan (CORE-4, PLAT-1, PLAT-2, PAY-1).
+**Total:** 27 issue · 19 Done · 4 Open (NOTIF-1 … NOTIF-4) · 4 masih perlu keputusan (CORE-4, PLAT-1, PLAT-2, PAY-1).
 
 ---
 
