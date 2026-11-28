@@ -17,7 +17,7 @@ Kekurangan / ketidaksesuaian API yang ditemukan saat integrasi aplikasi mobile, 
 | [Approval](./approval.md) | 4 | APR-1 … APR-4 |
 | [Payroll](./payroll.md) | 1 | PAY-1 |
 | [Platform](./platform.md) | 2 | PLAT-1 … PLAT-2 |
-| [Notification](./notification.md) | 3 | NOTIF-1 … NOTIF-3 |
+| [Notification](./notification.md) | 4 | NOTIF-1 … NOTIF-4 |
 
 > **Urutan pengerjaan bertahap:** lihat [Plan Pengerjaan](./plan.md).
 

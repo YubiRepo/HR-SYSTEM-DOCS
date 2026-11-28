@@ -8,6 +8,7 @@ Kebutuhan notifikasi dari aplikasi mobile. Endpoint dasarnya sudah dirancang di 
 | [NOTIF-1](#notif-1) | Event bisnis untuk fitur mobile (katalog lengkap) | P2 | `Open` |
 | [NOTIF-2](#notif-2) | Bahasa push mengikuti bahasa app | P3 | `Open` |
 | [NOTIF-3](#notif-3) | Kontrak `data` push yang dibaca mobile | P2 | `Open` |
+| [NOTIF-4](#notif-4) | Lifecycle device & token FCM (register, refresh, revoke) | P2 | `Open` |
 
 ---
 
@@ -67,20 +68,81 @@ Kebutuhan notifikasi dari aplikasi mobile. Endpoint dasarnya sudah dirancang di 
 - **Konteks:** [api/notification.md §3](../api/notification.md) sudah mendefinisikan `notification_id`, `event_key`, `category`, `tenant_id`, `ref_type`, `ref_id`, `link`. Mobile memetakan layar dari `ref_type`, bukan dari `link` (path backoffice).
 - **Yang diminta:** nilai `ref_type` mengikuti tabel di bawah (string tetap, huruf kecil), dan untuk `approval.pending` tambahkan `data.document_type` (`leave_request` / `overtime_request` / `attendance_correction` / `payroll_run`) agar app langsung membuka tab yang tepat. Semua nilai `data` string (aturan FCM).
 
-| `ref_type` | Layar di app | Catatan |
-|---|---|---|
-| `approval_request` | Pusat Persetujuan, tab sesuai `document_type` | |
-| `leave_request` | Cuti → detail ajuan (timeline) | |
-| `overtime_request` | Lembur → tab Pengajuan | |
-| `overtime_order` | Lembur → tab SPL | |
-| `attendance_correction` | Presensi → Ringkasan → Pengajuan koreksi | |
-| `attendance_record` | Presensi → Hari Ini / riwayat tanggal itu | |
-| `schedule` | Jadwal Shift, tanggal `ref_id` | `ref_id` = tanggal |
-| `payslip` | Payroll → detail slip | |
-| `contract`, `assignment` | Profil → Riwayat Karier | |
-| `tenant_invitation` | Profil → kartu undangan | |
-| `subscription` | Beranda (banner langganan) | |
-| *(kosong / tidak dikenal)* | Inbox notifikasi | |
+Mobile membuka layar dari `ref_type` + `ref_id`. **Link mobile** di bawah = route di app (GoRouter). Server tidak perlu mengirim link mobile; cukup `ref_type` / `ref_id` (dan `document_type` untuk approval). `link` tetap berisi path backoffice.
+
+#### Approval
+
+| Event key | `ref_type` | `ref_id` | Extra `data` | Link mobile | Tab / aksi di layar |
+|---|---|---|---|---|---|
+| `approval.pending` | `approval_request` | `request_id` | `document_type` | `/approvals?type={kind}` | Tab **Menunggu**, chip sesuai `kind` |
+| `approval.reminder` *(opsional)* | `approval_request` | `request_id` | `document_type` | `/approvals?type={kind}` | sama |
+| `approval.cancelled` *(opsional)* | `approval_request` | `request_id` | `document_type` | `/approvals?tab=history` | Tab **Riwayat** |
+
+`kind` dari `document_type`: `leave_request` → `leave` · `overtime_request` → `overtime` · `attendance_correction` → `correction` · `payroll_run` → `payroll`.
+
+#### Leave (Cuti)
+
+| Event key | `ref_type` | `ref_id` | Link mobile | Tab / aksi |
+|---|---|---|---|---|
+| `leave.approved` | `leave_request` | leave request id | `/leave?tab=history&id={ref_id}` | Tab **Riwayat**, buka detail ajuan (timeline) |
+| `leave.rejected` | `leave_request` | leave request id | `/leave?tab=history&id={ref_id}` | sama, catatan atasan tampil |
+| `leave.cancelled_by_hr` *(opsional)* | `leave_request` | leave request id | `/leave?tab=history&id={ref_id}` | sama |
+
+#### Attendance (Presensi, Lembur, Jadwal)
+
+| Event key | `ref_type` | `ref_id` | Link mobile | Tab / aksi |
+|---|---|---|---|---|
+| `overtime.approved` | `overtime_request` | overtime request id | `/overtime?tab=requests&id={ref_id}` | Tab **Pengajuan**, kartu di-highlight |
+| `overtime.rejected` | `overtime_request` | overtime request id | `/overtime?tab=requests&id={ref_id}` | sama |
+| `overtime_order.issued` | `overtime_order` | SPL id | `/overtime?tab=orders&id={ref_id}` | Tab **SPL** |
+| `correction.approved` | `attendance_correction` | correction id | `/attendance?tab=summary&id={ref_id}` | Tab **Ringkasan** → Pengajuan koreksi |
+| `correction.rejected` | `attendance_correction` | correction id | `/attendance?tab=summary&id={ref_id}` | sama |
+| `attendance.auto_clocked_out` | `attendance_record` | record id | `/attendance?tab=today&date={YYYY-MM-DD}` | Tab **Hari Ini** (atau riwayat tanggal itu) + tombol koreksi |
+| `schedule.changed` | `schedule` | tanggal `YYYY-MM-DD` | `/attendance?tab=schedule&date={ref_id}` | Tab **Jadwal Shift**, tanggal terpilih |
+
+Untuk `attendance.auto_clocked_out`, tambahkan `data.date` (`YYYY-MM-DD`) karena `ref_id` berisi record id.
+
+#### Payroll
+
+| Event key | `ref_type` | `ref_id` | Link mobile | Tab / aksi |
+|---|---|---|---|---|
+| `payroll.payslip_published` | `payslip` | payslip id | `/payroll?id={ref_id}` | Buka detail slip (perlu PIN/biometrik bila diaktifkan) |
+
+#### Employment (Profil & Karier)
+
+| Event key | `ref_type` | `ref_id` | Link mobile | Tab / aksi |
+|---|---|---|---|---|
+| `employment.contract_expiring` | `contract` | contract id | `/career` | Bagian **Kontrak** |
+| `employment.assignment_changed` | `assignment` | assignment id | `/career` | Bagian **Posisi & Penempatan** |
+| `employment.document_expiring` *(opsional)* | `employee_document` | document id | `/biodata?tab=documents` | Tab **Dokumen** |
+
+#### System
+
+| Event key | `ref_type` | `ref_id` | Link mobile | Tab / aksi |
+|---|---|---|---|---|
+| `auth.tenant_invitation` | `tenant_invitation` | tenant id | `/profile` | Kartu **Undangan perusahaan** |
+| `system.subscription_ending` | `subscription` | subscription id | `/` | Beranda, banner langganan |
+| `system.announcement` *(opsional)* | `announcement` | announcement id | `/notification?id={ref_id}` | Detail di inbox |
+| `system.test` | — | — | `/notification` | Inbox |
+| *(tidak dikenal / tanpa `ref_type`)* | — | — | `/notification` | Inbox |
+
+#### Route app & parameter
+
+Route yang sudah ada dan parameter yang **disiapkan mobile** (bukan tugas BE; dicantumkan agar kontrak lengkap):
+
+| Route | Layar | Parameter | Status di app |
+|---|---|---|---|
+| `/` | Beranda | — | Ada |
+| `/approvals` | Pusat Persetujuan | `type` = `leave`/`overtime`/`correction`/`payroll`, `tab` = `waiting`/`history` | `type` ada · `tab` disiapkan |
+| `/leave` | Cuti | `tab` = `balance`/`history`, `id` | Disiapkan |
+| `/overtime` | Lembur | `tab` = `requests`/`realisation`/`orders`, `id` | Disiapkan |
+| `/attendance` | Presensi | `tab` = `today`/`schedule`/`summary`, `date`, `id` | Disiapkan |
+| `/schedules` | Kalender jadwal | `date` | Disiapkan |
+| `/payroll` | Slip gaji | `id` | Disiapkan |
+| `/career` | Riwayat Karier | — | Ada |
+| `/biodata` | Biodata | `tab` = `documents` | Disiapkan |
+| `/profile` | Profil | — | Ada |
+| `/notification` | Inbox notifikasi | `id` | Disiapkan (layar inbox baru) |
 
 **Alur di app (sudah / akan dikerjakan di mobile):**
 1. Setelah login, pilih tenant, ganti tenant, dan setiap `onTokenRefresh` → `POST /notifications/devices` (`token`, `platform`, `device_id`, `device_name`, `app_version`, `locale`). Simpan `data.id`.
@@ -121,3 +183,48 @@ Kebutuhan notifikasi dari aplikasi mobile. Endpoint dasarnya sudah dirancang di 
 - `apns.aps.badge` = jumlah belum dibaca terbaru (opsional, agar ikon app iOS sesuai).
 - **Prasyarat iOS:** APNs key (.p8) dari Apple Developer PT Yubi Technology (`6HF6B53G32`) di-upload ke Firebase Console → Cloud Messaging. Tanpa ini push tidak sampai ke iPhone.
 - **Catatan BE:** —
+
+---
+
+### NOTIF-4
+**Lifecycle device & token FCM (register, refresh, revoke)** · P2 · `Open`
+
+- **Konteks:** endpoint device sudah ada di [api/notification.md §1–2](../api/notification.md). Issue ini mengunci kapan app memanggilnya dan perilaku server yang dibutuhkan agar push tidak salah orang / salah perusahaan.
+
+**Endpoint**
+
+| Endpoint | Kapan dipanggil app | Body / respons |
+|---|---|---|
+| `POST /notifications/devices` | (1) setelah login berhasil, (2) setelah pilih tenant / ganti tenant / ganti cabang, (3) setiap `onTokenRefresh`, (4) saat app dibuka bila terakhir register > 7 hari, (5) saat user ganti bahasa app | Body: `token`, `platform` (`android`/`ios`), `device_id`, `device_name`, `app_version`, `locale` (NOTIF-2). Respons: `data.id` disimpan di HP |
+| `DELETE /notifications/devices/{id}` | Logout, **sebelum** `POST /auth/logout`; juga saat user mematikan izin notifikasi OS | 204; `404 NOTIFICATION_DEVICE_NOT_FOUND` diabaikan |
+| `GET /notifications/devices` *(usulan, opsional)* | Profil → Pengaturan notifikasi → daftar perangkat aktif | List device milik user (nama, platform, `last_seen_at`) |
+| `DELETE /notifications/devices` *(usulan, opsional)* | "Keluar dari semua perangkat" | Hapus semua device user (dipakai juga saat ganti password) |
+
+**`device_id`:** dibuat app sekali per install (UUID, disimpan lokal), bukan ID hardware. Install ulang = device baru.
+
+**Perilaku server yang dibutuhkan**
+
+| Kasus | Yang diharapkan |
+|---|---|
+| Token sama didaftarkan ulang | Update `last_seen_at`, `app_version`, `locale`; tidak membuat baris baru (sudah di §1) |
+| Token sama, user lain (HP dipakai bergantian) | Pindah ke user baru; user lama tidak menerima push di HP itu lagi (sudah di §1) |
+| `device_id` sama, token baru (FCM rotate) | Ganti token pada baris device yang sama, bukan menambah baris |
+| User punya beberapa tenant | Push hanya untuk notifikasi tenant yang punya membership aktif; `data.tenant_id` selalu diisi agar app bisa ganti tenant sebelum membuka |
+| FCM membalas `UNREGISTERED` / `INVALID_ARGUMENT` (token mati) | Hapus / nonaktifkan device itu |
+| Logout, ganti password, akun dinonaktifkan, keluar dari tenant | Device user dicabut (password & nonaktif: semua device; keluar tenant: push tenant itu berhenti) |
+| Device tidak aktif > 60 hari | Dibersihkan job berkala |
+| Rate | Satu event = satu push per device; `DedupeKey` mencegah dobel saat retry |
+
+**Topic FCM:** app berhenti memakai topic global `all_employees` / `announcements` (bocor lintas perusahaan). Bila nanti butuh broadcast (pengumuman), pakai fan-out per user dari server, atau topic per tenant `tenant_{tenant_id}` yang di-subscribe/unsubscribe app saat ganti tenant.
+
+**Konfigurasi server**
+
+| Variabel | Isi |
+|---|---|
+| `FCM_PROJECT_ID` | `easy-hr-78795` |
+| `FIREBASE_CREDENTIALS_PATH` | Path service account JSON (mis. `./certs/firebase-admin.json`, folder `certs/` sudah di-ignore git). Diberikan terpisah, **tidak** lewat repo / chat |
+
+**Prasyarat iOS:** APNs Authentication Key (.p8) dari Apple Developer **PT Yubi Technology** (`6HF6B53G32`), di-upload ke Firebase Console → Project settings → Cloud Messaging → Apple app configuration (Key ID + Team ID). Bundle ID iOS = Android = `com.yubidev.easyhr`.
+
+- **Catatan BE:** —
+
