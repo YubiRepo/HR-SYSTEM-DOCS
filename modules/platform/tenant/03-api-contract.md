@@ -44,6 +44,19 @@ Envelope standar HRMS. Aksi berbahaya butuh re-auth + `Idempotency-Key`.
 
 ---
 
+## 0. GET /platform/tenants
+
+Daftar tenant (paginasi `page`/`per_page`, filter `filter[status]`, `search`). Tiap baris diperkaya dari entitlement:
+
+| Field | Keterangan |
+|---|---|
+| `plan_name` | Nama plan subscription saat ini (kosong bila tanpa subscription) |
+| `subscription_status` | `trialing` / `active` / `past_due` / … |
+| `employee_count` / `employee_quota` | Karyawan aktif vs kuota `max_employees` (`-1` = unlimited) |
+| `branch_count` / `branch_quota` | Cabang vs kuota `max_branches` (`-1` = unlimited) |
+
+Field usage tidak dikirim bila tidak bisa dihitung.
+
 ## 1. POST /platform/tenants
 
 **Request**
