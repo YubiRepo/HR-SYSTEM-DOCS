@@ -47,6 +47,7 @@ Kebutuhan notifikasi dari aplikasi mobile. Endpoint dasarnya sudah dirancang di 
 | `approval.cancelled` | approval | Pengaju membatalkan ajuan yang sedang menunggu → approver step aktif, agar kartu tidak dibuka sia-sia |
 | `leave.cancelled_by_hr` | approval | HR membatalkan cuti yang sudah disetujui |
 | `employment.document_expiring` | employment | Sertifikat (`certificates[].expire_date`) berakhir ≤ 30 hari |
+| `attendance.missed_clock_in` | attendance | **Jaring pengaman dari server.** Karyawan belum clock-in **X menit setelah shift mulai** (usul X = `late_tolerance_min` shift, atau setting baru di attendance rule). Hanya hari kerja (`day_kind = workday`), tidak dikirim bila cuti approved, hari libur, atau sudah clock-in. 1× per hari (`DedupeKey` = `attendance.missed_clock_in:<employee_id>:<date>`). Tidak dobel dengan pengingat lokal di HP: pengingat lokal **sebelum** shift, ini **sesudah** shift mulai. `ref_type` `attendance_record` / tanggal, link mobile `/attendance?tab=today`. Butuh job berkala (mis. tiap 5 menit) yang membaca jadwal + record hari itu |
 | `system.announcement` | system | Pengumuman HR ke seluruh tenant / cabang (butuh fitur pengumuman di backoffice) |
 
 - **Catatan BE:** —
@@ -98,6 +99,7 @@ Mobile membuka layar dari `ref_type` + `ref_id`. **Link mobile** di bawah = rout
 | `correction.approved` | `attendance_correction` | correction id | `/attendance?tab=summary&id={ref_id}` | Tab **Ringkasan** → Pengajuan koreksi |
 | `correction.rejected` | `attendance_correction` | correction id | `/attendance?tab=summary&id={ref_id}` | sama |
 | `attendance.auto_clocked_out` | `attendance_record` | record id | `/attendance?tab=today&date={YYYY-MM-DD}` | Tab **Hari Ini** (atau riwayat tanggal itu) + tombol koreksi |
+| `attendance.missed_clock_in` *(opsional)* | `attendance_record` | tanggal `YYYY-MM-DD` | `/attendance?tab=today` | Tab **Hari Ini**, tombol Absen Masuk |
 | `schedule.changed` | `schedule` | tanggal `YYYY-MM-DD` | `/attendance?tab=schedule&date={ref_id}` | Tab **Jadwal Shift**, tanggal terpilih |
 
 Untuk `attendance.auto_clocked_out`, tambahkan `data.date` (`YYYY-MM-DD`) karena `ref_id` berisi record id.
