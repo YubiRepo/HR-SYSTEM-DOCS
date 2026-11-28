@@ -11,7 +11,7 @@ Kekurangan / ketidaksesuaian API yang ditemukan saat integrasi aplikasi mobile, 
 
 | Modul | Jumlah | Issue |
 |---|---|---|
-| [Attendance](./attendance.md) | 9 | ATT-1 … ATT-9 |
+| [Attendance](./attendance.md) | 10 | ATT-1 … ATT-10 |
 | [Core HR](./core-hr.md) | 4 | CORE-1 … CORE-4 |
 | [Auth](./auth.md) | 3 | AUTH-1 … AUTH-3 |
 | [Approval](./approval.md) | 4 | APR-1 … APR-4 |

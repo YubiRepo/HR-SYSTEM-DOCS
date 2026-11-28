@@ -37,6 +37,7 @@ Ringkasan semua issue di [`issues/`](./README.md) dan urutan pengerjaannya secar
 | [PLAT-2](./platform.md#plat-2) | Perpanjang trial tanpa jadi `active` | P3 | Perlu keputusan | — | 0 → 4 |
 | [PAY-1](./payroll.md#pay-1) | API pinjaman & kasbon | P2 | Perlu keputusan | — | 0 → 5 |
 | [PAY-2](./payroll.md#pay-2) | Hitung payroll `500` untuk satu karyawan; TER B/C tidak di-seed | P2 | Open | — | — |
+| [ATT-10](./attendance.md#att-10) | `/me/overtime` masih wajib `employee_id` | P2 | Open | — | — |
 | [AUTH-3](./auth.md#auth-3) | Cek ketersediaan username / HP | P2 | Done | Done | — |
 | [ATT-4](./attendance.md#att-4) | Jadwal tandai hari cuti | P3 | Done | Done (via Leave) | — |
 

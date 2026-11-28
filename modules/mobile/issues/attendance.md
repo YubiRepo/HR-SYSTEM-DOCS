@@ -14,6 +14,7 @@ Kekurangan endpoint modul **Attendance** di [API docs](../api/README.md) yang di
 | [ATT-7](#att-7) | `/leave/me/requests` belum bisa difilter tanggal | P3 | `Done` |
 | [ATT-8](#att-8) | Clock-in tetap diterima saat cuti approved | P2 | `Done` |
 | [ATT-9](#att-9) | `timestamp` clock-in/out dari client tidak dibatasi | P1 | `Done` |
+| [ATT-10](#att-10) | `POST /attendance/me/overtime` masih mewajibkan `employee_id` | P2 | `Open` |
 
 ---
 
@@ -183,3 +184,15 @@ Bila `/me/rules` tersedia, app cukup memanggil endpoint itu; `/me/geofence` bole
 - **Konteks:** docs mobile (`api/attendance.md`) menyebut timestamp asli dipakai untuk antrean *offline*. App mobile saat ini **tidak** mengirim `timestamp` (selalu jam server), dan fitur offline ditunda sampai issue ini diputuskan.
 - **Usulan:** batasi selisih `timestamp` vs jam server (mis. maks 5 menit ke depan, maks N jam ke belakang khusus `source=offline`), tandai record offline (`source` / flag) agar HR bisa meninjau, atau abaikan `timestamp` untuk source `mobile`.
 - **Catatan BE:** sudah aman sejak `d10e16e` (12 Nov 2026): handler HTTP (`interfaces/http/attendancerecord/handler.go`, `dropClientTimestamp`) membuang `timestamp` dari client kecuali di environment development, jadi di staging/production jam absen selalu jam server. Temuan sebelumnya hanya melihat use case, bukan handler. Bila nanti antrean *offline* dibutuhkan, perlu desain baru (batas selisih + penanda record offline), dicatat sebagai issue terpisah.
+
+### ATT-10
+**`POST /attendance/me/overtime` masih mewajibkan `employee_id`** · P2 · `Open`
+
+- **Endpoint:** `POST /attendance/me/overtime` (route self-service baru dari refactor `/me`, 27 Nov 2026).
+- **Temuan (28 Nov 2026, staging):** body tanpa `employee_id` — sesuai [api/attendance.md](../api/attendance.md) *"tanpa `employee_id`"* — ditolak `422 VALIDATION_ERROR` `{"field": "employee_id", "issue": "required"}`. Dengan `employee_id` milik sendiri, ajuan diterima (`pending`).
+- **Penyebab (dibaca dari kode, belum diubah):** `SubmitMine` bind ke `overtimecommand.SubmitOvertimeRequestRequest` yang punya `EmployeeID ... binding:"required"`; `ResolveSelf` baru mengisi `req.EmployeeID` **setelah** `ShouldBindJSON`, jadi validasi gagal duluan. `POST /leave/me/requests` tidak kena (DTO cuti tidak mewajibkan `employee_id`).
+- **Dampak:** karyawan tidak bisa mengajukan lembur dari app yang mengikuti docs.
+- **Di app (28 Nov 2026):** app tetap mengirim `employee_id` milik sendiri (dari `GET /core-hr/me/employee`); server menimpanya dengan karyawan login, jadi aman.
+- **Usulan:** DTO terpisah untuk `/me` tanpa `employee_id`, atau hapus `binding:"required"` lalu validasi `employee_id` hanya di route HR.
+- **Catatan BE:** —
+
